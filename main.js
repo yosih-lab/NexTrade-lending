@@ -221,6 +221,94 @@ var candleCache     = {};   // candleCache[symbol][tf] = []
 var watchlist       = JSON.parse(localStorage.getItem('ml_watchlist') || '["TEVA.TA","ELBIT.TA","BEZQ.TA","POLI.TA","LUMI.TA","AZRG.TA"]');
 var portfolio       = JSON.parse(localStorage.getItem('ml_portfolio') || '[]');
 var alerts          = JSON.parse(localStorage.getItem('ml_alerts')    || '[]');
+var lastBars        = [];   // last loaded bars for MA computation
+
+// ============================================
+//   MOVING AVERAGES
+// ============================================
+var MA_CONFIGS = [
+  { period:   5, color: '#FF6B6B', label: 'MA 5'   },
+  { period:  10, color: '#FFD93D', label: 'MA 10'  },
+  { period:  20, color: '#6BCB77', label: 'MA 20'  },
+  { period:  30, color: '#4D96FF', label: 'MA 30'  },
+  { period:  50, color: '#FF922B', label: 'MA 50'  },
+  { period: 100, color: '#CC5DE8', label: 'MA 100' },
+  { period: 200, color: '#F06595', label: 'MA 200' },
+];
+var maActive = {};   // period -> bool
+var maSeries = {};   // period -> LightweightCharts line series
+
+function computeMA(bars, period) {
+  var result = [];
+  for (var i = period - 1; i < bars.length; i++) {
+    var sum = 0;
+    for (var j = i - period + 1; j <= i; j++) sum += bars[j].close;
+    result.push({ time: bars[i].time, value: parseFloat((sum / period).toFixed(4)) });
+  }
+  return result;
+}
+
+function renderMAs(bars) {
+  if (!chartInstance) return;
+  MA_CONFIGS.forEach(function(cfg) {
+    if (!maActive[cfg.period]) return;
+    var data = computeMA(bars, cfg.period);
+    if (!maSeries[cfg.period]) {
+      maSeries[cfg.period] = chartInstance.addLineSeries({
+        color: cfg.color, lineWidth: 1,
+        lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false,
+      });
+    }
+    maSeries[cfg.period].setData(data);
+  });
+}
+
+function clearMASeries() {
+  if (!chartInstance) return;
+  MA_CONFIGS.forEach(function(cfg) {
+    if (maSeries[cfg.period]) {
+      try { chartInstance.removeSeries(maSeries[cfg.period]); } catch(e) {}
+      delete maSeries[cfg.period];
+    }
+  });
+}
+
+function toggleMA(period) {
+  if (maActive[period]) {
+    maActive[period] = false;
+    if (maSeries[period]) {
+      try { chartInstance.removeSeries(maSeries[period]); } catch(e) {}
+      delete maSeries[period];
+    }
+  } else {
+    maActive[period] = true;
+    var cfg = MA_CONFIGS.find(function(c) { return c.period === period; });
+    if (cfg && lastBars && lastBars.length >= period) {
+      var data = computeMA(lastBars, period);
+      if (!maSeries[period]) {
+        maSeries[period] = chartInstance.addLineSeries({
+          color: cfg.color, lineWidth: 1,
+          lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false,
+        });
+      }
+      maSeries[period].setData(data);
+    }
+  }
+  renderMAPanel();
+}
+
+function renderMAPanel() {
+  var list = document.getElementById('maList');
+  if (!list) return;
+  list.innerHTML = MA_CONFIGS.map(function(cfg) {
+    var on = !!maActive[cfg.period];
+    return '<div class="ma-item">'
+      + '<span class="ma-swatch" style="background:' + cfg.color + '"></span>'
+      + '<span class="ma-label">' + cfg.label + '</span>'
+      + '<button class="ma-toggle' + (on ? ' on' : '') + '" onclick="toggleMA(' + cfg.period + ')"></button>'
+      + '</div>';
+  }).join('');
+}
 
 // ============================================
 //   TASE MARKET HOURS (Israel time UTC+3)
@@ -535,11 +623,9 @@ async function resolveSymbolForData(symbol, tf) {
 function initChart() {
   var mainEl = document.getElementById('chart');
   var volEl  = document.getElementById('volumeChart');
-  var chartHeight = Math.max(760, window.innerHeight - 170);
 
   chartInstance = LightweightCharts.createChart(mainEl, {
     autoSize: true,
-    height: chartHeight,
     layout: { background: { color: '#0f1117' }, textColor: '#8899aa' },
     grid:   { vertLines: { color: 'transparent' }, horzLines: { color: 'transparent' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
@@ -590,9 +676,15 @@ function initChart() {
     updateLegend(param);
   });
 
-  window.addEventListener('resize', function() {
-    // autoSize handles resize automatically in v4
-  });
+  // Force resize after layout settles (fixes 0-height init issue)
+  setTimeout(function() {
+    if (chartInstance) {
+      var el = document.getElementById('chart');
+      if (el && el.offsetWidth > 0 && el.offsetHeight > 0) {
+        chartInstance.resize(el.offsetWidth, el.offsetHeight);
+      }
+    }
+  }, 120);
 }
 
 // ============================================
@@ -778,6 +870,9 @@ async function loadChart(symbol, tf) {
 
   saveBars(targetSymbol, tf, bars);
 
+  // Store for MA computation
+  lastBars = bars;
+
   // Build volume data with colors
   var volData = bars.map(function(b) {
     var isUp = b.close >= b.open;
@@ -794,6 +889,10 @@ async function loadChart(symbol, tf) {
   candleSeries.setData(bars);
   barSeries.setData(bars);
   volumeSeries.setData(volData);
+
+  // Update / re-render active MAs with new data
+  clearMASeries();
+  renderMAs(bars);
 
   // Sync timescale
   chartInstance.timeScale().fitContent();
@@ -1304,6 +1403,7 @@ async function init() {
   try {
     console.log('[NexTrade] init() starting...');
     initChart();
+    renderMAPanel();
     console.log('[NexTrade] Chart initialized.');
     
     updateTASEBadge();
