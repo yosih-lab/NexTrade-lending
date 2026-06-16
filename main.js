@@ -304,7 +304,13 @@ function toggleMA(period) {
 function renderMAPanel() {
   var list = document.getElementById('maList');
   if (!list) return;
-  list.innerHTML = MA_CONFIGS.map(function(cfg) {
+  var volRow = '<div class="ma-item">'
+    + '<span class="ma-swatch" style="background:#5b6472"></span>'
+    + '<span class="ma-label">נפח עסקאות</span>'
+    + '<button class="ma-toggle' + (volumeVisible ? ' on' : '') + '" onclick="toggleVolume()"></button>'
+    + '</div>'
+    + '<div style="height:1px;background:var(--border);margin:.25rem .3rem"></div>';
+  var maRows = MA_CONFIGS.map(function(cfg) {
     var on = !!maActive[cfg.period];
     return '<div class="ma-item">'
       + '<span class="ma-swatch" style="background:' + cfg.color + '"></span>'
@@ -312,6 +318,7 @@ function renderMAPanel() {
       + '<button class="ma-toggle' + (on ? ' on' : '') + '" onclick="toggleMA(' + cfg.period + ')"></button>'
       + '</div>';
   }).join('');
+  list.innerHTML = volRow + maRows;
 }
 
 // ============================================
@@ -626,7 +633,6 @@ async function resolveSymbolForData(symbol, tf) {
 // ============================================
 function initChart() {
   var mainEl = document.getElementById('chart');
-  var volEl  = document.getElementById('volumeChart');
 
   chartInstance = LightweightCharts.createChart(mainEl, {
     autoSize: true,
@@ -656,23 +662,19 @@ function initChart() {
   });
   barSeries.applyOptions({ visible: false });
 
-  // Volume chart (separate instance, auto width)
-  volInstance = LightweightCharts.createChart(volEl, {
-    autoSize: true,
-    height: 80,
-    layout: { background: { color: '#0f1117' }, textColor: '#6b7280' },
-    grid:   { vertLines: { color: 'transparent' }, horzLines: { color: 'transparent' } },
-    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-    rightPriceScale: { borderColor: '#1e2533', scaleMargins: { top: 0.1, bottom: 0 } },
-    timeScale: { borderColor: '#1e2533', timeVisible: true, secondsVisible: false, visible: false },
-    handleScroll: false, handleScale: false,
-  });
-
-  volumeSeries = volInstance.addHistogramSeries({
+  // Volume — overlay histogram anchored to the BOTTOM of the main chart (TradingView style).
+  // Sits above the time/months axis and shares the same time scale, so it can never
+  // "merge" into the candles and is always perfectly aligned.
+  volumeSeries = chartInstance.addHistogramSeries({
     priceFormat: { type: 'volume' },
     priceScaleId: 'volume',
+    lastValueVisible: false,
+    priceLineVisible: false,
   });
-  volInstance.priceScale('volume').applyOptions({ scaleMargins: { top: 0.1, bottom: 0 } });
+  chartInstance.priceScale('volume').applyOptions({
+    scaleMargins: { top: 0.84, bottom: 0 },
+  });
+  volumeSeries.applyOptions({ visible: volumeVisible });
 
   // Sync crosshair between charts
   chartInstance.subscribeCrosshairMove(function(param) {
@@ -737,7 +739,8 @@ function updateLegend(param) {
 
   if (volData) {
     document.getElementById('lgV').textContent = formatVolume(volData.value);
-    document.getElementById('volLegendText').textContent = formatVolume(volData.value);
+    var volLeg = document.getElementById('volLegendText');
+    if (volLeg) volLeg.textContent = formatVolume(volData.value);
   }
 }
 
@@ -907,16 +910,8 @@ async function loadChart(symbol, tf) {
   clearMASeries();
   renderMAs(bars);
 
-  // Sync timescale
+  // Fit time scale (volume shares the same scale automatically)
   chartInstance.timeScale().fitContent();
-  volInstance.timeScale().setVisibleRange(chartInstance.timeScale().getVisibleRange() || { from: bars[0].time, to: bars[bars.length - 1].time });
-
-  // Subscribe to main chart scroll/zoom to sync volume
-  chartInstance.timeScale().subscribeVisibleTimeRangeChange(function(range) {
-    if (range) {
-      try { volInstance.timeScale().setVisibleRange(range); } catch(e) {}
-    }
-  });
 
   // Subtitle
   var last = bars[bars.length - 1];
@@ -1010,18 +1005,8 @@ function toggleChartTypeMenu() {
 // ============================================
 function toggleVolume() {
   volumeVisible = !volumeVisible;
-  var el  = document.getElementById('volumeChart');
-  var btn = document.getElementById('volToggleBtn');
-  if (volumeVisible) {
-    volInstance.applyOptions({ height: 80 });
-    el.style.display = '';
-    btn.textContent  = 'הסתר';
-    btn.classList.add('active');
-  } else {
-    el.style.display = 'none';
-    btn.textContent  = 'הצג';
-    btn.classList.remove('active');
-  }
+  if (volumeSeries) volumeSeries.applyOptions({ visible: volumeVisible });
+  if (typeof renderMAPanel === 'function') renderMAPanel();
 }
 
 // ============================================
