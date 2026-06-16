@@ -208,6 +208,82 @@ var NAMES = {
 };
 
 // ============================================
+//   TASE UNIVERSE  —  כל מניות בורסת תל אביב (נמשך מ-Twelve Data)
+// ============================================
+// Each entry: { sym: 'ABRA.TA', short: 'ABRA', name: '<Hebrew or English>' }
+var TASE_UNIVERSE = [];
+var TASE_UNIVERSE_KEY = 'tase_universe_v1';
+
+function buildUniverseFromCache() {
+  try {
+    var raw = localStorage.getItem(TASE_UNIVERSE_KEY);
+    if (!raw) return false;
+    var obj = JSON.parse(raw);
+    if (obj && obj.list && obj.list.length) {
+      TASE_UNIVERSE = obj.list;
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
+async function loadTASEUniverse(force) {
+  // Use cache (refreshed at most once every 7 days)
+  if (!force) {
+    try {
+      var raw = localStorage.getItem(TASE_UNIVERSE_KEY);
+      if (raw) {
+        var obj = JSON.parse(raw);
+        var fresh = obj && obj.ts && (Date.now() - obj.ts < 7 * 864e5);
+        if (fresh && obj.list && obj.list.length) {
+          TASE_UNIVERSE = obj.list;
+          console.log('[NexTrade] TASE universe from cache:', TASE_UNIVERSE.length);
+          return TASE_UNIVERSE;
+        }
+      }
+    } catch (e) {}
+  }
+
+  try {
+    var d = await tdFetch('/stocks', { exchange: 'TASE' });
+    var arr = (d && d.data) ? d.data : [];
+    var list = [];
+    arr.forEach(function(s) {
+      var sym = s.symbol || '';
+      // keep ordinary equities only: letters/digits, no bond/option suffixes (e.g. ".B1")
+      if (!sym || sym.indexOf('.') !== -1) return;
+      // skip pure-numeric placeholder tickers with no real name
+      if (/^\d+$/.test(sym) && (!s.name || s.name === sym)) return;
+      var full = sym + '.TA';
+      var hebrew = NAMES[full] || NAMES[sym];
+      list.push({
+        sym:   full,
+        short: sym,
+        name:  hebrew || s.name || sym,
+      });
+    });
+    // de-duplicate by short symbol
+    var seen = {};
+    list = list.filter(function(it) {
+      if (seen[it.short]) return false;
+      seen[it.short] = true;
+      return true;
+    });
+    list.sort(function(a, b) { return a.short < b.short ? -1 : a.short > b.short ? 1 : 0; });
+    if (list.length) {
+      TASE_UNIVERSE = list;
+      try { localStorage.setItem(TASE_UNIVERSE_KEY, JSON.stringify({ ts: Date.now(), list: list })); } catch (e) {}
+      console.log('[NexTrade] TASE universe loaded:', list.length);
+    }
+  } catch (e) {
+    console.error('[NexTrade] loadTASEUniverse failed:', e.message || e);
+  }
+  // fall back to cache if the fetch returned nothing
+  if (!TASE_UNIVERSE.length) buildUniverseFromCache();
+  return TASE_UNIVERSE;
+}
+
+// ============================================
 //   STATE
 // ============================================
 var currentSymbol   = 'TEVA.TA';
@@ -1410,7 +1486,12 @@ async function init() {
     renderWatchlist();
     renderPortfolio();
     renderAlerts();
-    
+
+    // Load the full TASE stock universe for the search box (cached for 7 days).
+    // Use cache immediately if present so search works instantly; refresh in background.
+    buildUniverseFromCache();
+    loadTASEUniverse();
+
     console.log('[NexTrade] Loading cards for symbols:', DEFAULT_SYMBOLS);
     await Promise.all(DEFAULT_SYMBOLS.map(function(s) { return loadCard(s); }));
     console.log('[NexTrade] Cards loaded.');
@@ -1546,15 +1627,41 @@ async function runScanner() {
     var dd = getDD(); if (!dd) return;
     if (!q) { closeDD(); return; }
     var qu = q.toUpperCase();
-    var matches = Object.keys(NAMES).filter(function(sym) {
-      return sym.replace('.TA','').startsWith(qu) || NAMES[sym].indexOf(q) !== -1;
-    }).slice(0, 10);
+    var matches = [];
+
+    // Primary source: full TASE universe (pulled from Twelve Data)
+    if (typeof TASE_UNIVERSE !== 'undefined' && TASE_UNIVERSE.length) {
+      var starts = [];
+      var contains = [];
+      for (var i = 0; i < TASE_UNIVERSE.length; i++) {
+        var it = TASE_UNIVERSE[i];
+        var symU = it.short.toUpperCase();
+        if (symU.indexOf(qu) === 0) {
+          starts.push(it);                                   // symbol prefix → top
+        } else if (symU.indexOf(qu) !== -1 || (it.name && it.name.indexOf(q) !== -1)) {
+          contains.push(it);                                 // symbol/name contains
+        }
+        if (starts.length >= 12) break;
+      }
+      matches = starts.concat(contains).slice(0, 12).map(function(it) {
+        return { sym: it.sym, short: it.short, name: it.name };
+      });
+    }
+
+    // Fallback to the small built-in NAMES map if universe isn't loaded yet
+    if (!matches.length) {
+      matches = Object.keys(NAMES).filter(function(sym) {
+        return sym.replace('.TA', '').toUpperCase().indexOf(qu) === 0 || NAMES[sym].indexOf(q) !== -1;
+      }).slice(0, 10).map(function(sym) {
+        return { sym: sym, short: sym.replace('.TA', ''), name: NAMES[sym] };
+      });
+    }
+
     if (!matches.length) { closeDD(); return; }
-    dd.innerHTML = matches.map(function(sym) {
-      var short = sym.replace('.TA','');
-      return '<div class="sd-item" data-sym="' + sym + '">'
-        + '<span class="sd-sym">' + short + '</span>'
-        + '<span class="sd-name">' + NAMES[sym] + '</span>'
+    dd.innerHTML = matches.map(function(m) {
+      return '<div class="sd-item" data-sym="' + m.sym + '">'
+        + '<span class="sd-sym">' + m.short + '</span>'
+        + '<span class="sd-name">' + m.name + '</span>'
         + '</div>';
     }).join('');
     dd.querySelectorAll('.sd-item').forEach(function(el) {
