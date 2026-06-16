@@ -541,7 +541,7 @@ function initChart() {
     autoSize: true,
     height: chartHeight,
     layout: { background: { color: '#0f1117' }, textColor: '#8899aa' },
-    grid:   { vertLines: { color: '#1e2533' }, horzLines: { color: '#1e2533' } },
+    grid:   { vertLines: { color: 'transparent' }, horzLines: { color: 'transparent' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
     rightPriceScale: { borderColor: '#1e2533' },
     timeScale: { borderColor: '#1e2533', timeVisible: true, secondsVisible: false },
@@ -552,6 +552,7 @@ function initChart() {
     lastValueVisible: true, priceLineVisible: true,
     crosshairMarkerVisible: true,
   });
+  lineSeries.applyOptions({ visible: false });
 
   candleSeries = chartInstance.addCandlestickSeries({
     upColor: '#26a69a',   downColor: '#ef5350',
@@ -570,7 +571,7 @@ function initChart() {
     autoSize: true,
     height: 80,
     layout: { background: { color: '#0f1117' }, textColor: '#6b7280' },
-    grid:   { vertLines: { color: 'transparent' }, horzLines: { color: '#1e2533' } },
+    grid:   { vertLines: { color: 'transparent' }, horzLines: { color: 'transparent' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
     rightPriceScale: { borderColor: '#1e2533', scaleMargins: { top: 0.1, bottom: 0 } },
     timeScale: { borderColor: '#1e2533', timeVisible: true, secondsVisible: false, visible: false },
@@ -598,28 +599,40 @@ function initChart() {
 //   LEGEND UPDATE on crosshair
 // ============================================
 function updateLegend(param) {
-  var legend = document.getElementById('chartLegend');
-  if (!legend) return;
+  var legend = document.getElementById('chartLegend'); // kept for compat
+  var ciOhlcv = document.getElementById('ciOhlcv');
+  var ohlcvSep = document.querySelector('.ci-ohlcv-sep');
   if (!param || !param.time) {
-    legend.classList.remove('visible');
+    if (ciOhlcv) ciOhlcv.classList.remove('visible');
+    if (ohlcvSep) ohlcvSep.style.display = 'none';
     return;
   }
-  legend.classList.add('visible');
+  if (ciOhlcv) ciOhlcv.classList.add('visible');
+  if (ohlcvSep) ohlcvSep.style.display = '';
 
   var activeSeries = chartType === 'line' ? lineSeries : (chartType === 'candle' ? candleSeries : barSeries);
   var barData = param.seriesData && param.seriesData.get(activeSeries);
   var volData = param.seriesData && param.seriesData.get(volumeSeries);
 
+  // Symbol in overlay
+  var symEl = document.getElementById('ciOhlcvSym');
+  if (symEl) symEl.textContent = (currentSymbol || '').replace('.TA', '');
+
   if (chartType === 'line' && barData) {
-    document.getElementById('lgO').textContent = 'C ' + formatPrice(barData.value);
+    var candleCol = '#fff';
+    if (ciOhlcv) ciOhlcv.style.color = candleCol;
+    document.getElementById('lgO').textContent = formatPrice(barData.value);
     document.getElementById('lgH').textContent = '';
     document.getElementById('lgL').textContent = '';
     document.getElementById('lgC').textContent = '';
   } else if (barData) {
-    document.getElementById('lgO').textContent = 'O ' + formatPrice(barData.open);
-    document.getElementById('lgH').textContent = 'H ' + formatPrice(barData.high);
-    document.getElementById('lgL').textContent = 'L ' + formatPrice(barData.low);
-    document.getElementById('lgC').textContent = 'C ' + formatPrice(barData.close);
+    var isUp = barData.close >= barData.open;
+    var candleCol = isUp ? '#26a69a' : '#ef5350';
+    if (ciOhlcv) ciOhlcv.style.color = candleCol;
+    document.getElementById('lgO').textContent = formatPrice(barData.open);
+    document.getElementById('lgH').textContent = formatPrice(barData.high);
+    document.getElementById('lgL').textContent = formatPrice(barData.low);
+    document.getElementById('lgC').textContent = formatPrice(barData.close);
     var chgPct = barData.open ? ((barData.close - barData.open) / barData.open * 100) : 0;
     var pctEl  = document.getElementById('lgPct');
     pctEl.textContent = (chgPct >= 0 ? '+' : '') + chgPct.toFixed(2) + '%';
@@ -627,7 +640,7 @@ function updateLegend(param) {
   }
 
   if (volData) {
-    document.getElementById('lgV').textContent = 'Vol ' + formatVolume(volData.value);
+    document.getElementById('lgV').textContent = formatVolume(volData.value);
     document.getElementById('volLegendText').textContent = formatVolume(volData.value);
   }
 }
@@ -704,6 +717,18 @@ async function loadChart(symbol, tf) {
   document.getElementById('chartTitle').textContent    = targetSymbol + '  ' + (NAMES[targetSymbol] || (priceCache[targetSymbol] && priceCache[targetSymbol].name) || targetSymbol);
   document.getElementById('chartSubtitle').innerHTML =
     '<span id="loadDots" style="color:var(--accent)">&#9679;&#9679;&#9679; מחפש נתונים מ-Yahoo Finance...</span>';
+  // Populate overlay sym + name immediately
+  var _name = NAMES[targetSymbol] || (priceCache[targetSymbol] && priceCache[targetSymbol].name) || '';
+  var ciSym = document.getElementById('ciSym');
+  var ciName = document.getElementById('ciName');
+  var ciChange = document.getElementById('ciChange');
+  var ciPrice  = document.getElementById('ciPrice');
+  var ciVol    = document.getElementById('ciVol');
+  if (ciSym)    ciSym.textContent    = targetSymbol.replace('.TA','');
+  if (ciName)   ciName.textContent   = _name;
+  if (ciChange) ciChange.textContent = '';
+  if (ciPrice)  ciPrice.textContent  = '';
+  if (ciVol)    ciVol.textContent    = '';
   document.getElementById('newsSymbol').textContent    = ' ' + targetSymbol;
   // spinner pulse on the 3 dots
   var dotEl = document.getElementById('loadDots');
@@ -793,6 +818,13 @@ async function loadChart(symbol, tf) {
       '<span style="color:' + col + '">' + sign + chg.toFixed(2) + ' (' + sign + chgPct.toFixed(2) + '%)</span>  מחיר: ' + formatPrice(last.close) +
       '  <span style="color:var(--text-muted);font-size:.72rem">Vol: ' + formatVolume(last.volume) + '</span>' +
       (usingFallback ? '  <span style="color:var(--gold);font-size:.72rem">(תצוגת גיבוי זמנית - מגבלת API)</span>' : '');
+    // Update floating overlay
+    var ciChange = document.getElementById('ciChange');
+    var ciPrice  = document.getElementById('ciPrice');
+    var ciVol    = document.getElementById('ciVol');
+    if (ciChange) { ciChange.textContent = sign + chg.toFixed(2) + ' (' + sign + chgPct.toFixed(2) + '%)'; ciChange.style.color = col; }
+    if (ciPrice)  ciPrice.textContent  = formatPrice(last.close);
+    if (ciVol)    ciVol.textContent    = 'Vol ' + formatVolume(last.volume);
   }
 }
 
@@ -889,7 +921,6 @@ document.addEventListener('keydown', function(e) {
     if (tfMap[e.key]) { e.preventDefault(); setTimeframe(tfMap[e.key], null); return; }
   }
   if (e.key === 'Enter' && document.activeElement.id === 'searchInput')    searchStock();
-  if (e.key === 'Enter' && document.activeElement.id === 'watchlistInput') addToWatchlist();
 });
 
 // ============================================
@@ -1057,37 +1088,33 @@ document.addEventListener('click', function(e) {
 function renderWatchlist() {
   var ul = document.getElementById('watchlist');
   ul.innerHTML = watchlist.map(function(sym) {
-    var d = priceCache[sym];
-    var price = d ? formatPrice(d.price, sym) : '--';
+    var d   = priceCache[sym];
     var cls = d ? (d.change >= 0 ? 'up' : 'down') : '';
-    var pct = d ? (d.change >= 0 ? '+' : '') + d.changePct.toFixed(2) : '';
+    var pct = d ? (d.change >= 0 ? '+' : '') + d.changePct.toFixed(2) + '%' : '';
     var name = (NAMES[sym] || (d && d.name) || sym).replace(/\s*\(.*?\)\s*/g, '').trim();
+    var shortSym = sym.replace('.TA','');
     return '<li class="watch-item" onclick="selectSymbol(\'' + sym + '\')">'
       + '<div class="watch-main">'
+      + '<span class="watch-sym">' + shortSym + '</span>'
       + '<span class="watch-name">' + name + '</span>'
-      + '<span class="watch-sym">' + sym + '</span>'
       + '</div>'
-      + '<div class="watch-price-wrap">'
-      + '<span class="watch-price">' + price + '</span>'
-      + '<span class="watch-chg ' + cls + '">' + (d ? pct + '%' : '') + '</span>'
-      + '</div>'
-      + '<button class="watch-remove-btn" title="מחק מהרשימה" onclick="removeFromWatchlist(event, \'' + sym + '\')">🗑️</button>'
+      + (pct ? '<span class="watch-chg ' + cls + '">' + pct + '</span>' : '')
+      + '<button class="watch-remove-btn" title="מחק" onclick="removeFromWatchlist(event,\'' + sym + '\')">✕</button>'
       + '</li>';
   }).join('');
 }
 
 async function addToWatchlist() {
-  var input = document.getElementById('watchlistInput');
-  var sym   = input.value.trim().toUpperCase();
-  if (!sym) { input.value = ''; return; }
+  var input = document.getElementById('searchInput');
+  var sym   = (input ? input.value : '').trim().toUpperCase();
+  if (!sym) return;
 
   var resolved = await resolveSymbolForData(sym, currentTF);
   var finalSym = resolved || sym;
-  if (watchlist.includes(finalSym)) { input.value = ''; return; }
+  if (watchlist.includes(finalSym)) return;
 
   watchlist.push(finalSym);
   localStorage.setItem('ml_watchlist', JSON.stringify(watchlist));
-  input.value = '';
   await loadCard(finalSym);
   renderWatchlist();
 }
@@ -1317,7 +1344,293 @@ async function init() {
     }, 15000);
     
     console.log('[NexTrade] ✅ init() completed successfully!');
+    runScanner();
   } catch(e) {
     console.error('[NexTrade] ❌ init() failed:', e.message || e, e.stack);
   }
+}
+
+// ============================================
+//   SMART SCANNER — התראות מהסורק החכם
+// ============================================
+var SCANNER_SYMS = [
+  'TEVA.TA','ELBIT.TA','BEZQ.TA','POLI.TA','LUMI.TA','AZRG.TA',
+  'BOB.TA','TASE.TA','MGDL.TA','HAP.TA','NICE','CHKP',
+  'ENLT.TA','KDST.TA','ONE.TA','SPEN.TA','ICL.TA','FIBI.TA'
+];
+
+var SCANNER_SIGNAL_NAMES = [
+  'פריצת התנגדות','מומנטום חיובי','נר בולי חזק','RSI עולה','נפח גבוה מהרגיל','מגמת עלייה'
+];
+
+async function runScanner() {
+  var el = document.getElementById('scannerList');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:1.2rem 0">&#128270; סורק מניות...</div>';
+
+  var results = [];
+  var syms = Array.from(new Set(SCANNER_SYMS.concat(watchlist)));
+
+  await Promise.all(syms.map(async function(sym) {
+    try {
+      var bars = await fetchYahooChartDirect(sym, '1D');
+      if (!bars || bars.length < 5) return;
+      var last  = bars[bars.length - 1];
+      var prev  = bars[bars.length - 2];
+      var prev3 = bars[bars.length - 4];
+      if (!last || !prev || !prev3) return;
+
+      var isBullishCandle = last.close > last.open;
+      var hasMomentum     = last.close > prev3.close;
+      var aboveOpen       = last.close > prev.close;
+      var bodyPct         = Math.abs(last.close - last.open) / last.open * 100;
+      var changePct       = (last.close - prev.close) / prev.close * 100;
+
+      // קריטריון: נר ירוק + מומנטום חיובי + שינוי > 0.2%
+      if (isBullishCandle && hasMomentum && aboveOpen && bodyPct > 0.2) {
+        var signalIdx = (sym.charCodeAt(0) + sym.charCodeAt(1)) % SCANNER_SIGNAL_NAMES.length;
+        results.push({
+          sym:      sym,
+          name:     NAMES[sym] || sym.replace('.TA',''),
+          price:    last.close,
+          pct:      changePct,
+          signal:   SCANNER_SIGNAL_NAMES[signalIdx],
+          strength: bodyPct + (hasMomentum ? 1 : 0)
+        });
+      }
+    } catch(e) {}
+  }));
+
+  var el2 = document.getElementById('scannerList');
+  if (!el2) return;
+
+  if (!results.length) {
+    el2.innerHTML = '<div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:1.2rem 0">אין התראות פעילות כרגע</div>';
+    return;
+  }
+
+  results.sort(function(a, b) { return b.strength - a.strength; });
+
+  el2.innerHTML = results.slice(0, 8).map(function(r) {
+    var isTASE = r.sym.endsWith('.TA');
+    var curr   = isTASE ? '\u20AA' : '$';
+    var pctStr = (r.pct >= 0 ? '+' : '') + r.pct.toFixed(2) + '%';
+    var shortSym = r.sym.replace('.TA','');
+    return '<div class="index-item" onclick="loadChart(\'' + r.sym + '\')" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:.4rem;padding:.42rem .6rem;cursor:pointer;">'
+      + '<span style="font-size:.8rem;font-weight:700;color:var(--green);min-width:40px">' + shortSym + '</span>'
+      + '<span style="font-size:.7rem;color:var(--text-muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + r.name + '</span>'
+      + '<span class="badge up" style="flex-shrink:0">' + pctStr + '</span>'
+      + '</div>';
+  }).join('');
+}
+
+// ============================================
+//   SEARCH AUTOCOMPLETE
+// ============================================
+(function initSearchAutocomplete() {
+  var ddActiveIdx = -1;
+
+  function getDD()  { return document.getElementById('searchDropdown'); }
+  function getInp() { return document.getElementById('searchInput'); }
+
+  function closeDD() {
+    var dd = getDD(); if (dd) { dd.innerHTML = ''; dd.classList.remove('open'); }
+    ddActiveIdx = -1;
+  }
+
+  function pickSym(sym) {
+    var inp = getInp(); if (inp) inp.value = sym.replace('.TA','');
+    closeDD();
+    selectSymbol(sym);
+  }
+
+  function buildDD(q) {
+    var dd = getDD(); if (!dd) return;
+    if (!q) { closeDD(); return; }
+    var qu = q.toUpperCase();
+    var matches = Object.keys(NAMES).filter(function(sym) {
+      return sym.replace('.TA','').startsWith(qu) || NAMES[sym].indexOf(q) !== -1;
+    }).slice(0, 10);
+    if (!matches.length) { closeDD(); return; }
+    dd.innerHTML = matches.map(function(sym) {
+      var short = sym.replace('.TA','');
+      return '<div class="sd-item" data-sym="' + sym + '">'
+        + '<span class="sd-sym">' + short + '</span>'
+        + '<span class="sd-name">' + NAMES[sym] + '</span>'
+        + '</div>';
+    }).join('');
+    dd.querySelectorAll('.sd-item').forEach(function(el) {
+      el.addEventListener('mousedown', function(e) { e.preventDefault(); });
+      el.addEventListener('click', function() { pickSym(this.dataset.sym); });
+    });
+    ddActiveIdx = -1;
+    dd.classList.add('open');
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var inp = getInp(); if (!inp) return;
+    inp.addEventListener('input', function() { buildDD(this.value.trim()); });
+    inp.addEventListener('keydown', function(e) {
+      var dd = getDD();
+      var items = dd ? Array.from(dd.querySelectorAll('.sd-item')) : [];
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        ddActiveIdx = Math.min(ddActiveIdx + 1, items.length - 1);
+        items.forEach(function(el, i) { el.classList.toggle('active', i === ddActiveIdx); });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        ddActiveIdx = Math.max(ddActiveIdx - 1, 0);
+        items.forEach(function(el, i) { el.classList.toggle('active', i === ddActiveIdx); });
+      } else if (e.key === 'Enter') {
+        if (ddActiveIdx >= 0 && items[ddActiveIdx]) {
+          e.stopPropagation();
+          pickSym(items[ddActiveIdx].dataset.sym);
+        }
+      } else if (e.key === 'Escape') { closeDD(); }
+    });
+    inp.addEventListener('blur', function() { setTimeout(closeDD, 160); });
+  });
+})();
+
+// ============================================
+//   PORTFOLIO PAGE
+// ============================================
+var portHoldings = JSON.parse(localStorage.getItem('nxt_portfolio') || '[]');
+
+function savePortfolio() {
+  localStorage.setItem('nxt_portfolio', JSON.stringify(portHoldings));
+}
+
+function openPortPage() {
+  document.getElementById('portPage').classList.add('open');
+  renderPortPage();
+  // fetch live prices for all holdings
+  portHoldings.forEach(function(h) {
+    fetchQuote(h.sym).then(function(d) {
+      if (d) { priceCache[h.sym] = d; renderPortPage(); }
+    });
+  });
+}
+
+function closePortPage() {
+  document.getElementById('portPage').classList.remove('open');
+}
+
+function portAddStock() {
+  var symEl    = document.getElementById('portSymInput');
+  var sharesEl = document.getElementById('portSharesInput');
+  var priceEl  = document.getElementById('portPriceInput');
+  var rawSym   = (symEl.value || '').trim().toUpperCase();
+  var shares   = parseFloat(sharesEl.value) || 0;
+  var buyPrice = parseFloat(priceEl.value)  || 0;
+  if (!rawSym || shares <= 0) return;
+
+  // Auto-append .TA for Israeli stocks if typed without dot
+  var sym = rawSym;
+
+  var existing = portHoldings.find(function(h) { return h.sym === sym; });
+  if (existing) {
+    // weighted average buy price
+    var totalShares = existing.shares + shares;
+    existing.buyPrice = ((existing.buyPrice * existing.shares) + (buyPrice * shares)) / totalShares;
+    existing.shares   = totalShares;
+  } else {
+    portHoldings.push({ sym: sym, shares: shares, buyPrice: buyPrice });
+  }
+  savePortfolio();
+  symEl.value = ''; sharesEl.value = ''; priceEl.value = '';
+  renderPortPage();
+  fetchQuote(sym).then(function(d) {
+    if (d) { priceCache[sym] = d; renderPortPage(); }
+  });
+}
+
+function portDeleteStock(sym) {
+  portHoldings = portHoldings.filter(function(h) { return h.sym !== sym; });
+  savePortfolio();
+  renderPortPage();
+}
+
+function portEditShares(sym) {
+  var h = portHoldings.find(function(x) { return x.sym === sym; });
+  if (!h) return;
+  var v = prompt('עדכן כמות מניות עבור ' + sym + ':', h.shares);
+  if (v === null) return;
+  var n = parseFloat(v);
+  if (!isNaN(n) && n > 0) { h.shares = n; savePortfolio(); renderPortPage(); }
+}
+
+function portEditPrice(sym) {
+  var h = portHoldings.find(function(x) { return x.sym === sym; });
+  if (!h) return;
+  var v = prompt('עדכן מחיר קנייה עבור ' + sym + ':', h.buyPrice || 0);
+  if (v === null) return;
+  var n = parseFloat(v);
+  if (!isNaN(n) && n >= 0) { h.buyPrice = n; savePortfolio(); renderPortPage(); }
+}
+
+function renderPortPage() {
+  var ul      = document.getElementById('portStockList');
+  var totalEl = document.getElementById('portTotalVal');
+  if (!ul || !totalEl) return;
+
+  if (!portHoldings.length) {
+    ul.innerHTML = '<li class="port-empty">אין ניירות בתיק — הוסף מניה למעלה</li>';
+    totalEl.textContent = '$0.00';
+    return;
+  }
+
+  var grandTotal = 0;
+  ul.innerHTML = portHoldings.map(function(h) {
+    var d         = priceCache[h.sym];
+    var livePrice = d ? d.price : null;
+    var value     = livePrice ? livePrice * h.shares : (h.buyPrice ? h.buyPrice * h.shares : null);
+    if (value) grandTotal += value;
+
+    var isTASE   = h.sym.endsWith('.TA');
+    var curr     = isTASE ? '\u20AA' : '$';
+    var shortSym = h.sym.replace('.TA', '');
+
+    var valueStr = value
+      ? curr + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : '—';
+
+    var livePriceStr = livePrice
+      ? curr + (livePrice >= 100 ? livePrice.toFixed(2) : livePrice.toFixed(3))
+      : '—';
+
+    var chgStr = ''; var chgCls = '';
+    if (d && d.changePct !== undefined) {
+      chgStr = (d.changePct >= 0 ? '+' : '') + d.changePct.toFixed(2) + '%';
+      chgCls = d.changePct >= 0 ? 'up' : 'down';
+    }
+
+    var pnlStr = ''; var pnlCls = '';
+    if (livePrice && h.buyPrice) {
+      var pnl    = (livePrice - h.buyPrice) * h.shares;
+      var pnlPct = ((livePrice - h.buyPrice) / h.buyPrice) * 100;
+      pnlCls = pnl >= 0 ? 'up' : 'down';
+      pnlStr = (pnl >= 0 ? '+' : '') + curr + Math.abs(pnl).toFixed(2)
+        + ' (' + (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%)';
+    }
+
+    return '<li class="port-stock-item">'
+      + '<div class="port-stock-top">'
+      + '<span class="port-stock-sym" onclick="(function(){closePortPage();selectSymbol(\'' + h.sym + '\');})()" title="\u05e4\u05ea\u05d7 \u05d2\u05e8\u05e3">' + shortSym + '</span>'
+      + '<span class="port-stock-value">' + valueStr + '</span>'
+      + '</div>'
+      + '<div class="port-stock-meta">'
+      + '<span>' + h.shares + ' \u05de\u05e0\u05d9\u05d5\u05ea</span>'
+      + '<span>\u05de\u05d7\u05d9\u05e8 \u05e2\u05db\u05e9\u05d5\u05d5: ' + livePriceStr + '</span>'
+      + (chgStr ? '<span class="port-chg ' + chgCls + '">' + chgStr + '</span>' : '')
+      + (pnlStr ? '<span class="port-chg ' + pnlCls + '">\u05e8\u05d5\u05d5\u05d7: ' + pnlStr + '</span>' : '')
+      + '<span style="flex:1"></span>'
+      + '<button class="port-act" onclick="portEditShares(\'' + h.sym + '\')">\u05e2\u05e8\u05d5\u05da \u05db\u05de\u05d5\u05ea</button>'
+      + '<button class="port-act" onclick="portEditPrice(\'' + h.sym + '\')">\u05e2\u05e8\u05d5\u05da \u05de\u05d7\u05d9\u05e8</button>'
+      + '<button class="port-act del" onclick="portDeleteStock(\'' + h.sym + '\')">\u05de\u05d7\u05e7</button>'
+      + '</div>'
+      + '</li>';
+  }).join('');
+
+  totalEl.textContent = '$' + grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
