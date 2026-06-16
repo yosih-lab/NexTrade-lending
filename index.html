@@ -971,7 +971,7 @@ function ibToggleSidebar() {
 }
 
 function ibToggle(name) {
-  ['clock','tree','chat','scanner','alerts'].forEach(function(p) {
+  ['clock','tree','chat','scanner','alerts','indicators'].forEach(function(p) {
     var el  = document.getElementById('ibPanel-' + p);
     var btn = document.getElementById('ib-' + p);
     if (p === name) {
@@ -984,6 +984,7 @@ function ibToggle(name) {
         if (p === 'tasks')   ibRenderTasks();
         if (p === 'alerts')  ibRenderAlerts2();
         if (p === 'scanner') ibRunScanner2();
+        if (p === 'indicators' && typeof renderMAPanel === 'function') renderMAPanel();
       }
     } else {
       if (el)  el.classList.remove('open');

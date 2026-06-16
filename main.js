@@ -143,9 +143,13 @@ function loginSuccess(user) {
   if (nameEl) nameEl.textContent = user.name;
   if (avatarEl) avatarEl.textContent = user.name.charAt(0).toUpperCase();
   
-  console.log('[NexTrade] About to call init() after 2 RAF...');
-  // defer init by 2 animation frames so the browser finishes layout before chart measures width
-  requestAnimationFrame(function() { requestAnimationFrame(init); });
+  console.log('[NexTrade] About to call init()...');
+  // defer init so the browser finishes layout before the chart measures width.
+  // Use setTimeout (fires even when tab is not focused) instead of requestAnimationFrame,
+  // which is paused for background tabs and would leave the chart un-initialized.
+  if (window.__ntInitDone) return;
+  window.__ntInitDone = true;
+  setTimeout(function() { init(); }, 60);
 }
 
 function handleLogout() {
@@ -861,6 +865,15 @@ async function loadChart(symbol, tf) {
     if (seen[k]) return false;
     seen[k] = true;
     return true;
+  });
+  // Drop bars with missing/invalid OHLC (e.g. today's unclosed bar where close=null).
+  // LightweightCharts throws "Value is null" and stops rendering candles otherwise.
+  bars = bars.filter(function(b) {
+    return b
+      && b.open  != null && !isNaN(b.open)
+      && b.high  != null && !isNaN(b.high)
+      && b.low   != null && !isNaN(b.low)
+      && b.close != null && !isNaN(b.close);
   });
   bars.sort(function(a, b) {
     var ta = typeof a.time === 'string' ? a.time : a.time;
