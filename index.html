@@ -67,22 +67,39 @@
     .ticker-inner span.up { color:var(--green); }
     .ticker-inner span.down { color:var(--red); }
     @keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
-    .topbar { position:fixed; top:0; left:0; right:42px; z-index:1001; height:28px; background:var(--surface); border-bottom:1px solid var(--border); padding:0; display:flex; align-items:center; direction:ltr; }
+    .topbar { position:fixed; top:0; left:0; right:42px; z-index:1001; height:42px; background:var(--surface); border-bottom:1px solid var(--border); padding:0; display:flex; align-items:center; direction:ltr; }
     .topbar-left { display:flex; gap:.22rem; align-items:center; flex-direction:row; padding:0 .45rem; flex:1; min-width:0; }
     .search-box { display:flex; gap:.45rem; align-items:center; position:relative; }
-    .search-box input { background:var(--surface2); border:1px solid var(--border); border-radius:7px; padding:.22rem .45rem; color:var(--text); font-size:.72rem; font-family:'Heebo',sans-serif; width:140px; direction:rtl; height:22px; }
+    .search-box input { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:.32rem .65rem; color:#fff; font-size:1.08rem; font-family:'Heebo',sans-serif; width:210px; direction:rtl; height:33px; cursor:pointer; }
     .search-box input:focus { outline:none; border-color:var(--accent); }
-    .search-box input::placeholder { color:var(--text-muted); }
-    #searchDropdown { position:absolute; top:26px; right:0; width:220px; background:var(--surface); border:1px solid var(--border); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.5); z-index:9999; max-height:220px; overflow-y:auto; display:none; }
-    #searchDropdown.open { display:block; }
-    .sd-item { padding:.42rem .7rem; font-size:.78rem; cursor:pointer; display:flex; gap:.5rem; align-items:center; direction:rtl; }
-    .sd-item:hover,.sd-item.active { background:var(--surface2); }
-    .sd-sym { font-weight:800; color:var(--accent); min-width:52px; direction:ltr; font-size:.74rem; }
-    .sd-name { color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .search-box input::placeholder { color:#fff; opacity:.95; }
+    /* OLD dropdown hidden — replaced by search modal */
+    #searchDropdown { display:none !important; }
+    /* SEARCH MODAL — center of page */
+    #searchModal { display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.7); backdrop-filter:blur(4px); align-items:center; justify-content:center; }
+    #searchModal.open { display:flex; }
+    .sm-box { background:#0a0a0a; border:1px solid #222; border-radius:16px; width:min(560px,92vw); max-height:80vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,.8); overflow:hidden; direction:rtl; }
+    .sm-header { padding:1.2rem 1.4rem .8rem; }
+    .sm-title { font-size:1.4rem; font-weight:900; color:#fff; margin-bottom:.7rem; }
+    .sm-input-wrap { position:relative; }
+    .sm-input { width:100%; background:#111; border:1px solid #333; border-radius:10px; padding:.55rem .9rem; font-size:1rem; color:#fff; font-family:'Heebo',sans-serif; direction:rtl; }
+    .sm-input:focus { outline:none; border-color:var(--accent); }
+    .sm-input::placeholder { color:rgba(255,255,255,.6); }
+    .sm-tabs { display:flex; gap:.3rem; padding:.6rem 1.4rem 0; border-bottom:1px solid #222; }
+    .sm-tab { background:transparent; border:none; color:#888; font-size:.82rem; font-weight:700; padding:.45rem .8rem; cursor:pointer; border-bottom:2px solid transparent; transition:all .15s; font-family:'Heebo',sans-serif; }
+    .sm-tab:hover { color:#ccc; }
+    .sm-tab.active { color:#fff; border-bottom-color:var(--accent); }
+    .sm-body { flex:1; overflow-y:auto; padding:.6rem 0; min-height:180px; }
+    .sm-item { display:flex; align-items:center; gap:.7rem; padding:.55rem 1.4rem; cursor:pointer; transition:background .1s; direction:rtl; }
+    .sm-item:hover { background:#181818; }
+    .sm-sym { font-weight:800; color:var(--accent); min-width:58px; direction:ltr; font-size:.88rem; }
+    .sm-name { color:#ccc; font-size:.82rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+    .sm-cat { font-size:.66rem; color:#666; margin-right:auto; }
+    .sm-empty { text-align:center; color:#555; padding:2rem 1rem; font-size:.86rem; }
     .user-menu { position:relative; }
     .user-btn { background:var(--surface2); border:1px solid var(--border); border-radius:999px; padding:.08rem; display:flex; gap:0; align-items:center; cursor:pointer; }
     .user-btn:hover { border-color:var(--accent); }
-    .topbar .user-avatar { width:22px; height:22px; font-size:.68rem; }
+    .topbar .user-avatar { width:33px; height:33px; font-size:1rem; }
     .topbar .user-name { display:none; }
     .user-dropdown {
       position:absolute; top:110%; right:0; left:auto;
@@ -103,7 +120,7 @@
     .status-dot { width:7px; height:7px; border-radius:50%; background:var(--red); }
     .status-dot.open { background:var(--green); animation:blink 2s infinite; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-    .layout { display:flex; flex-direction:row; height:calc(100vh - 28px); padding-right:42px; }
+    .layout { display:flex; flex-direction:row; height:calc(100vh - 42px); padding-right:42px; }
     .sidebar {
       width:var(--sidebar-w);
       flex:0 0 var(--sidebar-w);
@@ -335,7 +352,7 @@
     .icon-toolbar{
       position:fixed;
       right:0;
-      top:28px;            /* below ticker(28px) */
+      top:42px;            /* below ticker(42px) */
       bottom:0;
       width:42px;
       z-index:200;
@@ -891,8 +908,7 @@
       <div style="flex:1"></div>
       <!-- SEARCH + USER -->
       <div class="search-box">
-        <input id="searchInput" placeholder="חפש מניה..." autocomplete="off" />
-        <div id="searchDropdown"></div>
+        <input id="searchInput" placeholder="חפש מניה..." autocomplete="off" readonly onclick="openSearchModal()" />
       </div>
       <div class="user-menu">
         <button class="user-btn" onclick="toggleUserMenu()">
@@ -989,9 +1005,9 @@
     </main>
   </div>
 </div>
-<script src="main.js?v=20260617-2"></script>
-<script src="drawing.js?v=20260617-2"></script>
-<script src="features.js?v=20260617-2"></script>
+<script src="main.js?v=20260617-3"></script>
+<script src="drawing.js?v=20260617-3"></script>
+<script src="features.js?v=20260617-3"></script>
 
 <!-- VERTICAL ICON TOOLBAR -->
 <div class="icon-toolbar" id="iconToolbar">
@@ -1112,6 +1128,24 @@
     </div>
     <div class="form-group"><label>מחיר יעד</label><input id="alertPrice" type="number" placeholder="100" /></div>
     <button class="btn btn-sm btn-ghost" style="width:100%" onclick="addAlert()">הוסף התראה</button>
+  </div>
+</div>
+
+<!-- SEARCH MODAL (centered, black bg) -->
+<div id="searchModal" onclick="if(event.target===this)closeSearchModal()">
+  <div class="sm-box">
+    <div class="sm-header">
+      <div class="sm-title">חיפוש סימול</div>
+      <div class="sm-input-wrap">
+        <input class="sm-input" id="smInput" placeholder="הקלד שם מניה או סימול..." autocomplete="off" />
+      </div>
+    </div>
+    <div class="sm-tabs">
+      <button class="sm-tab active" data-cat="stocks" onclick="smSetTab('stocks')">🇮🇱 מניות ישראליות</button>
+      <button class="sm-tab" data-cat="indices" onclick="smSetTab('indices')">📊 מדדים</button>
+      <button class="sm-tab" data-cat="general" onclick="smSetTab('general')">🌐 כללי</button>
+    </div>
+    <div class="sm-body" id="smBody"></div>
   </div>
 </div>
 

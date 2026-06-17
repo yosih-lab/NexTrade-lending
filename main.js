@@ -1702,6 +1702,131 @@ async function runScanner() {
 })();
 
 // ============================================
+//   SEARCH MODAL (centered overlay with tabs)
+// ============================================
+var smCurrentTab = 'stocks';
+
+var SM_INDICES = [
+  { sym: 'TA35.TA', short: 'TA35', name: 'מדד ת״א-35', cat: 'indices' },
+  { sym: 'TA90.TA', short: 'TA90', name: 'מדד ת״א-90', cat: 'indices' },
+  { sym: 'TA125.TA', short: 'TA125', name: 'מדד ת״א-125', cat: 'indices' },
+  { sym: 'TABANK.TA', short: 'TABANK', name: 'מדד ת״א-בנקים', cat: 'indices' },
+  { sym: 'TAREAL.TA', short: 'TAREAL', name: 'מדד ת״א-נדל"ן', cat: 'indices' },
+  { sym: 'TATEC.TA', short: 'TATEC', name: 'מדד ת״א-טכנולוגיה', cat: 'indices' },
+  { sym: 'TAFINANCE.TA', short: 'TAFINANCE', name: 'מדד ת״א-פיננסים', cat: 'indices' },
+  { sym: 'TADUAL.TA', short: 'TADUAL', name: 'מדד ת״א-דואל ליסטד', cat: 'indices' },
+  { sym: 'TASMALL.TA', short: 'TASMALL', name: 'מדד ת״א-Small', cat: 'indices' },
+  { sym: 'TAGROWTH.TA', short: 'TAGROWTH', name: 'מדד ת״א-צמיחה', cat: 'indices' },
+  { sym: 'TAOIL.TA', short: 'TAOIL', name: 'מדד ת״א-נפט וגז', cat: 'indices' },
+  { sym: 'TAINSUR.TA', short: 'TAINSUR', name: 'מדד ת״א-ביטוח', cat: 'indices' },
+];
+
+var SM_GENERAL = [
+  { sym: 'NVDA', short: 'NVDA', name: 'NVIDIA Corp.', cat: 'general' },
+  { sym: 'AAPL', short: 'AAPL', name: 'Apple Inc.', cat: 'general' },
+  { sym: 'MSFT', short: 'MSFT', name: 'Microsoft Corp.', cat: 'general' },
+  { sym: 'GOOGL', short: 'GOOGL', name: 'Alphabet (Google)', cat: 'general' },
+  { sym: 'AMZN', short: 'AMZN', name: 'Amazon.com', cat: 'general' },
+  { sym: 'TSLA', short: 'TSLA', name: 'Tesla Inc.', cat: 'general' },
+  { sym: 'META', short: 'META', name: 'Meta Platforms', cat: 'general' },
+  { sym: 'NFLX', short: 'NFLX', name: 'Netflix Inc.', cat: 'general' },
+  { sym: 'AMD', short: 'AMD', name: 'Advanced Micro Devices', cat: 'general' },
+  { sym: 'INTC', short: 'INTC', name: 'Intel Corp.', cat: 'general' },
+  { sym: 'NICE', short: 'NICE', name: 'NICE Systems', cat: 'general' },
+  { sym: 'CHKP', short: 'CHKP', name: 'Check Point Software', cat: 'general' },
+  { sym: 'MNDY', short: 'MNDY', name: 'Monday.com', cat: 'general' },
+  { sym: 'GLBE', short: 'GLBE', name: 'Global-E Online', cat: 'general' },
+  { sym: 'BTC-USD', short: 'BTC', name: 'Bitcoin USD', cat: 'general' },
+  { sym: 'ETH-USD', short: 'ETH', name: 'Ethereum USD', cat: 'general' },
+  { sym: 'GC=F', short: 'GOLD', name: 'Gold Futures', cat: 'general' },
+  { sym: 'CL=F', short: 'OIL', name: 'Crude Oil Futures', cat: 'general' },
+];
+
+function openSearchModal() {
+  var modal = document.getElementById('searchModal');
+  if (!modal) return;
+  modal.classList.add('open');
+  var inp = document.getElementById('smInput');
+  if (inp) { inp.value = ''; inp.focus(); }
+  smSetTab(smCurrentTab);
+}
+
+function closeSearchModal() {
+  var modal = document.getElementById('searchModal');
+  if (modal) modal.classList.remove('open');
+}
+
+function smSetTab(tab) {
+  smCurrentTab = tab;
+  document.querySelectorAll('.sm-tab').forEach(function(el) {
+    el.classList.toggle('active', el.getAttribute('data-cat') === tab);
+  });
+  smRender(document.getElementById('smInput') ? document.getElementById('smInput').value.trim() : '');
+}
+
+function smRender(q) {
+  var body = document.getElementById('smBody');
+  if (!body) return;
+  var items = smGetItems(smCurrentTab, q);
+  if (!items.length) {
+    body.innerHTML = '<div class="sm-empty">' + (q ? 'לא נמצאו תוצאות עבור "' + q + '"' : 'אין פריטים') + '</div>';
+    return;
+  }
+  body.innerHTML = items.map(function(it) {
+    return '<div class="sm-item" onclick="smPick(\'' + it.sym + '\')">'
+      + '<span class="sm-sym">' + it.short + '</span>'
+      + '<span class="sm-name">' + it.name + '</span>'
+      + '</div>';
+  }).join('');
+}
+
+function smGetItems(tab, q) {
+  var source;
+  if (tab === 'indices') source = SM_INDICES;
+  else if (tab === 'general') source = SM_GENERAL;
+  else {
+    // Israeli stocks from TASE universe
+    source = (typeof TASE_UNIVERSE !== 'undefined' && TASE_UNIVERSE.length)
+      ? TASE_UNIVERSE.map(function(it) { return { sym: it.sym, short: it.short, name: it.name }; })
+      : Object.keys(NAMES).filter(function(s) { return s.endsWith('.TA'); }).map(function(s) { return { sym: s, short: s.replace('.TA',''), name: NAMES[s] }; });
+  }
+  if (!q) return source.slice(0, 40);
+  var qu = q.toUpperCase();
+  var starts = [], contains = [];
+  for (var i = 0; i < source.length; i++) {
+    var it = source[i];
+    var su = it.short.toUpperCase();
+    if (su.indexOf(qu) === 0) starts.push(it);
+    else if (su.indexOf(qu) !== -1 || (it.name && it.name.indexOf(q) !== -1)) contains.push(it);
+    if (starts.length >= 20) break;
+  }
+  return starts.concat(contains).slice(0, 30);
+}
+
+function smPick(sym) {
+  closeSearchModal();
+  selectSymbol(sym);
+}
+
+// Bind modal input + escape
+document.addEventListener('DOMContentLoaded', function() {
+  var smInp = document.getElementById('smInput');
+  if (smInp) {
+    smInp.addEventListener('input', function() { smRender(this.value.trim()); });
+    smInp.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeSearchModal();
+      if (e.key === 'Enter') {
+        var first = document.querySelector('.sm-item');
+        if (first) first.click();
+      }
+    });
+  }
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeSearchModal();
+  });
+});
+
+// ============================================
 //   PORTFOLIO PAGE
 // ============================================
 var portHoldings = JSON.parse(localStorage.getItem('nxt_portfolio') || '[]');
