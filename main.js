@@ -1009,6 +1009,10 @@ async function loadChart(symbol, tf) {
     if (ciPrice)  ciPrice.textContent  = formatPrice(last.close);
     if (ciVol)    ciVol.textContent    = 'Vol ' + formatVolume(last.volume);
   }
+
+  // Refresh drawing-tools overlay + advanced feature panels for this symbol
+  try { if (window.NTDraw)     window.NTDraw.onSymbolChanged(); }     catch (e) {}
+  try { if (window.NTFeatures) window.NTFeatures.onSymbolChanged(); } catch (e) {}
 }
 
 // ============================================
