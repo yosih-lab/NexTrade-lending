@@ -685,6 +685,16 @@
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:transparent; }
     ::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+    /* PWA install button */
+    #pwaInstallBtn {
+      display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+      z-index:9999; background:#2962ff; color:#fff; border:none; border-radius:999px;
+      padding:.7rem 1.6rem; font-size:.88rem; font-weight:800; font-family:'Heebo',sans-serif;
+      cursor:pointer; box-shadow:0 6px 24px rgba(41,98,255,.55); gap:.5rem; align-items:center;
+      white-space:nowrap; animation:pwaSlide .4s ease;
+    }
+    @keyframes pwaSlide { from{opacity:0;transform:translateX(-50%) translateY(20px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+    #pwaInstallBtn:hover { background:#1a4fd6; }
     /* ===== DRAWING / ANALYSIS TOOLS — permanent left panel ===== */
     #drawToolbar {
       position:fixed; top:42px; left:0; bottom:0; width:40px;
@@ -1370,6 +1380,10 @@ function ibDelAlert2(i) {
 }
 </script>
 
+<button id="pwaInstallBtn" onclick="pwaInstall()">
+  📲 התקן את NexTrade כאפליקציה
+</button>
+
 <script>
 // Register Service Worker (PWA)
 if ('serviceWorker' in navigator) {
@@ -1378,6 +1392,32 @@ if ('serviceWorker' in navigator) {
       .then(function(reg) { console.log('[PWA] SW registered:', reg.scope); })
       .catch(function(err) { console.warn('[PWA] SW failed:', err); });
   });
+}
+
+// PWA Install prompt
+var _pwaPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  _pwaPrompt = e;
+  var btn = document.getElementById('pwaInstallBtn');
+  if (btn) btn.style.display = 'flex';
+});
+window.addEventListener('appinstalled', function() {
+  var btn = document.getElementById('pwaInstallBtn');
+  if (btn) btn.style.display = 'none';
+  _pwaPrompt = null;
+});
+function pwaInstall() {
+  if (_pwaPrompt) {
+    _pwaPrompt.prompt();
+    _pwaPrompt.userChoice.then(function(r) {
+      if (r.outcome === 'accepted') {
+        var btn = document.getElementById('pwaInstallBtn');
+        if (btn) btn.style.display = 'none';
+      }
+      _pwaPrompt = null;
+    });
+  }
 }
 </script>
 </body>
