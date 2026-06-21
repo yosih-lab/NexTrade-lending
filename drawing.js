@@ -38,6 +38,8 @@
     { id: 'text',    icon: 'T',  tip: 'טקסט' },
     { id: 'brush',   icon: '✎',  tip: 'ציור חופשי' },
     { id: 'fib',     icon: 'F',  tip: 'פיבונאצ׳י' },
+    { id: 'long',    icon: '▲',  tip: 'סרגל עסקה לונג' },
+    { id: 'short',   icon: '▼',  tip: 'סרגל עסקה שורט' },
     { id: 'clear',   icon: '🗑', tip: 'מחק הכל' },
   ];
 
@@ -84,7 +86,7 @@
 
     toolbar = document.createElement('div');
     toolbar.id = 'drawToolbar';
-    toolbar.style.display = 'none';
+    toolbar.style.display = 'flex';
     toolbar.innerHTML = TOOLS.map(function (t) {
       return '<button class="dt-btn" data-tool="' + t.id + '" title="' + t.tip + '">' +
         '<span class="dt-ic">' + t.icon + '</span><span class="dt-tip">' + t.tip + '</span></button>';
@@ -190,22 +192,17 @@
   // ===== public toggle (called from icon toolbar) =====
   function toggle() {
     ensureDom();
-    if (!toolbar) return;
-    var open = toolbar.style.display !== 'none';
-    if (open) {
-      toolbar.style.display = 'none';
-      pickTool('off');
-      var btn = document.getElementById('ib-draw'); if (btn) btn.classList.remove('active');
-    } else {
-      toolbar.style.display = 'flex';
-      pickTool('select');
-      var btn2 = document.getElementById('ib-draw'); if (btn2) btn2.classList.add('active');
-    }
+    // toolbar is always visible now; toggle just inits if needed
+    if (toolbar) pickTool('select');
   }
 
   // called by main.js when the symbol changes
   function onSymbolChanged() {
     ensureDom();
+    // toolbar is always visible; place it in the fixed left panel
+    if (toolbar && toolbar.parentElement && toolbar.parentElement.classList.contains('chart-wrap')) {
+      document.body.appendChild(toolbar);
+    }
     if (lastSymbol === window.currentSymbol) return;
     lastSymbol = window.currentSymbol;
     load();
@@ -299,6 +296,45 @@
         ctx.fillText((lv * 100).toFixed(1) + '%  ' + (pr != null ? fmtPrice(pr) : ''), x1 + 4, yy - 2);
       });
       if (selected) { handleAt(fa.x, fa.y); handleAt(fb.x, fb.y); }
+    } else if (s.type === 'position') {
+      var yE = pToY(s.entry), ySL = pToY(s.sl), yTP = pToY(s.tp);
+      if (yE == null || ySL == null || yTP == null) { ctx.restore(); return; }
+      var W = canvas.clientWidth;
+      var isLong = s.dir === 'long';
+      // TP zone
+      ctx.globalAlpha = 0.12;
+      ctx.fillStyle = '#26a69a';
+      var tpTop = isLong ? Math.min(yE, yTP) : Math.min(yE, yTP);
+      var tpH = Math.abs(yTP - yE);
+      ctx.fillRect(0, Math.min(yE, yTP), W, tpH);
+      // SL zone
+      ctx.fillStyle = '#ef5350';
+      ctx.fillRect(0, Math.min(yE, ySL), W, Math.abs(ySL - yE));
+      ctx.globalAlpha = 1;
+      // lines
+      ctx.setLineDash([]);
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(0, yE); ctx.lineTo(W, yE); ctx.stroke();
+      ctx.strokeStyle = '#ef5350';
+      ctx.setLineDash([5, 3]);
+      ctx.beginPath(); ctx.moveTo(0, ySL); ctx.lineTo(W, ySL); ctx.stroke();
+      ctx.strokeStyle = '#26a69a';
+      ctx.beginPath(); ctx.moveTo(0, yTP); ctx.lineTo(W, yTP); ctx.stroke();
+      ctx.setLineDash([]);
+      // labels
+      ctx.font = '700 11px Heebo, sans-serif'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff';
+      ctx.fillText((isLong ? '▲ LONG' : '▼ SHORT') + '  כניסה  ' + fmtPrice(s.entry), 8, yE - 8);
+      ctx.fillStyle = '#ef5350';
+      ctx.fillText('סטופ  ' + fmtPrice(s.sl), 8, ySL + (ySL > yE ? 12 : -8));
+      ctx.fillStyle = '#26a69a';
+      ctx.fillText('יעד  ' + fmtPrice(s.tp), 8, yTP + (yTP < yE ? -8 : 12));
+      // R:R
+      var risk = Math.abs(s.entry - s.sl), reward = Math.abs(s.tp - s.entry);
+      var rr = risk > 0 ? (reward / risk).toFixed(1) : '∞';
+      ctx.fillStyle = '#aaa'; ctx.font = '600 10px Heebo, sans-serif';
+      ctx.fillText('R:R ' + rr + ':1', W - 70, yE - 8);
+      if (selected) { handleAt(W / 2, yE); handleAt(W / 2, ySL); handleAt(W / 2, yTP); }
     }
     ctx.restore();
   }
@@ -389,6 +425,15 @@
 
     if (mode === 'hline') { commit({ type: 'hline', p: a.p }); return; }
     if (mode === 'vline') { commit({ type: 'vline', l: a.l }); return; }
+    if (mode === 'long' || mode === 'short') {
+      var entry = a.p;
+      var atrEst = Math.abs(entry) * 0.02; // default 2% range
+      var sl, tp;
+      if (mode === 'long') { sl = entry - atrEst; tp = entry + atrEst * 2; }
+      else { sl = entry + atrEst; tp = entry - atrEst * 2; }
+      commit({ type: 'position', dir: mode, entry: entry, sl: sl, tp: tp, l: a.l });
+      return;
+    }
     if (mode === 'text') {
       var txt = prompt('טקסט:'); if (!txt) return;
       commit({ type: 'text', a: a, text: txt });
@@ -495,6 +540,7 @@
   function moveShape(s, orig, dl, dp) {
     if (s.type === 'hline') { s.p = orig.p + dp; }
     else if (s.type === 'vline') { s.l = orig.l + dl; }
+    else if (s.type === 'position') { s.entry = orig.entry + dp; s.sl = orig.sl + dp; s.tp = orig.tp + dp; s.l = orig.l + dl; }
     else if (s.type === 'brush') { s.points = orig.points.map(function (q) { return { l: q.l + dl, p: q.p + dp }; }); }
     else {
       if (orig.a) s.a = { l: orig.a.l + dl, p: orig.a.p + dp };
@@ -505,6 +551,11 @@
   function resizeShape(s, handle, a) {
     if (s.type === 'hline') { s.p = a.p; }
     else if (s.type === 'vline') { s.l = a.l; }
+    else if (s.type === 'position') {
+      if (handle === 'entry') s.entry = a.p;
+      else if (handle === 'sl') s.sl = a.p;
+      else if (handle === 'tp') s.tp = a.p;
+    }
     else if (handle === 'a') { s.a = a; }
     else if (handle === 'b') { s.b = a; }
     else if (handle === 'ab') { s.a = { l: a.l, p: s.a.p }; s.b = { l: s.b.l, p: a.p }; } // rect corner a.x,b.y
@@ -521,6 +572,11 @@
   function shapeHit(s, px) {
     if (s.type === 'hline') { var y = pToY(s.p); return y != null && Math.abs(px.y - y) <= HIT; }
     if (s.type === 'vline') { var x = lToX(s.l); return x != null && Math.abs(px.x - x) <= HIT; }
+    if (s.type === 'position') {
+      var yE = pToY(s.entry), ySL = pToY(s.sl), yTP = pToY(s.tp);
+      if (yE == null) return false;
+      return Math.abs(px.y - yE) <= HIT || (ySL != null && Math.abs(px.y - ySL) <= HIT) || (yTP != null && Math.abs(px.y - yTP) <= HIT);
+    }
     if (s.type === 'text') { var p = pt(s.a); if (!p) return false; ctx.font = '600 ' + (12 + (s.width || 2) * 2) + 'px Heebo'; var w = ctx.measureText(s.text || '').width; return px.x >= p.x - 4 && px.x <= p.x + w + 4 && Math.abs(px.y - p.y) <= 12; }
     if (s.type === 'brush') {
       for (var k = 1; k < s.points.length; k++) {
@@ -567,6 +623,13 @@
     if (s.type === 'hline') { var y = pToY(s.p); if (y != null) out.push({ x: canvas.clientWidth / 2, y: y, k: 'p' }); return out; }
     if (s.type === 'vline') { var x = lToX(s.l); if (x != null) out.push({ x: x, y: canvas.clientHeight / 2, k: 'l' }); return out; }
     if (s.type === 'brush' || s.type === 'text') return out;
+    if (s.type === 'position') {
+      var W = canvas.clientWidth, yE = pToY(s.entry), ySL = pToY(s.sl), yTP = pToY(s.tp);
+      if (yE != null) out.push({ x: W / 2, y: yE, k: 'entry' });
+      if (ySL != null) out.push({ x: W / 2, y: ySL, k: 'sl' });
+      if (yTP != null) out.push({ x: W / 2, y: yTP, k: 'tp' });
+      return out;
+    }
     var a = pt(s.a), b = pt(s.b); if (!a || !b) return out;
     out.push({ x: a.x, y: a.y, k: 'a' });
     out.push({ x: b.x, y: b.y, k: 'b' });
@@ -610,6 +673,7 @@
   function shapeAnchorPixel(s) {
     if (s.type === 'hline') { var y = pToY(s.p); return y == null ? null : { x: canvas.clientWidth / 2, y: y }; }
     if (s.type === 'vline') { var x = lToX(s.l); return x == null ? null : { x: x, y: 40 }; }
+    if (s.type === 'position') { var y2 = pToY(s.entry); return y2 == null ? null : { x: canvas.clientWidth / 2, y: y2 }; }
     if (s.type === 'brush') { var bb = brushBounds(s); return bb ? { x: (bb.x0 + bb.x1) / 2, y: bb.y0 } : null; }
     var a = pt(s.a); return a;
   }

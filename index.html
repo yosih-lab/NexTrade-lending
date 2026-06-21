@@ -2,8 +2,33 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NexTrade  הבורסה הישראלית</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>NexTrade הבורסה הישראלית</title>
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- Theme / status bar -->
+  <meta name="theme-color" content="#131722" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="NexTrade" />
+
+  <!-- iOS icons -->
+  <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png" />
+
+  <!-- Standard favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-96.png" />
+
+  <!-- SEO / social -->
+  <meta name="description" content="פלטפורמת מסחר וניתוח מניות בבורסה הישראלית — גרפים, אינדיקטורים, תיק השקעות" />
+  <meta property="og:title" content="NexTrade — הבורסה הישראלית" />
+  <meta property="og:description" content="ניתוח מניות, גרפים וכלי מסחר מתקדמים" />
+  <meta property="og:image" content="/icons/icon-512.png" />
+  <meta property="og:url" content="https://getnexttrade.com" />
+
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
@@ -70,7 +95,7 @@
     .topbar { position:fixed; top:0; left:0; right:42px; z-index:1001; height:42px; background:var(--surface); border-bottom:1px solid var(--border); padding:0; display:flex; align-items:center; direction:ltr; }
     .topbar-left { display:flex; gap:.22rem; align-items:center; flex-direction:row; padding:0 .45rem; flex:1; min-width:0; }
     .search-box { display:flex; gap:.45rem; align-items:center; position:relative; }
-    .search-box input { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:.32rem .65rem; color:#fff; font-size:1.08rem; font-family:'Heebo',sans-serif; width:210px; direction:rtl; height:33px; cursor:pointer; }
+    .search-box input { background:#2a2e3a; border:1px solid var(--border); border-radius:10px; padding:.26rem .55rem; color:#fff; font-size:.88rem; font-family:'Heebo',sans-serif; width:170px; direction:rtl; height:27px; cursor:pointer; }
     .search-box input:focus { outline:none; border-color:var(--accent); }
     .search-box input::placeholder { color:#fff; opacity:.95; }
     /* OLD dropdown hidden — replaced by search modal */
@@ -78,11 +103,12 @@
     /* SEARCH MODAL — center of page */
     #searchModal { display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.7); backdrop-filter:blur(4px); align-items:center; justify-content:center; }
     #searchModal.open { display:flex; }
-    .sm-box { background:#0a0a0a; border:1px solid #222; border-radius:16px; width:min(560px,92vw); max-height:80vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,.8); overflow:hidden; direction:rtl; }
+    .sm-box { background:#1e2230; border:1px solid #333; border-radius:16px; width:min(560px,92vw); max-height:80vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,.8); overflow:hidden; direction:rtl; }
     .sm-header { padding:1.2rem 1.4rem .8rem; }
     .sm-title { font-size:1.4rem; font-weight:900; color:#fff; margin-bottom:.7rem; }
+    .sm-icon { width:28px; height:28px; border-radius:50%; background:#2a3040; display:flex; align-items:center; justify-content:center; font-size:.82rem; flex-shrink:0; color:#8899bb; font-weight:800; letter-spacing:-.5px; overflow:hidden; }
     .sm-input-wrap { position:relative; }
-    .sm-input { width:100%; background:#111; border:1px solid #333; border-radius:10px; padding:.55rem .9rem; font-size:1rem; color:#fff; font-family:'Heebo',sans-serif; direction:rtl; }
+    .sm-input { width:100%; background:#161a24; border:1px solid #333; border-radius:10px; padding:.55rem .9rem; font-size:1rem; color:#fff; font-family:'Heebo',sans-serif; direction:rtl; }
     .sm-input:focus { outline:none; border-color:var(--accent); }
     .sm-input::placeholder { color:rgba(255,255,255,.6); }
     .sm-tabs { display:flex; gap:.3rem; padding:.6rem 1.4rem 0; border-bottom:1px solid #222; }
@@ -91,15 +117,19 @@
     .sm-tab.active { color:#fff; border-bottom-color:var(--accent); }
     .sm-body { flex:1; overflow-y:auto; padding:.6rem 0; min-height:180px; }
     .sm-item { display:flex; align-items:center; gap:.7rem; padding:.55rem 1.4rem; cursor:pointer; transition:background .1s; direction:rtl; }
-    .sm-item:hover { background:#181818; }
+    .sm-item:nth-child(odd) { background:rgba(255,255,255,.03); }
+    .sm-item:hover { background:rgba(41,98,255,.12); }
     .sm-sym { font-weight:800; color:var(--accent); min-width:58px; direction:ltr; font-size:.88rem; }
     .sm-name { color:#ccc; font-size:.82rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
     .sm-cat { font-size:.66rem; color:#666; margin-right:auto; }
     .sm-empty { text-align:center; color:#555; padding:2rem 1rem; font-size:.86rem; }
+    .sm-tabs { border-bottom-color:#2a2e3a; }
+    .sm-tab { color:#778; }
+    .sm-tab.active { color:#fff; }
     .user-menu { position:relative; }
     .user-btn { background:var(--surface2); border:1px solid var(--border); border-radius:999px; padding:.08rem; display:flex; gap:0; align-items:center; cursor:pointer; }
     .user-btn:hover { border-color:var(--accent); }
-    .topbar .user-avatar { width:33px; height:33px; font-size:1rem; }
+    .topbar .user-avatar { width:26px; height:26px; font-size:.82rem; }
     .topbar .user-name { display:none; }
     .user-dropdown {
       position:absolute; top:110%; right:0; left:auto;
@@ -655,13 +685,14 @@
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:transparent; }
     ::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
-    /* ===== DRAWING / ANALYSIS TOOLS ===== */
+    /* ===== DRAWING / ANALYSIS TOOLS — permanent left panel ===== */
     #drawToolbar {
-      position:absolute; top:50%; left:8px; transform:translateY(-50%);
-      z-index:12; display:flex; flex-direction:column; gap:2px;
-      background:rgba(19,23,34,.94); border:1px solid var(--border); border-radius:10px;
-      padding:4px; box-shadow:0 6px 20px rgba(0,0,0,.4); backdrop-filter:blur(4px);
+      position:fixed; top:42px; left:0; bottom:0; width:40px;
+      z-index:200; display:flex !important; flex-direction:column; gap:2px;
+      background:var(--surface); border-right:1px solid var(--border);
+      padding:6px 3px; align-items:center; overflow-y:auto;
     }
+    .layout { padding-left:40px; }
     .dt-btn {
       width:30px; height:30px; display:flex; align-items:center; justify-content:center;
       background:transparent; border:none; border-radius:7px; color:var(--text-muted);
@@ -924,16 +955,7 @@
   <div class="layout">
     <aside class="sidebar">
       <div>
-        <div class="section-title">&#11088; רשימת מעקב</div>
         <ul id="watchlist" style="list-style:none;"></ul>
-      </div>
-      <div class="divider"></div>
-      <div>
-        <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
-          <span>&#128270; התראות מהסורק החכם</span>
-          <button class="btn btn-sm" onclick="runScanner()" style="font-size:.65rem;padding:.15rem .5rem;line-height:1.4">רענן</button>
-        </div>
-        <div id="scannerList"><div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:1.2rem 0">&#8987; טוען...</div></div>
       </div>
       <div class="divider"></div>
       <div>
@@ -1005,9 +1027,9 @@
     </main>
   </div>
 </div>
-<script src="main.js?v=20260617-3"></script>
-<script src="drawing.js?v=20260617-3"></script>
-<script src="features.js?v=20260617-3"></script>
+<script src="main.js?v=20260618-1"></script>
+<script src="drawing.js?v=20260618-1"></script>
+<script src="features.js?v=20260618-1"></script>
 
 <!-- VERTICAL ICON TOOLBAR -->
 <div class="icon-toolbar" id="iconToolbar">
@@ -1035,9 +1057,6 @@
   <div class="ib-sep"></div>
   <button class="ib" id="ib-indicators" onclick="ibToggle('indicators')" title="">
     📊<span class="ib-tip">אינדיקטורים</span>
-  </button>
-  <button class="ib" id="ib-draw" onclick="NTDraw.toggle()" title="">
-    🎨<span class="ib-tip">כלי ניתוח</span>
   </button>
   <div class="ib-sep"></div>
   <button class="ib" id="ib-insights" onclick="ibToggle('insights')" title="">
@@ -1084,7 +1103,13 @@
   <div class="ib-panel-hdr"><span>🧪 מעבדה — סנטימנט · דוחות · קהל · רעיונות</span><button class="ib-panel-close" onclick="ibClose('lab')">&times;</button></div>
   <div class="ib-panel-body" id="labBody"></div>
 </div>
-<div id="ibPanel-alerts"  class="ib-panel"><div class="ib-panel-hdr"><span>🔔 התראות</span><button class="ib-panel-close" onclick="ibClose('alerts')">&times;</button></div><div class="ib-panel-body"><div class="ib-panel-add-row"><input id="ibAlertSym" placeholder="סמל" style="width:60px" /><input id="ibAlertPrice" placeholder="מחיר" type="number" style="width:70px" /><button class="btn btn-sm" onclick="ibAddAlert()">הוסף</button></div><ul id="ibAlertList" style="list-style:none;margin-top:.5rem"></ul></div></div>
+<div id="ibPanel-alerts"  class="ib-panel"><div class="ib-panel-hdr"><span>🔔 התראות וסורק</span><button class="ib-panel-close" onclick="ibClose('alerts')">&times;</button></div><div class="ib-panel-body">
+  <div style="font-size:.74rem;font-weight:700;color:var(--text);margin-bottom:.4rem">🔍 סורק חכם</div>
+  <div id="scannerList"><div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:.6rem 0">⌛ טוען...</div></div>
+  <button class="btn btn-sm" style="width:100%;margin:.4rem 0" onclick="runScanner()">🔄 סרוק</button>
+  <div style="height:1px;background:var(--border);margin:.5rem 0"></div>
+  <div style="font-size:.74rem;font-weight:700;color:var(--text);margin-bottom:.4rem">🔔 התראות מחיר</div>
+  <div class="ib-panel-add-row"><input id="ibAlertSym" placeholder="סמל" style="width:60px" /><input id="ibAlertPrice" placeholder="מחיר" type="number" style="width:70px" /><button class="btn btn-sm" onclick="ibAddAlert()">הוסף</button></div><ul id="ibAlertList" style="list-style:none;margin-top:.5rem"></ul></div></div>
 
 <!-- NEWS POPUP -->
 <div id="newsPopup">
@@ -1135,7 +1160,7 @@
 <div id="searchModal" onclick="if(event.target===this)closeSearchModal()">
   <div class="sm-box">
     <div class="sm-header">
-      <div class="sm-title">חיפוש סימול</div>
+      <div class="sm-title">חיפוש סמל</div>
       <div class="sm-input-wrap">
         <input class="sm-input" id="smInput" placeholder="הקלד שם מניה או סימול..." autocomplete="off" />
       </div>
@@ -1342,6 +1367,17 @@ function ibDelAlert2(i) {
   ibAlerts2.splice(i, 1);
   localStorage.setItem('ib_alerts2', JSON.stringify(ibAlerts2));
   ibRenderAlerts2();
+}
+</script>
+
+<script>
+// Register Service Worker (PWA)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js')
+      .then(function(reg) { console.log('[PWA] SW registered:', reg.scope); })
+      .catch(function(err) { console.warn('[PWA] SW failed:', err); });
+  });
 }
 </script>
 </body>

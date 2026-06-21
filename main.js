@@ -1773,11 +1773,24 @@ function smRender(q) {
     return;
   }
   body.innerHTML = items.map(function(it) {
+    var initials = smInitials(it.short);
+    var bgCol = smColor(it.short);
     return '<div class="sm-item" onclick="smPick(\'' + it.sym + '\')">'
+      + '<div class="sm-icon" style="background:' + bgCol + '">' + initials + '</div>'
       + '<span class="sm-sym">' + it.short + '</span>'
       + '<span class="sm-name">' + it.name + '</span>'
       + '</div>';
   }).join('');
+}
+
+function smInitials(sym) {
+  if (!sym) return '?';
+  return sym.slice(0, 2).toUpperCase();
+}
+function smColor(sym) {
+  var colors = ['#1a3a5c','#2d4a22','#4a2545','#3d3520','#1e3a3a','#3b2050','#2a3a10','#40252a','#1a3050','#2e2e4a'];
+  var h = 0; for (var i = 0; i < sym.length; i++) h = (h * 31 + sym.charCodeAt(i)) & 0xffff;
+  return colors[h % colors.length];
 }
 
 function smGetItems(tab, q) {
