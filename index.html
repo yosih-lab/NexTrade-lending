@@ -835,15 +835,75 @@
     .idea-del:hover { color:var(--red); }
     @media (max-width:1100px) { :root { --sidebar-w:200px; } }
     @media (max-width:700px)  {
-      .layout { display:block; padding-right:0; }
-      .icon-toolbar { display:none; }
-      .sidebar { display:none; }
+      /* Layout: chart full-width, no side padding */
+      .layout { display:block; padding-right:0; height:calc(100vh - 42px - 56px); }
+      .sidebar { display:none !important; }
       .cards-row { grid-template-columns:repeat(2,1fr); }
-      #portfolioPopup,#alertPopup,#newsPopup { width:min(92vw,360px); right:1rem; left:auto; }
-      #portfolioPopup,#alertPopup { right:.5rem; }
-      #newsPopup { left:.5rem; transform:translateX(0) translateY(8px) scale(.97); }
-      #newsPopup.open { transform:translateX(0) translateY(0) scale(1); }
-      #chart { min-height:540px; height:calc(100vh - 190px); }
+
+      /* Chart fills screen */
+      .chart-panel { border-radius:0; border-left:none; border-right:none; }
+      #chart { min-height:0; height:100%; }
+      .chart-wrap { height:calc(100vh - 42px - 56px - 44px); }
+
+      /* Topbar: tighter on mobile */
+      .topbar { right:0; height:42px; }
+      .tf-toolbar { gap:.1rem; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+      .tf-btn { font-size:.62rem; padding:.14rem .32rem; }
+      .tase-badge { display:none; }
+      .topbar-left { flex-wrap:nowrap; }
+
+      /* Search box on mobile */
+      .search-box input { width:130px; font-size:.82rem; height:28px; }
+
+      /* Drawing toolbar: hide on mobile (in bottom bar instead) */
+      #drawToolbar { display:none !important; }
+
+      /* RIGHT icon-toolbar → becomes BOTTOM tab bar on mobile */
+      .icon-toolbar {
+        position:fixed !important;
+        right:0 !important; left:0 !important;
+        top:auto !important; bottom:0 !important;
+        width:100% !important; height:56px !important;
+        flex-direction:row !important;
+        justify-content:space-around !important;
+        align-items:center !important;
+        padding:0 4px !important;
+        border-left:none !important;
+        border-top:1px solid var(--border) !important;
+        overflow-x:auto !important;
+        gap:0 !important;
+        z-index:500 !important;
+      }
+      .ib { width:44px; height:44px; font-size:1.2rem; flex-shrink:0; }
+      .ib-hamburger { width:44px; height:44px; margin-bottom:0; flex-shrink:0; }
+      .ib-sep { display:none; }
+
+      /* Tooltips: hide on mobile */
+      .ib-tip, .ib-hamburger .ib-tip { display:none !important; }
+
+      /* Panels: full-width on mobile */
+      .ib-panel, .ib-panel-wide {
+        right:0 !important; left:0 !important;
+        bottom:56px !important; top:42px !important;
+        width:100% !important;
+        max-height:calc(100vh - 98px) !important;
+        border-radius:0 !important;
+      }
+
+      /* Popups */
+      #portfolioPopup,#alertPopup,#newsPopup { width:100vw; right:0; left:0; bottom:56px; top:42px; border-radius:0; }
+      #portfolioPopup,#alertPopup { right:0; }
+      #newsPopup { left:0; transform:none; }
+      #newsPopup.open { transform:none; }
+
+      /* Search modal */
+      .sm-box { width:100vw; max-height:calc(100vh - 56px); border-radius:0; }
+
+      /* PWA install button above bottom bar */
+      #pwaInstallBtn { bottom:64px; }
+
+      /* User avatar smaller on mobile */
+      .topbar .user-avatar { width:28px; height:28px; font-size:.82rem; }
     }
   </style>
 </head>
