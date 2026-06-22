@@ -19,6 +19,8 @@
   var curColor = '#2962ff';
   var curWidth = 2;
   var lastSymbol = null;
+  var posPanel = null;
+  var ppDragState = null;
 
   var COLORS = ['#2962ff', '#26a69a', '#ef5350', '#f5a623', '#cc5de8', '#ffffff'];
   var HANDLE = 5;            // half-size of a handle square in px
@@ -207,6 +209,8 @@
     lastSymbol = window.currentSymbol;
     load();
     scheduleDraw();
+    // Refresh position panel for the new symbol
+    if (posPanel && posPanel.style.display !== 'none') ppRefresh();
   }
 
   // ===== pixel position of a shape anchor =====
@@ -301,39 +305,38 @@
       if (yE == null || ySL == null || yTP == null) { ctx.restore(); return; }
       var W = canvas.clientWidth;
       var isLong = s.dir === 'long';
-      // TP zone
-      ctx.globalAlpha = 0.12;
+      // Colored zones on the RIGHT half only (from centre to right edge)
+      var zoneStart = W * 0.45;
+      ctx.globalAlpha = 0.13;
       ctx.fillStyle = '#26a69a';
-      var tpTop = isLong ? Math.min(yE, yTP) : Math.min(yE, yTP);
-      var tpH = Math.abs(yTP - yE);
-      ctx.fillRect(0, Math.min(yE, yTP), W, tpH);
-      // SL zone
+      ctx.fillRect(zoneStart, Math.min(yE, yTP), W - zoneStart, Math.abs(yTP - yE));
       ctx.fillStyle = '#ef5350';
-      ctx.fillRect(0, Math.min(yE, ySL), W, Math.abs(ySL - yE));
+      ctx.fillRect(zoneStart, Math.min(yE, ySL), W - zoneStart, Math.abs(ySL - yE));
       ctx.globalAlpha = 1;
-      // lines
+      // Entry line (full width, solid white)
       ctx.setLineDash([]);
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(0, yE); ctx.lineTo(W, yE); ctx.stroke();
-      ctx.strokeStyle = '#ef5350';
-      ctx.setLineDash([5, 3]);
+      // SL line (dashed red)
+      ctx.strokeStyle = '#ef5350'; ctx.setLineDash([4, 3]);
       ctx.beginPath(); ctx.moveTo(0, ySL); ctx.lineTo(W, ySL); ctx.stroke();
+      // TP line (dashed green)
       ctx.strokeStyle = '#26a69a';
       ctx.beginPath(); ctx.moveTo(0, yTP); ctx.lineTo(W, yTP); ctx.stroke();
       ctx.setLineDash([]);
-      // labels
-      ctx.font = '700 11px Heebo, sans-serif'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#fff';
-      ctx.fillText((isLong ? '▲ LONG' : '▼ SHORT') + '  כניסה  ' + fmtPrice(s.entry), 8, yE - 8);
+      // Labels on right side
+      ctx.font = '600 10px Heebo, sans-serif'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = isLong ? '#26a69a' : '#ef5350';
+      ctx.fillText((isLong ? '▲ LONG' : '▼ SHORT') + '  ' + fmtPrice(s.entry), W - 110, yE - 9);
       ctx.fillStyle = '#ef5350';
-      ctx.fillText('סטופ  ' + fmtPrice(s.sl), 8, ySL + (ySL > yE ? 12 : -8));
+      ctx.fillText('SL  ' + fmtPrice(s.sl), W - 80, ySL + (ySL > yE ? 11 : -9));
       ctx.fillStyle = '#26a69a';
-      ctx.fillText('יעד  ' + fmtPrice(s.tp), 8, yTP + (yTP < yE ? -8 : 12));
+      ctx.fillText('TP  ' + fmtPrice(s.tp), W - 80, yTP + (yTP < yE ? -9 : 11));
       // R:R
       var risk = Math.abs(s.entry - s.sl), reward = Math.abs(s.tp - s.entry);
       var rr = risk > 0 ? (reward / risk).toFixed(1) : '∞';
-      ctx.fillStyle = '#aaa'; ctx.font = '600 10px Heebo, sans-serif';
-      ctx.fillText('R:R ' + rr + ':1', W - 70, yE - 8);
+      ctx.fillStyle = '#f5a623'; ctx.font = '700 10px Heebo, sans-serif';
+      ctx.fillText('R:R ' + rr + ':1', W - 60, yE + (isLong ? 14 : -14));
       if (selected) { handleAt(W / 2, yE); handleAt(W / 2, ySL); handleAt(W / 2, yTP); }
     }
     ctx.restore();
@@ -432,6 +435,7 @@
       if (mode === 'long') { sl = entry - atrEst; tp = entry + atrEst * 2; }
       else { sl = entry + atrEst; tp = entry - atrEst * 2; }
       commit({ type: 'position', dir: mode, entry: entry, sl: sl, tp: tp, l: a.l });
+      ppRefresh();
       return;
     }
     if (mode === 'text') {
@@ -696,11 +700,168 @@
     shapes.push(c); selectedId = c.id; save(); showActionBar(c); scheduleDraw();
   }
 
+  // ===== POSITION PANEL (floating, draggable, resizable) =====
+
+  function ensurePositionPanel() {
+    if (posPanel) return;
+    var div = document.createElement('div');
+    div.id = 'positionPanel';
+
+    var hdr = document.createElement('div');
+    hdr.id = 'pp-header';
+    hdr.innerHTML = '<span id="pp-title">📊 סרגל עסקה</span><button id="pp-close">✕</button>';
+    div.appendChild(hdr);
+
+    var cnt = document.createElement('div');
+    cnt.id = 'pp-content';
+    div.appendChild(cnt);
+
+    var act = document.createElement('div');
+    act.id = 'pp-actions';
+    act.innerHTML = '<button class="pp-add-long">▲ Long</button><button class="pp-add-short">▼ Short</button>';
+    div.appendChild(act);
+
+    document.body.appendChild(div);
+    posPanel = div;
+
+    // Close button
+    div.querySelector('#pp-close').addEventListener('click', function () {
+      div.style.display = 'none';
+    });
+
+    // Add new position buttons
+    act.querySelector('.pp-add-long').addEventListener('click', function () { ppAddNew('long'); });
+    act.querySelector('.pp-add-short').addEventListener('click', function () { ppAddNew('short'); });
+
+    // Drag via header (mouse + touch)
+    hdr.addEventListener('mousedown', ppBeginDrag);
+    hdr.addEventListener('touchstart', ppBeginDrag, { passive: false });
+  }
+
+  function ppBeginDrag(e) {
+    e.preventDefault();
+    var rect = posPanel.getBoundingClientRect();
+    var cx = e.touches ? e.touches[0].clientX : e.clientX;
+    var cy = e.touches ? e.touches[0].clientY : e.clientY;
+    var ox = cx - rect.left, oy = cy - rect.top;
+
+    function onMove(ev) {
+      var nx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      var ny = ev.touches ? ev.touches[0].clientY : ev.clientY;
+      posPanel.style.left = Math.max(0, nx - ox) + 'px';
+      posPanel.style.top = Math.max(0, ny - oy) + 'px';
+      posPanel.style.right = 'auto';
+      posPanel.style.bottom = 'auto';
+      if (ev.cancelable) ev.preventDefault();
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('touchend', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchend', onUp);
+  }
+
+  function ppRefresh() {
+    ensurePositionPanel();
+    var positions = shapes.filter(function (s) { return s.type === 'position'; });
+    var cnt = document.getElementById('pp-content');
+    if (!cnt) return;
+
+    if (positions.length === 0) {
+      cnt.innerHTML = '<div class="pp-empty">לחץ ▲Long או ▼Short על הגרף<br>להוספת עסקה</div>';
+    } else {
+      cnt.innerHTML = positions.map(function (s) {
+        var risk = Math.abs(s.entry - s.sl);
+        var reward = Math.abs(s.tp - s.entry);
+        var rrNum = risk > 0 ? reward / risk : 0;
+        var rrStr = risk > 0 ? rrNum.toFixed(2) : '∞';
+        var rrColor = rrNum >= 2 ? '#26a69a' : rrNum >= 1 ? '#f5a623' : '#ef5350';
+        var isLong = s.dir === 'long';
+        var id = s.id;
+        return '<div class="pp-pos" data-id="' + id + '">' +
+          '<div class="pp-pos-hdr">' +
+          '<span class="pp-dir ' + (isLong ? 'pp-long' : 'pp-short') + '">' + (isLong ? '▲ LONG' : '▼ SHORT') + '</span>' +
+          '<span class="pp-sym">' + (window.currentSymbol || '') + '</span>' +
+          '<button class="pp-del" data-del="' + id + '">🗑</button>' +
+          '</div>' +
+          '<div class="pp-row"><label>כניסה</label>' +
+          '<input type="number" data-pid="' + id + '" data-f="entry" value="' + s.entry.toFixed(2) + '" step="any" /></div>' +
+          '<div class="pp-row pp-row-sl"><label>סטופ</label>' +
+          '<input type="number" data-pid="' + id + '" data-f="sl" value="' + s.sl.toFixed(2) + '" step="any" /></div>' +
+          '<div class="pp-row pp-row-tp"><label>יעד</label>' +
+          '<input type="number" data-pid="' + id + '" data-f="tp" value="' + s.tp.toFixed(2) + '" step="any" /></div>' +
+          '<div class="pp-rr">R:R = <b style="color:' + rrColor + '">' + rrStr + ':1</b></div>' +
+          '</div>';
+      }).join('');
+
+      // Wire input listeners (real-time update)
+      cnt.querySelectorAll('input[data-pid]').forEach(function (inp) {
+        inp.addEventListener('input', function () {
+          var id2 = parseInt(inp.getAttribute('data-pid'), 10);
+          var field = inp.getAttribute('data-f');
+          var val = parseFloat(inp.value);
+          if (isNaN(val)) return;
+          var sh = shapeById(id2);
+          if (!sh) return;
+          sh[field] = val;
+          save(); scheduleDraw();
+          // Update R:R live without re-rendering everything
+          var posDiv = cnt.querySelector('.pp-pos[data-id="' + id2 + '"]');
+          if (!posDiv) return;
+          var r2 = Math.abs(sh.entry - sh.sl), rw2 = Math.abs(sh.tp - sh.entry);
+          var n2 = r2 > 0 ? rw2 / r2 : 0;
+          var rrEl = posDiv.querySelector('.pp-rr b');
+          if (rrEl) {
+            rrEl.textContent = (r2 > 0 ? n2.toFixed(2) : '∞') + ':1';
+            rrEl.style.color = n2 >= 2 ? '#26a69a' : n2 >= 1 ? '#f5a623' : '#ef5350';
+          }
+        });
+      });
+
+      // Wire delete buttons
+      cnt.querySelectorAll('.pp-del[data-del]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var id3 = parseInt(btn.getAttribute('data-del'), 10);
+          shapes = shapes.filter(function (s) { return s.id !== id3; });
+          save(); scheduleDraw(); ppRefresh();
+        });
+      });
+    }
+
+    posPanel.style.display = 'flex';
+  }
+
+  function ppAddNew(dir) {
+    var midPrice = canvas ? yToP(canvas.clientHeight / 2) : null;
+    if (!midPrice) midPrice = 100;
+    var atrEst = Math.abs(midPrice) * 0.02;
+    var sl, tp;
+    if (dir === 'long') { sl = midPrice - atrEst; tp = midPrice + atrEst * 2; }
+    else { sl = midPrice + atrEst; tp = midPrice - atrEst * 2; }
+    var t = ts();
+    var l = 0;
+    if (t) { var r = t.getVisibleLogicalRange(); if (r) l = (r.from + r.to) / 2; }
+    commit({ type: 'position', dir: dir, entry: midPrice, sl: sl, tp: tp, l: l });
+    ppRefresh();
+  }
+
+  // ===== expose toggle for icon toolbar =====
+  function openPositionPanel() {
+    ensurePositionPanel();
+    ppRefresh();
+  }
+
   // expose
   window.NTDraw = {
     toggle: toggle,
     onSymbolChanged: onSymbolChanged,
     redraw: scheduleDraw,
-    ensure: ensureDom
+    ensure: ensureDom,
+    openPositionPanel: openPositionPanel
   };
 })();
