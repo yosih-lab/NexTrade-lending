@@ -721,6 +721,16 @@
     act.innerHTML = '<button class="pp-add-long">▲ Long</button><button class="pp-add-short">▼ Short</button>';
     div.appendChild(act);
 
+    // ── 8 custom resize handles (replaces CSS resize:both) ──
+    ['n','ne','e','se','s','sw','w','nw'].forEach(function(d) {
+      var h = document.createElement('div');
+      h.className = 'pp-rh pp-rh-' + d;
+      h.setAttribute('data-dir', d);
+      div.appendChild(h);
+      h.addEventListener('mousedown', ppBeginResize);
+      h.addEventListener('touchstart', ppBeginResize, { passive: false });
+    });
+
     document.body.appendChild(div);
     posPanel = div;
 
@@ -751,6 +761,52 @@
       posPanel.style.left = Math.max(0, nx - ox) + 'px';
       posPanel.style.top = Math.max(0, ny - oy) + 'px';
       posPanel.style.right = 'auto';
+      posPanel.style.bottom = 'auto';
+      if (ev.cancelable) ev.preventDefault();
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('touchend', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchend', onUp);
+  }
+
+  function ppBeginResize(e) {
+    e.preventDefault(); e.stopPropagation();
+    var dir = e.currentTarget.getAttribute('data-dir');
+    var rect = posPanel.getBoundingClientRect();
+    var startX = e.touches ? e.touches[0].clientX : e.clientX;
+    var startY = e.touches ? e.touches[0].clientY : e.clientY;
+    var origL = rect.left, origT = rect.top, origW = rect.width, origH = rect.height;
+
+    function onMove(ev) {
+      var nx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      var ny = ev.touches ? ev.touches[0].clientY : ev.clientY;
+      var dx = nx - startX, dy = ny - startY;
+      var newL = origL, newT = origT, newW = origW, newH = origH;
+      var MIN_W = 190, MIN_H = 120;
+
+      if (dir.indexOf('e') !== -1) newW = Math.max(MIN_W, origW + dx);
+      if (dir.indexOf('w') !== -1) {
+        newW = Math.max(MIN_W, origW - dx);
+        newL = origL + (origW - newW);
+      }
+      if (dir.indexOf('s') !== -1) newH = Math.max(MIN_H, origH + dy);
+      if (dir.indexOf('n') !== -1) {
+        newH = Math.max(MIN_H, origH - dy);
+        newT = origT + (origH - newH);
+      }
+
+      posPanel.style.left   = newL + 'px';
+      posPanel.style.top    = newT + 'px';
+      posPanel.style.width  = newW + 'px';
+      posPanel.style.height = newH + 'px';
+      posPanel.style.right  = 'auto';
       posPanel.style.bottom = 'auto';
       if (ev.cancelable) ev.preventDefault();
     }

@@ -1022,10 +1022,11 @@ function setTimeframe(tf, btn) {
   currentTF = tf;
   document.querySelectorAll('.tf-btn').forEach(function(b) { b.classList.remove('active'); });
   if (btn) btn.classList.add('active');
-  else {
-    var b2 = document.getElementById('tf-' + tf);
-    if (b2) b2.classList.add('active');
-  }
+  // sync both topbar and mobile strip
+  var b2 = document.getElementById('tf-' + tf);
+  if (b2) b2.classList.add('active');
+  var mb = document.getElementById('mtf-' + tf);
+  if (mb) mb.classList.add('active');
   loadChart(currentSymbol, tf);
 }
 
