@@ -707,19 +707,25 @@
     var div = document.createElement('div');
     div.id = 'positionPanel';
 
+    // Inner wrapper clips content; outer keeps overflow:visible for resize handles
+    var inner = document.createElement('div');
+    inner.id = 'pp-inner';
+
     var hdr = document.createElement('div');
     hdr.id = 'pp-header';
     hdr.innerHTML = '<span id="pp-title">📊 סרגל עסקה</span><button id="pp-close">✕</button>';
-    div.appendChild(hdr);
+    inner.appendChild(hdr);
 
     var cnt = document.createElement('div');
     cnt.id = 'pp-content';
-    div.appendChild(cnt);
+    inner.appendChild(cnt);
 
     var act = document.createElement('div');
     act.id = 'pp-actions';
     act.innerHTML = '<button class="pp-add-long">▲ Long</button><button class="pp-add-short">▼ Short</button>';
-    div.appendChild(act);
+    inner.appendChild(act);
+
+    div.appendChild(inner);
 
     // ── 8 custom resize handles (replaces CSS resize:both) ──
     ['n','ne','e','se','s','sw','w','nw'].forEach(function(d) {

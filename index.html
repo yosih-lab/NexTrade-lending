@@ -841,7 +841,9 @@
     /* ===== POSITION PANEL (floating, draggable, resizable all sides) ===== */
     #positionPanel {
       position:fixed; right:60px; top:80px;
-      width:260px; min-width:190px; min-height:120px;
+      width:260px; height:320px;
+      min-width:190px; min-height:120px;
+      max-width:90vw; max-height:70vh;
       background:var(--surface); border:1px solid var(--border);
       border-radius:12px; z-index:2000;
       box-shadow:0 8px 32px rgba(0,0,0,.65);
@@ -868,7 +870,8 @@
     #pp-title { font-size:.8rem; font-weight:700; color:var(--text); }
     #pp-close { background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:.9rem; padding:0; line-height:1; }
     #pp-close:hover { color:var(--red); }
-    #pp-content { flex:1; overflow-y:auto; padding:.4rem .55rem; min-height:40px; }
+    #pp-inner { display:flex; flex-direction:column; overflow:hidden; border-radius:12px; height:100%; }
+    #pp-content { flex:1; overflow-y:auto; overflow-x:hidden; padding:.4rem .55rem; min-height:0; }
     .pp-empty { font-size:.73rem; color:var(--text-muted); text-align:center; padding:.7rem .4rem; }
     .pp-pos { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:.45rem .55rem; margin-bottom:.4rem; }
     .pp-pos-hdr { display:flex; align-items:center; gap:.35rem; margin-bottom:.38rem; }
@@ -1200,9 +1203,9 @@
     </main>
   </div>
 </div>
-<script src="main.js?v=20260624-1"></script>
-<script src="drawing.js?v=20260624-1"></script>
-<script src="features.js?v=20260624-1"></script>
+<script src="main.js?v=20260624-2"></script>
+<script src="drawing.js?v=20260624-2"></script>
+<script src="features.js?v=20260624-2"></script>
 
 <!-- VERTICAL ICON TOOLBAR -->
 <div class="icon-toolbar" id="iconToolbar">
