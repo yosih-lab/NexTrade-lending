@@ -301,45 +301,198 @@
       });
       if (selected) { handleAt(fa.x, fa.y); handleAt(fb.x, fb.y); }
     } else if (s.type === 'position') {
-      var yE = pToY(s.entry), ySL = pToY(s.sl), yTP = pToY(s.tp);
-      if (yE == null || ySL == null || yTP == null) { ctx.restore(); return; }
-      var W = canvas.clientWidth;
-      var isLong = s.dir === 'long';
-      // Colored zones on the RIGHT half only (from centre to right edge)
-      var zoneStart = W * 0.45;
-      ctx.globalAlpha = 0.13;
-      ctx.fillStyle = '#26a69a';
-      ctx.fillRect(zoneStart, Math.min(yE, yTP), W - zoneStart, Math.abs(yTP - yE));
-      ctx.fillStyle = '#ef5350';
-      ctx.fillRect(zoneStart, Math.min(yE, ySL), W - zoneStart, Math.abs(ySL - yE));
-      ctx.globalAlpha = 1;
-      // Entry line (full width, solid white)
-      ctx.setLineDash([]);
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(0, yE); ctx.lineTo(W, yE); ctx.stroke();
-      // SL line (dashed red)
-      ctx.strokeStyle = '#ef5350'; ctx.setLineDash([4, 3]);
-      ctx.beginPath(); ctx.moveTo(0, ySL); ctx.lineTo(W, ySL); ctx.stroke();
-      // TP line (dashed green)
-      ctx.strokeStyle = '#26a69a';
-      ctx.beginPath(); ctx.moveTo(0, yTP); ctx.lineTo(W, yTP); ctx.stroke();
-      ctx.setLineDash([]);
-      // Labels on right side
-      ctx.font = '600 10px Heebo, sans-serif'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = isLong ? '#26a69a' : '#ef5350';
-      ctx.fillText((isLong ? '▲ LONG' : '▼ SHORT') + '  ' + fmtPrice(s.entry), W - 110, yE - 9);
-      ctx.fillStyle = '#ef5350';
-      ctx.fillText('SL  ' + fmtPrice(s.sl), W - 80, ySL + (ySL > yE ? 11 : -9));
-      ctx.fillStyle = '#26a69a';
-      ctx.fillText('TP  ' + fmtPrice(s.tp), W - 80, yTP + (yTP < yE ? -9 : 11));
-      // R:R
-      var risk = Math.abs(s.entry - s.sl), reward = Math.abs(s.tp - s.entry);
-      var rr = risk > 0 ? (reward / risk).toFixed(1) : '∞';
-      ctx.fillStyle = '#f5a623'; ctx.font = '700 10px Heebo, sans-serif';
-      ctx.fillText('R:R ' + rr + ':1', W - 60, yE + (isLong ? 14 : -14));
-      if (selected) { handleAt(W / 2, yE); handleAt(W / 2, ySL); handleAt(W / 2, yTP); }
+      drawPositionTV(s, selected);
     }
     ctx.restore();
+  }
+
+  // ===== TradingView-style Position Tool =====
+  function drawPositionTV(s, selected) {
+    var yE = pToY(s.entry), ySL = pToY(s.sl), yTP = pToY(s.tp);
+    if (yE == null || ySL == null || yTP == null) { return; }
+    // Bounded box: l1..l2 (logical), default 40 bars if not set
+    var x1 = lToX(s.l1 != null ? s.l1 : s.l);
+    var x2 = lToX(s.l2 != null ? s.l2 : (s.l || 0) + 40);
+    if (x1 == null || x2 == null) { return; }
+    if (x1 > x2) { var tmp = x1; x1 = x2; x2 = tmp; }
+    var boxW = x2 - x1;
+    if (boxW < 10) boxW = 120; // safety min
+    var isLong = s.dir === 'long';
+    var qty = s.qty || 1;
+    var R = 6; // corner radius
+
+    // ---- Profit zone ----
+    var tpTop = Math.min(yE, yTP), tpBot = Math.max(yE, yTP);
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    ctx.fillStyle = '#26a69a';
+    roundRect(ctx, x1, tpTop, boxW, tpBot - tpTop, isLong ? {tl:R,tr:R,bl:0,br:0} : {tl:0,tr:0,bl:R,br:R});
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // ---- Loss zone ----
+    var slTop = Math.min(yE, ySL), slBot = Math.max(yE, ySL);
+    ctx.globalAlpha = 0.22;
+    ctx.fillStyle = '#ef5350';
+    roundRect(ctx, x1, slTop, boxW, slBot - slTop, isLong ? {tl:0,tr:0,bl:R,br:R} : {tl:R,tr:R,bl:0,br:0});
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // ---- Border outline ----
+    var totalTop = Math.min(tpTop, slTop), totalBot = Math.max(tpBot, slBot);
+    ctx.strokeStyle = isLong ? '#26a69a' : '#ef5350';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([]);
+    roundRect(ctx, x1, totalTop, boxW, totalBot - totalTop, {tl:R,tr:R,bl:R,br:R});
+    ctx.stroke();
+
+    // ---- Entry line ----
+    ctx.strokeStyle = isLong ? '#2962ff' : '#e040fb';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x1, yE); ctx.lineTo(x2, yE); ctx.stroke();
+
+    // ---- TP line ----
+    ctx.strokeStyle = '#26a69a'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(x1, yTP); ctx.lineTo(x2, yTP); ctx.stroke();
+
+    // ---- SL line ----
+    ctx.strokeStyle = '#ef5350';
+    ctx.beginPath(); ctx.moveTo(x1, ySL); ctx.lineTo(x2, ySL); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // ---- Calculations ----
+    var profitPct = ((s.tp - s.entry) / s.entry * 100);
+    var lossPct   = ((s.sl - s.entry) / s.entry * 100);
+    if (!isLong) { profitPct = -profitPct; lossPct = -lossPct; }
+    var profitAbs = Math.abs(s.tp - s.entry) * qty;
+    var lossAbs   = Math.abs(s.sl - s.entry) * qty;
+    var risk = Math.abs(s.entry - s.sl), reward = Math.abs(s.tp - s.entry);
+    var rr = risk > 0 ? (reward / risk).toFixed(2) : '∞';
+
+    var padX = 6;
+    var midX = x1 + boxW / 2;
+
+    // ---- Labels inside profit zone ----
+    var tpMidY = (yE + yTP) / 2;
+    var tpZoneH = Math.abs(yTP - yE);
+    ctx.textBaseline = 'middle';
+    if (tpZoneH > 28) {
+      ctx.font = '700 11px Heebo, sans-serif';
+      ctx.fillStyle = '#26a69a';
+      ctx.fillText(fmtPrice(s.tp), x1 + padX, yTP + (isLong ? 12 : -10));
+      if (tpZoneH > 42) {
+        ctx.font = '600 10px Heebo, sans-serif';
+        ctx.fillStyle = '#c8e6c9';
+        ctx.fillText((profitPct >= 0 ? '+' : '') + profitPct.toFixed(2) + '%', x1 + padX, tpMidY - 7);
+        ctx.fillText((profitAbs >= 0 ? '+' : '-') + fmtPrice(profitAbs), x1 + padX, tpMidY + 8);
+      }
+    }
+
+    // ---- Labels inside loss zone ----
+    var slMidY = (yE + ySL) / 2;
+    var slZoneH = Math.abs(ySL - yE);
+    if (slZoneH > 28) {
+      ctx.font = '700 11px Heebo, sans-serif';
+      ctx.fillStyle = '#ef5350';
+      ctx.fillText(fmtPrice(s.sl), x1 + padX, ySL + (isLong ? -10 : 12));
+      if (slZoneH > 42) {
+        ctx.font = '600 10px Heebo, sans-serif';
+        ctx.fillStyle = '#ef9a9a';
+        ctx.fillText(lossPct.toFixed(2) + '%', x1 + padX, slMidY - 7);
+        ctx.fillText('-' + fmtPrice(lossAbs), x1 + padX, slMidY + 8);
+      }
+    }
+
+    // ---- Entry badge (right-aligned inside) ----
+    var dirLabel = isLong ? '▲ Long' : '▼ Short';
+    var entryLabel = dirLabel + '  ' + fmtPrice(s.entry);
+    ctx.font = '700 11px Heebo, sans-serif';
+    var entryW = ctx.measureText(entryLabel).width;
+    var badgePad = 7;
+    var badgeX = x2 - entryW - badgePad * 2;
+    var badgeY = yE - 12;
+    var badgeH = 20;
+    // Badge bg
+    ctx.fillStyle = isLong ? 'rgba(38,166,154,.92)' : 'rgba(239,83,80,.92)';
+    roundRect(ctx, badgeX, badgeY, entryW + badgePad * 2, badgeH, {tl:4,tr:4,bl:4,br:4});
+    ctx.fill();
+    // Badge text
+    ctx.fillStyle = '#fff';
+    ctx.fillText(entryLabel, badgeX + badgePad, badgeY + badgeH / 2);
+
+    // ---- R:R badge (left-aligned inside) ----
+    ctx.font = '700 10px Heebo, sans-serif';
+    var rrLabel = 'R:R ' + rr;
+    var rrW = ctx.measureText(rrLabel).width;
+    ctx.fillStyle = 'rgba(255,255,255,.12)';
+    roundRect(ctx, x1 + padX, yE + 4, rrW + 10, 17, {tl:3,tr:3,bl:3,br:3});
+    ctx.fill();
+    ctx.fillStyle = '#f5a623';
+    ctx.fillText(rrLabel, x1 + padX + 5, yE + 13);
+
+    // ---- Qty badge ----
+    if (qty > 1) {
+      ctx.font = '600 9px Heebo, sans-serif';
+      var qLabel = 'Qty: ' + qty;
+      ctx.fillStyle = 'rgba(255,255,255,.07)';
+      var qw = ctx.measureText(qLabel).width;
+      roundRect(ctx, x2 - qw - 14, yE + 4, qw + 10, 16, {tl:3,tr:3,bl:3,br:3});
+      ctx.fill();
+      ctx.fillStyle = '#aaa';
+      ctx.fillText(qLabel, x2 - qw - 9, yE + 13);
+    }
+
+    // ---- Price labels on right edge (like TradingView price scale) ----
+    drawPriceTag(x2, yTP, fmtPrice(s.tp), '#26a69a');
+    drawPriceTag(x2, ySL, fmtPrice(s.sl), '#ef5350');
+
+    // ---- Selection handles ----
+    if (selected) {
+      // Horizontal drag handles on each line (mid-point)
+      handleAt(midX, yE);
+      handleAt(midX, yTP);
+      handleAt(midX, ySL);
+      // Left/right edge handles for width
+      handleAt(x1, yE);
+      handleAt(x2, yE);
+    }
+
+    ctx.restore();
+  }
+
+  function drawPriceTag(x, y, text, color) {
+    ctx.save();
+    ctx.font = '600 10px Heebo, sans-serif';
+    var tw = ctx.measureText(text).width;
+    var pad = 5, h = 18, arrowW = 6;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + arrowW, y - h / 2);
+    ctx.lineTo(x + arrowW + tw + pad * 2, y - h / 2);
+    ctx.lineTo(x + arrowW + tw + pad * 2, y + h / 2);
+    ctx.lineTo(x + arrowW, y + h / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x + arrowW + pad, y);
+    ctx.restore();
+  }
+
+  function roundRect(ctx2, x, y, w, h, radii) {
+    var r = radii || {tl:0,tr:0,bl:0,br:0};
+    ctx2.beginPath();
+    ctx2.moveTo(x + r.tl, y);
+    ctx2.lineTo(x + w - r.tr, y);
+    ctx2.quadraticCurveTo(x + w, y, x + w, y + r.tr);
+    ctx2.lineTo(x + w, y + h - r.br);
+    ctx2.quadraticCurveTo(x + w, y + h, x + w - r.br, y + h);
+    ctx2.lineTo(x + r.bl, y + h);
+    ctx2.quadraticCurveTo(x, y + h, x, y + h - r.bl);
+    ctx2.lineTo(x, y + r.tl);
+    ctx2.quadraticCurveTo(x, y, x + r.tl, y);
+    ctx2.closePath();
   }
 
   function fmtPrice(p) {
@@ -434,7 +587,7 @@
       var sl, tp;
       if (mode === 'long') { sl = entry - atrEst; tp = entry + atrEst * 2; }
       else { sl = entry + atrEst; tp = entry - atrEst * 2; }
-      commit({ type: 'position', dir: mode, entry: entry, sl: sl, tp: tp, l: a.l });
+      commit({ type: 'position', dir: mode, entry: entry, sl: sl, tp: tp, l: a.l, l1: a.l, l2: a.l + 40, qty: 1 });
       ppRefresh();
       return;
     }
@@ -544,7 +697,7 @@
   function moveShape(s, orig, dl, dp) {
     if (s.type === 'hline') { s.p = orig.p + dp; }
     else if (s.type === 'vline') { s.l = orig.l + dl; }
-    else if (s.type === 'position') { s.entry = orig.entry + dp; s.sl = orig.sl + dp; s.tp = orig.tp + dp; s.l = orig.l + dl; }
+    else if (s.type === 'position') { s.entry = orig.entry + dp; s.sl = orig.sl + dp; s.tp = orig.tp + dp; s.l = (orig.l || 0) + dl; s.l1 = (orig.l1 != null ? orig.l1 : orig.l) + dl; s.l2 = (orig.l2 != null ? orig.l2 : (orig.l || 0) + 40) + dl; }
     else if (s.type === 'brush') { s.points = orig.points.map(function (q) { return { l: q.l + dl, p: q.p + dp }; }); }
     else {
       if (orig.a) s.a = { l: orig.a.l + dl, p: orig.a.p + dp };
@@ -559,6 +712,8 @@
       if (handle === 'entry') s.entry = a.p;
       else if (handle === 'sl') s.sl = a.p;
       else if (handle === 'tp') s.tp = a.p;
+      else if (handle === 'pl') { s.l1 = a.l; } // left edge
+      else if (handle === 'pr') { s.l2 = a.l; } // right edge
     }
     else if (handle === 'a') { s.a = a; }
     else if (handle === 'b') { s.b = a; }
@@ -579,7 +734,14 @@
     if (s.type === 'position') {
       var yE = pToY(s.entry), ySL = pToY(s.sl), yTP = pToY(s.tp);
       if (yE == null) return false;
-      return Math.abs(px.y - yE) <= HIT || (ySL != null && Math.abs(px.y - ySL) <= HIT) || (yTP != null && Math.abs(px.y - yTP) <= HIT);
+      var px1 = lToX(s.l1 != null ? s.l1 : s.l);
+      var px2 = lToX(s.l2 != null ? s.l2 : (s.l || 0) + 40);
+      if (px1 == null || px2 == null) return false;
+      if (px1 > px2) { var t2 = px1; px1 = px2; px2 = t2; }
+      // Inside bounding box?
+      var topP = Math.min(yE, ySL, yTP), botP = Math.max(yE, ySL, yTP);
+      if (px.x >= px1 - HIT && px.x <= px2 + HIT && px.y >= topP - HIT && px.y <= botP + HIT) return true;
+      return false;
     }
     if (s.type === 'text') { var p = pt(s.a); if (!p) return false; ctx.font = '600 ' + (12 + (s.width || 2) * 2) + 'px Heebo'; var w = ctx.measureText(s.text || '').width; return px.x >= p.x - 4 && px.x <= p.x + w + 4 && Math.abs(px.y - p.y) <= 12; }
     if (s.type === 'brush') {
@@ -628,10 +790,18 @@
     if (s.type === 'vline') { var x = lToX(s.l); if (x != null) out.push({ x: x, y: canvas.clientHeight / 2, k: 'l' }); return out; }
     if (s.type === 'brush' || s.type === 'text') return out;
     if (s.type === 'position') {
-      var W = canvas.clientWidth, yE = pToY(s.entry), ySL = pToY(s.sl), yTP = pToY(s.tp);
-      if (yE != null) out.push({ x: W / 2, y: yE, k: 'entry' });
-      if (ySL != null) out.push({ x: W / 2, y: ySL, k: 'sl' });
-      if (yTP != null) out.push({ x: W / 2, y: yTP, k: 'tp' });
+      var pxL = lToX(s.l1 != null ? s.l1 : s.l);
+      var pxR = lToX(s.l2 != null ? s.l2 : (s.l || 0) + 40);
+      if (pxL != null && pxR != null) {
+        if (pxL > pxR) { var tt = pxL; pxL = pxR; pxR = tt; }
+        var midXP = (pxL + pxR) / 2;
+        var yE2 = pToY(s.entry), ySL2 = pToY(s.sl), yTP2 = pToY(s.tp);
+        if (yE2 != null) out.push({ x: midXP, y: yE2, k: 'entry' });
+        if (ySL2 != null) out.push({ x: midXP, y: ySL2, k: 'sl' });
+        if (yTP2 != null) out.push({ x: midXP, y: yTP2, k: 'tp' });
+        if (yE2 != null) out.push({ x: pxL, y: yE2, k: 'pl' }); // left edge
+        if (yE2 != null) out.push({ x: pxR, y: yE2, k: 'pr' }); // right edge
+      }
       return out;
     }
     var a = pt(s.a), b = pt(s.b); if (!a || !b) return out;
@@ -677,7 +847,13 @@
   function shapeAnchorPixel(s) {
     if (s.type === 'hline') { var y = pToY(s.p); return y == null ? null : { x: canvas.clientWidth / 2, y: y }; }
     if (s.type === 'vline') { var x = lToX(s.l); return x == null ? null : { x: x, y: 40 }; }
-    if (s.type === 'position') { var y2 = pToY(s.entry); return y2 == null ? null : { x: canvas.clientWidth / 2, y: y2 }; }
+    if (s.type === 'position') {
+      var y2 = pToY(s.entry);
+      var px1b = lToX(s.l1 != null ? s.l1 : s.l);
+      var px2b = lToX(s.l2 != null ? s.l2 : (s.l || 0) + 40);
+      var midXB = (px1b != null && px2b != null) ? (px1b + px2b) / 2 : canvas.clientWidth / 2;
+      return y2 == null ? null : { x: midXB, y: y2 };
+    }
     if (s.type === 'brush') { var bb = brushBounds(s); return bb ? { x: (bb.x0 + bb.x1) / 2, y: bb.y0 } : null; }
     var a = pt(s.a); return a;
   }
@@ -844,6 +1020,8 @@
         var rrStr = risk > 0 ? rrNum.toFixed(2) : '∞';
         var rrColor = rrNum >= 2 ? '#26a69a' : rrNum >= 1 ? '#f5a623' : '#ef5350';
         var isLong = s.dir === 'long';
+        var profitPct = ((s.tp - s.entry) / s.entry * 100);
+        var lossPct = ((s.sl - s.entry) / s.entry * 100);
         var id = s.id;
         return '<div class="pp-pos" data-id="' + id + '">' +
           '<div class="pp-pos-hdr">' +
@@ -853,10 +1031,14 @@
           '</div>' +
           '<div class="pp-row"><label>כניסה</label>' +
           '<input type="number" data-pid="' + id + '" data-f="entry" value="' + s.entry.toFixed(2) + '" step="any" /></div>' +
-          '<div class="pp-row pp-row-sl"><label>סטופ</label>' +
-          '<input type="number" data-pid="' + id + '" data-f="sl" value="' + s.sl.toFixed(2) + '" step="any" /></div>' +
           '<div class="pp-row pp-row-tp"><label>יעד</label>' +
-          '<input type="number" data-pid="' + id + '" data-f="tp" value="' + s.tp.toFixed(2) + '" step="any" /></div>' +
+          '<input type="number" data-pid="' + id + '" data-f="tp" value="' + s.tp.toFixed(2) + '" step="any" />' +
+          '<span style="color:#26a69a;font-size:.66rem;width:44px;text-align:left">' + (profitPct >= 0 ? '+' : '') + profitPct.toFixed(1) + '%</span></div>' +
+          '<div class="pp-row pp-row-sl"><label>סטופ</label>' +
+          '<input type="number" data-pid="' + id + '" data-f="sl" value="' + s.sl.toFixed(2) + '" step="any" />' +
+          '<span style="color:#ef5350;font-size:.66rem;width:44px;text-align:left">' + lossPct.toFixed(1) + '%</span></div>' +
+          '<div class="pp-row"><label>כמות</label>' +
+          '<input type="number" data-pid="' + id + '" data-f="qty" value="' + (s.qty || 1) + '" step="1" min="1" /></div>' +
           '<div class="pp-rr">R:R = <b style="color:' + rrColor + '">' + rrStr + ':1</b></div>' +
           '</div>';
       }).join('');
@@ -870,18 +1052,12 @@
           if (isNaN(val)) return;
           var sh = shapeById(id2);
           if (!sh) return;
-          sh[field] = val;
+          if (field === 'qty') { sh.qty = Math.max(1, Math.round(val)); }
+          else { sh[field] = val; }
           save(); scheduleDraw();
-          // Update R:R live without re-rendering everything
-          var posDiv = cnt.querySelector('.pp-pos[data-id="' + id2 + '"]');
-          if (!posDiv) return;
-          var r2 = Math.abs(sh.entry - sh.sl), rw2 = Math.abs(sh.tp - sh.entry);
-          var n2 = r2 > 0 ? rw2 / r2 : 0;
-          var rrEl = posDiv.querySelector('.pp-rr b');
-          if (rrEl) {
-            rrEl.textContent = (r2 > 0 ? n2.toFixed(2) : '∞') + ':1';
-            rrEl.style.color = n2 >= 2 ? '#26a69a' : n2 >= 1 ? '#f5a623' : '#ef5350';
-          }
+          // Debounced full refresh for R:R + % recalc
+          clearTimeout(inp._ppTimer);
+          inp._ppTimer = setTimeout(function() { ppRefresh(); }, 400);
         });
       });
 
@@ -907,8 +1083,8 @@
     else { sl = midPrice + atrEst; tp = midPrice - atrEst * 2; }
     var t = ts();
     var l = 0;
-    if (t) { var r = t.getVisibleLogicalRange(); if (r) l = (r.from + r.to) / 2; }
-    commit({ type: 'position', dir: dir, entry: midPrice, sl: sl, tp: tp, l: l });
+    if (t) { var r = t.getVisibleLogicalRange(); if (r) l = Math.round((r.from + r.to) / 2); }
+    commit({ type: 'position', dir: dir, entry: midPrice, sl: sl, tp: tp, l: l, l1: l, l2: l + 40, qty: 1 });
     ppRefresh();
   }
 
