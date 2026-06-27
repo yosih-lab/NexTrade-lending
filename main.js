@@ -433,33 +433,11 @@ function getTASEStatus() {
 
 function updateTASEBadge() {
   var badge = document.getElementById('taseBadge');
-  var dot   = document.getElementById('marketDot');
-  var txt   = document.getElementById('marketStatusText');
   if (!badge) return;
   var s = getTASEStatus();
-  
-  // ✓ תצוגה שיפור: הצגת שעות מסחר לפי מצב
-  var timeLabel = '';
-  var now = new Date();
-  var utc   = now.getTime() + now.getTimezoneOffset() * 60000;
-  var il    = new Date(utc + 3 * 3600000);
-  var h     = String(il.getHours()).padStart(2, '0');
-  var m     = String(il.getMinutes()).padStart(2, '0');
-  
-  if (s.status === 'open') {
-    timeLabel = ' 🔴 שוק פתוח (' + h + ':' + m + ')';
-  } else if (s.status === 'pre') {
-    timeLabel = ' 🟡 טרום/אחרי מסחר (' + h + ':' + m + ')';
-  } else {
-    timeLabel = ' ⚫ שוק סגור (' + h + ':' + m + ')';
-  }
-  
-  badge.textContent = timeLabel;
-  badge.className   = 'tase-badge ' + s.status;
-  if (dot) {
-    dot.className = 'status-dot' + (s.status === 'open' ? ' open' : '');
-  }
-  if (txt) txt.textContent = '';
+  // Just show dot color
+  badge.className = 'tase-dot ' + s.status;
+  badge.title = s.status === 'open' ? 'שוק פתוח' : s.status === 'pre' ? 'טרום מסחר' : 'שוק סגור';
 }
 
 // ============================================
@@ -778,11 +756,11 @@ function updateLegend(param) {
   var ohlcvSep = document.querySelector('.ci-ohlcv-sep');
   if (!param || !param.time) {
     if (ciOhlcv) ciOhlcv.classList.remove('visible');
-    if (ohlcvSep) ohlcvSep.style.display = 'none';
+    if (ohlcvSep) ohlcvSep.style.visibility = 'hidden';
     return;
   }
   if (ciOhlcv) ciOhlcv.classList.add('visible');
-  if (ohlcvSep) ohlcvSep.style.display = '';
+  if (ohlcvSep) ohlcvSep.style.visibility = 'visible';
 
   var activeSeries = chartType === 'line' ? lineSeries : (chartType === 'candle' ? candleSeries : barSeries);
   var barData = param.seriesData && param.seriesData.get(activeSeries);
@@ -877,7 +855,7 @@ function buildDemoBars(tf, basePrice) {
 // ============================================
 //   LOAD CHART (with TF)
 // ============================================
-async function loadChart(symbol, tf) {
+async function loadChart(symbol, tf, preserveZoom) {
   tf = tf || currentTF;
   var targetSymbol = (symbol || '').trim().toUpperCase();
   if (!targetSymbol) return;
@@ -986,8 +964,10 @@ async function loadChart(symbol, tf) {
   clearMASeries();
   renderMAs(bars);
 
-  // Fit time scale (volume shares the same scale automatically)
-  chartInstance.timeScale().fitContent();
+  // Fit time scale only on initial load (not on background refresh)
+  if (!preserveZoom) {
+    chartInstance.timeScale().fitContent();
+  }
 
   // Subtitle
   var last = bars[bars.length - 1];
@@ -1520,12 +1500,12 @@ async function init() {
     await loadNews(currentSymbol);
     buildTicker();
     setInterval(refreshPrices, 60000);
+    // Refresh chart data every 60s (price updates) WITHOUT resetting zoom
     setInterval(function() {
-      // force fresh bars for the active chart
       delete candleCache[currentSymbol + '_' + currentTF];
       delete candleCache['yf_' + currentSymbol + '_' + currentTF];
-      loadChart(currentSymbol, currentTF);
-    }, 15000);
+      loadChart(currentSymbol, currentTF, true); // true = preserve zoom
+    }, 60000);
     
     console.log('[NexTrade] ✅ init() completed successfully!');
     runScanner();
@@ -1773,13 +1753,17 @@ function smRender(q) {
     body.innerHTML = '<div class="sm-empty">' + (q ? 'לא נמצאו תוצאות עבור "' + q + '"' : 'אין פריטים') + '</div>';
     return;
   }
+  var wl = JSON.parse(localStorage.getItem('watchlist') || '[]');
   body.innerHTML = items.map(function(it) {
     var initials = smInitials(it.short);
     var bgCol = smColor(it.short);
-    return '<div class="sm-item" onclick="smPick(\'' + it.sym + '\')">'
-      + '<div class="sm-icon" style="background:' + bgCol + '">' + initials + '</div>'
-      + '<span class="sm-sym">' + it.short + '</span>'
-      + '<span class="sm-name">' + it.name + '</span>'
+    var inWL = wl.indexOf(it.sym) !== -1;
+    return '<div class="sm-item">'
+      + '<div class="sm-icon" style="background:' + bgCol + '" onclick="smPick(\'' + it.sym + '\')">' + initials + '</div>'
+      + '<span class="sm-sym" onclick="smPick(\'' + it.sym + '\')">' + it.short + '</span>'
+      + '<span class="sm-name" onclick="smPick(\'' + it.sym + '\')">' + it.name + '</span>'
+      + '<button class="sm-wl-btn' + (inWL ? ' added' : '') + '" data-sym="' + it.sym + '" onclick="smToggleWL(this,\'' + it.sym + '\')">'
+      + (inWL ? '✓' : '+') + '</button>'
       + '</div>';
   }).join('');
 }
@@ -1820,6 +1804,22 @@ function smGetItems(tab, q) {
 function smPick(sym) {
   closeSearchModal();
   selectSymbol(sym);
+}
+
+function smToggleWL(btn, sym) {
+  var wl = JSON.parse(localStorage.getItem('watchlist') || '[]');
+  var idx = wl.indexOf(sym);
+  if (idx === -1) {
+    wl.push(sym);
+    btn.textContent = '✓';
+    btn.classList.add('added');
+  } else {
+    wl.splice(idx, 1);
+    btn.textContent = '+';
+    btn.classList.remove('added');
+  }
+  localStorage.setItem('watchlist', JSON.stringify(wl));
+  renderWatchlist();
 }
 
 // Bind modal input + escape

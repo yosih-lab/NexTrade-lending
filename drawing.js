@@ -310,30 +310,40 @@
   function drawPositionTV(s, selected) {
     var yE = pToY(s.entry), ySL = pToY(s.sl), yTP = pToY(s.tp);
     if (yE == null || ySL == null || yTP == null) { return; }
-    // Bounded box: l1..l2 (logical), default 40 bars if not set
-    var x1 = lToX(s.l1 != null ? s.l1 : s.l);
-    var x2 = lToX(s.l2 != null ? s.l2 : (s.l || 0) + 40);
-    if (x1 == null || x2 == null) { return; }
-    if (x1 > x2) { var tmp = x1; x1 = x2; x2 = tmp; }
-    var boxW = x2 - x1;
-    if (boxW < 10) boxW = 120; // safety min
+    // Bounded box — uses pixel sizes anchored to entry point
+    var anchorX = lToX(s.l);
+    if (anchorX == null) { return; }
+    // Default 100px wide; height = distance between TP and SL pixels
+    var boxW = s.pxW || 100;
+    var x1 = anchorX;
+    var x2 = anchorX + boxW;
+    // If user has dragged edges, recalc from l1/l2
+    if (s.l1 != null && s.l2 != null) {
+      var xl = lToX(s.l1), xr = lToX(s.l2);
+      if (xl != null && xr != null) { x1 = Math.min(xl, xr); x2 = Math.max(xl, xr); boxW = x2 - x1; }
+    }
+    if (boxW < 20) { x2 = x1 + 100; boxW = 100; }
     var isLong = s.dir === 'long';
     var qty = s.qty || 1;
     var R = 6; // corner radius
+    var tpCol = s.tpColor || '#26a69a';
+    var slCol = s.slColor || '#ef5350';
+    var tpOpa = s.tpOpacity != null ? s.tpOpacity : 0.22;
+    var slOpa = s.slOpacity != null ? s.slOpacity : 0.22;
 
     // ---- Profit zone ----
     var tpTop = Math.min(yE, yTP), tpBot = Math.max(yE, yTP);
     ctx.save();
-    ctx.globalAlpha = 0.22;
-    ctx.fillStyle = '#26a69a';
+    ctx.globalAlpha = tpOpa;
+    ctx.fillStyle = tpCol;
     roundRect(ctx, x1, tpTop, boxW, tpBot - tpTop, isLong ? {tl:R,tr:R,bl:0,br:0} : {tl:0,tr:0,bl:R,br:R});
     ctx.fill();
     ctx.globalAlpha = 1;
 
     // ---- Loss zone ----
     var slTop = Math.min(yE, ySL), slBot = Math.max(yE, ySL);
-    ctx.globalAlpha = 0.22;
-    ctx.fillStyle = '#ef5350';
+    ctx.globalAlpha = slOpa;
+    ctx.fillStyle = slCol;
     roundRect(ctx, x1, slTop, boxW, slBot - slTop, isLong ? {tl:0,tr:0,bl:R,br:R} : {tl:R,tr:R,bl:0,br:0});
     ctx.fill();
     ctx.globalAlpha = 1;
@@ -583,11 +593,14 @@
     if (mode === 'vline') { commit({ type: 'vline', l: a.l }); return; }
     if (mode === 'long' || mode === 'short') {
       var entry = a.p;
-      var atrEst = Math.abs(entry) * 0.02; // default 2% range
+      // Calculate TP/SL so each zone is 50px tall (total 100x100 square)
+      var yClick = pToY(entry);
+      var tp50 = yToP(yClick - 50); // 50px above for TP (long) 
+      var sl50 = yToP(yClick + 50); // 50px below for SL (long)
       var sl, tp;
-      if (mode === 'long') { sl = entry - atrEst; tp = entry + atrEst * 2; }
-      else { sl = entry + atrEst; tp = entry - atrEst * 2; }
-      commit({ type: 'position', dir: mode, entry: entry, sl: sl, tp: tp, l: a.l, l1: a.l, l2: a.l + 40, qty: 1 });
+      if (mode === 'long') { tp = tp50 != null ? tp50 : entry * 1.02; sl = sl50 != null ? sl50 : entry * 0.98; }
+      else { tp = sl50 != null ? sl50 : entry * 0.98; sl = tp50 != null ? tp50 : entry * 1.02; }
+      commit({ type: 'position', dir: mode, entry: entry, sl: sl, tp: tp, l: a.l, pxW: 100, qty: 1 });
       ppRefresh();
       return;
     }
@@ -1077,14 +1090,16 @@
   function ppAddNew(dir) {
     var midPrice = canvas ? yToP(canvas.clientHeight / 2) : null;
     if (!midPrice) midPrice = 100;
-    var atrEst = Math.abs(midPrice) * 0.02;
+    var yMid = pToY(midPrice);
+    var tp50 = yToP(yMid - 50);
+    var sl50 = yToP(yMid + 50);
     var sl, tp;
-    if (dir === 'long') { sl = midPrice - atrEst; tp = midPrice + atrEst * 2; }
-    else { sl = midPrice + atrEst; tp = midPrice - atrEst * 2; }
+    if (dir === 'long') { tp = tp50 || midPrice * 1.02; sl = sl50 || midPrice * 0.98; }
+    else { tp = sl50 || midPrice * 0.98; sl = tp50 || midPrice * 1.02; }
     var t = ts();
     var l = 0;
     if (t) { var r = t.getVisibleLogicalRange(); if (r) l = Math.round((r.from + r.to) / 2); }
-    commit({ type: 'position', dir: dir, entry: midPrice, sl: sl, tp: tp, l: l, l1: l, l2: l + 40, qty: 1 });
+    commit({ type: 'position', dir: dir, entry: midPrice, sl: sl, tp: tp, l: l, pxW: 100, qty: 1 });
     ppRefresh();
   }
 
@@ -1093,6 +1108,127 @@
     ensurePositionPanel();
     ppRefresh();
   }
+
+  // ===== POSITION ACTION BAR (trash, lock, color pickers) =====
+  var PAB_COLORS = [
+    '#ef5350','#e53935','#c62828','#b71c1c','#d32f2f','#f44336','#ff5252','#ff1744',
+    '#ff8a80','#ffcdd2','#e57373','#ef9a9a','#f48fb1','#f06292','#ec407a','#e91e63',
+    '#ad1457','#880e4f','#ce93d8','#ba68c8','#ab47bc','#9c27b0','#7b1fa2','#6a1b9a',
+    '#9575cd','#7e57c2','#673ab7','#512da8','#4527a0','#311b92','#7986cb','#5c6bc0',
+    '#3f51b5','#3949ab','#283593','#1a237e','#64b5f6','#42a5f5','#2196f3','#1e88e5',
+    '#1565c0','#0d47a1','#4fc3f7','#29b6f6','#03a9f4','#039be5','#0277bd','#01579b',
+    '#4dd0e1','#26c6da','#00bcd4','#00acc1','#00838f','#006064','#80cbc4','#4db6ac',
+    '#26a69a','#009688','#00796b','#004d40','#a5d6a7','#81c784','#66bb6a','#4caf50',
+    '#388e3c','#1b5e20','#c5e1a5','#aed581','#8bc34a','#7cb342','#558b2f','#33691e',
+    '#fff176','#ffee58','#ffeb3b','#fdd835','#f9a825','#f57f17','#ffcc80','#ffb74d',
+    '#ffa726','#ff9800','#f57c00','#e65100','#ffffff','#bdbdbd','#757575','#212121'
+  ];
+  var posLocked = false;
+  var posSLColor = '#ef5350', posTPColor = '#26a69a';
+  var posSLOpacity = 22, posTPOpacity = 22;
+
+  function initPosActionBar() {
+    var bar = document.getElementById('posActionBar');
+    if (!bar) return;
+    // Trash
+    document.getElementById('pabTrash').addEventListener('click', function() {
+      if (selectedId != null) {
+        var sh = shapeById(selectedId);
+        if (sh && sh.type === 'position') { deleteSelected(); bar.classList.remove('open'); }
+      }
+    });
+    // Lock
+    document.getElementById('pabLock').addEventListener('click', function() {
+      posLocked = !posLocked;
+      this.classList.toggle('active', posLocked);
+      this.textContent = posLocked ? '🔓' : '🔒';
+    });
+    // Color pickers
+    buildColorGrid('pabColorsSL', function(col, opacity) { posSLColor = col; posSLOpacity = opacity; applyPosColors(); });
+    buildColorGrid('pabColorsTP', function(col, opacity) { posTPColor = col; posTPOpacity = opacity; applyPosColors(); });
+    // Toggle color panels
+    document.getElementById('pabColorSL').addEventListener('click', function(e) {
+      e.stopPropagation();
+      document.getElementById('pabColorsSL').classList.toggle('open');
+      document.getElementById('pabColorsTP').classList.remove('open');
+    });
+    document.getElementById('pabColorTP').addEventListener('click', function(e) {
+      e.stopPropagation();
+      document.getElementById('pabColorsTP').classList.toggle('open');
+      document.getElementById('pabColorsSL').classList.remove('open');
+    });
+    // Close color panels on outside click
+    document.addEventListener('click', function() {
+      document.getElementById('pabColorsSL').classList.remove('open');
+      document.getElementById('pabColorsTP').classList.remove('open');
+    });
+  }
+
+  function buildColorGrid(containerId, onPick) {
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    var html = PAB_COLORS.map(function(c) {
+      return '<div class="pab-swatch" data-c="' + c + '" style="background:' + c + '"></div>';
+    }).join('');
+    html += '<div class="pab-opacity"><span style="font-size:.6rem;color:#aaa">Opacity:</span>' +
+      '<input type="range" min="0" max="100" value="22" class="pab-opa-range" />' +
+      '<input type="number" min="0" max="100" value="22" class="pab-opa-num" />%</div>';
+    el.innerHTML = html;
+    var rangeEl = el.querySelector('.pab-opa-range');
+    var numEl = el.querySelector('.pab-opa-num');
+    var selectedColor = null;
+    el.querySelectorAll('.pab-swatch').forEach(function(sw) {
+      sw.addEventListener('click', function(e) {
+        e.stopPropagation();
+        selectedColor = sw.getAttribute('data-c');
+        onPick(selectedColor, parseInt(rangeEl.value, 10));
+      });
+    });
+    rangeEl.addEventListener('input', function() {
+      numEl.value = this.value;
+      if (selectedColor) onPick(selectedColor, parseInt(this.value, 10));
+    });
+    numEl.addEventListener('input', function() {
+      rangeEl.value = this.value;
+      if (selectedColor) onPick(selectedColor, parseInt(this.value, 10));
+    });
+  }
+
+  function applyPosColors() {
+    // Apply colors to selected position shape
+    var sh = shapeById(selectedId);
+    if (!sh || sh.type !== 'position') return;
+    sh.slColor = posSLColor;
+    sh.tpColor = posTPColor;
+    sh.slOpacity = posSLOpacity / 100;
+    sh.tpOpacity = posTPOpacity / 100;
+    save(); scheduleDraw();
+  }
+
+  function showPosActionBar() {
+    var bar = document.getElementById('posActionBar');
+    if (bar) bar.classList.add('open');
+  }
+  function hidePosActionBar() {
+    var bar = document.getElementById('posActionBar');
+    if (bar) bar.classList.remove('open');
+  }
+
+  // Override showActionBar to also show pos bar for position shapes
+  var _origShowActionBar = showActionBar;
+  showActionBar = function(s) {
+    _origShowActionBar(s);
+    if (s && s.type === 'position') showPosActionBar();
+    else hidePosActionBar();
+  };
+  var _origHideActionBar = hideActionBar;
+  hideActionBar = function() {
+    _origHideActionBar();
+    hidePosActionBar();
+  };
+
+  // Init pos action bar after DOM ready
+  setTimeout(initPosActionBar, 500);
 
   // expose
   window.NTDraw = {

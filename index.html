@@ -122,6 +122,14 @@
     .sm-sym { font-weight:800; color:var(--accent); min-width:58px; direction:ltr; font-size:.88rem; }
     .sm-name { color:#ccc; font-size:.82rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
     .sm-cat { font-size:.66rem; color:#666; margin-right:auto; }
+    .sm-wl-btn {
+      width:26px; height:26px; border-radius:50%; border:1px solid var(--border);
+      background:transparent; color:var(--text-muted); font-size:1rem; font-weight:700;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+      cursor:pointer; transition:all .15s; margin-left:4px;
+    }
+    .sm-wl-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .sm-wl-btn.added { background:rgba(38,166,154,.15); border-color:var(--green); color:var(--green); }
     .sm-empty { text-align:center; color:#555; padding:2rem 1rem; font-size:.86rem; }
     .sm-tabs { border-bottom-color:#2a2e3a; }
     .sm-tab { color:#778; }
@@ -286,7 +294,11 @@
     .tf-btn:hover { border-color:var(--accent); color:var(--accent); }
     .tf-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
     .tf-sep { width:1px; height:14px; background:var(--border); margin:0 .1rem; }
-    .tase-badge { font-size:.64rem; padding:.1rem .36rem; border-radius:4px; background:var(--surface); border:1px solid var(--border); color:var(--text-muted); white-space:nowrap; margin-right:auto; margin-left:0; }
+    .tase-badge { font-size:.64rem; padding:.1rem .36rem; border-radius:4px; background:var(--surface); border:1px solid var(--border); color:var(--text-muted); white-space:nowrap; margin-right:auto; margin-left:0; display:none; }
+    .tase-dot { width:9px; height:9px; border-radius:50%; background:var(--red); flex-shrink:0; }
+    .tase-dot.open { background:var(--green); animation:blink 2s infinite; }
+    .tase-dot.closed { background:var(--red); }
+    .tase-dot.pre { background:var(--gold); }
     .chart-type-wrap { position:relative; display:flex; align-items:center; margin-left:.35rem; overflow:visible; z-index:80; }
     .chart-type-btn {
       display:flex; align-items:center; gap:.32rem;
@@ -327,9 +339,9 @@
     #chartInfoBar .ci-change { font-size:.78rem; font-weight:700; }
     #chartInfoBar .ci-price  { font-size:.75rem; color:var(--text-muted); }
     #chartInfoBar .ci-vol    { font-size:.68rem; color:var(--text-muted); }
-    #chartInfoBar .ci-ohlcv  { display:none; align-items:baseline; gap:.28rem; }
-    #chartInfoBar .ci-ohlcv.visible { display:flex; }
-    #chartInfoBar .ci-ohlcv-sep { display:none; }
+    #chartInfoBar .ci-ohlcv  { display:flex; align-items:baseline; gap:.28rem; visibility:hidden; }
+    #chartInfoBar .ci-ohlcv.visible { visibility:visible; }
+    #chartInfoBar .ci-ohlcv-sep { visibility:hidden; }
     /* OHLCV values inherit candle color; labels always white */
     .ci-ohlcv .ohlcv-sym  { font-size:.78rem; font-weight:800; color:#fff; }
     .ci-ohlcv .ohlcv-lbl  { font-size:.68rem; font-weight:700; color:#fff !important; }
@@ -841,8 +853,8 @@
     /* ===== POSITION PANEL (floating, draggable, resizable all sides) ===== */
     #positionPanel {
       position:fixed; right:60px; top:80px;
-      width:100px; height:30px;
-      min-width:100px; min-height:30px;
+      width:220px; height:auto;
+      min-width:160px; min-height:30px;
       max-width:90vw; max-height:80vh;
       background:var(--surface); border:1px solid var(--border);
       border-radius:12px; z-index:2000;
@@ -851,6 +863,44 @@
       font-family:'Heebo',sans-serif; direction:rtl;
       overflow:visible;
     }
+    /* Position action bar — floats top-left below chart info */
+    #posActionBar {
+      position:absolute; top:36px; left:10px; z-index:2001;
+      display:none; align-items:center; gap:3px;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:8px; padding:3px 5px;
+      box-shadow:0 4px 12px rgba(0,0,0,.5); direction:ltr;
+    }
+    #posActionBar.open { display:flex; }
+    .pab-btn {
+      width:26px; height:26px; display:flex; align-items:center; justify-content:center;
+      background:#111; border:1px solid var(--border); border-radius:5px;
+      cursor:pointer; color:#fff; font-size:.8rem; transition:all .12s;
+    }
+    .pab-btn:hover { border-color:var(--accent); background:#1a1f2e; }
+    .pab-btn.active { background:rgba(41,98,255,.2); border-color:var(--accent); }
+    .pab-sep { width:1px; height:20px; background:var(--border); margin:0 2px; }
+    /* Color picker panel (80 colors) */
+    .pab-colors {
+      position:absolute; top:34px; left:0;
+      display:none; flex-wrap:wrap; width:200px; gap:2px;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:8px; padding:6px; box-shadow:0 6px 18px rgba(0,0,0,.5);
+    }
+    .pab-colors.open { display:flex; }
+    .pab-swatch {
+      width:18px; height:18px; border-radius:3px; border:1px solid rgba(255,255,255,.1);
+      cursor:pointer; transition:transform .1s;
+    }
+    .pab-swatch:hover { transform:scale(1.3); border-color:#fff; }
+    .pab-opacity {
+      display:flex; align-items:center; gap:4px; padding:4px 2px; margin-top:4px;
+      width:100%; border-top:1px solid var(--border);
+    }
+    .pab-opacity input[type=range] { flex:1; height:4px; accent-color:var(--accent); }
+    .pab-opacity input[type=number] { width:36px; background:var(--bg); border:1px solid var(--border); border-radius:4px; color:#fff; font-size:.68rem; padding:1px 3px; text-align:center; }
+    .pab-line-sl { width:16px; height:3px; background:#ef5350; border-radius:2px; }
+    .pab-line-tp { width:16px; height:3px; background:#26a69a; border-radius:2px; }
     /* Resize handles — all 8 directions */
     .pp-rh { position:absolute; z-index:10; background:transparent; }
     .pp-rh-n  { top:-4px;    left:12px;  right:12px; height:8px;  cursor:n-resize; }
@@ -930,7 +980,7 @@
 
       /* Chart fills layout */
       .chart-panel { border-radius:0 !important; border-left:none !important; border-right:none !important; height:100%; overflow:hidden; }
-      .chart-wrap { height:calc(100% - 44px) !important; overflow:hidden; }
+      .chart-wrap { height:100% !important; overflow:hidden; }
       #chart { min-height:0; height:100%; }
 
       /* Topbar full-width, hide TF controls (moved to mobileTfBar strip) */
@@ -946,57 +996,78 @@
       /* Search box */
       .search-box input { width:130px; font-size:.82rem; height:28px; }
 
-      /* Drawing toolbar: hide on mobile */
-      #drawToolbar { display:none !important; }
+      /* Drawing toolbar: show at BOTTOM on mobile */
+      #drawToolbar {
+        display:flex !important;
+        position:fixed !important; bottom:0 !important; left:0 !important; right:0 !important;
+        top:auto !important; width:100% !important; height:44px !important;
+        flex-direction:row !important; gap:1px !important;
+        background:var(--surface) !important; border-top:1px solid var(--border) !important;
+        border-right:none !important;
+        padding:4px 6px !important; align-items:center !important;
+        overflow-x:auto !important; z-index:998 !important;
+        justify-content:flex-start !important;
+      }
+      #drawToolbar .dt-btn { width:34px; height:34px; flex-shrink:0; }
+      #drawToolbar .dt-tip { display:none !important; }
 
-      /* RIGHT icon-toolbar → BOTTOM tab bar */
+      /* RIGHT icon-toolbar → stays on RIGHT, vertical, pushes chart left */
       .icon-toolbar {
         position:fixed !important;
-        bottom:0 !important; left:0 !important; right:0 !important; top:auto !important;
-        width:100% !important; height:56px !important;
-        flex-direction:row !important;
-        justify-content:space-around !important;
+        right:0 !important; top:78px !important; bottom:44px !important;
+        left:auto !important;
+        width:42px !important; height:auto !important;
+        flex-direction:column !important;
+        justify-content:flex-start !important;
         align-items:center !important;
-        padding:0 4px !important;
-        padding-bottom:env(safe-area-inset-bottom, 0px) !important;
-        border-left:none !important;
-        border-top:1px solid var(--border) !important;
+        padding:6px 0 !important;
+        border-top:none !important;
+        border-left:1px solid var(--border) !important;
         z-index:999 !important;
-        overflow-x:auto !important;
-        gap:0 !important;
+        overflow-y:auto !important;
+        gap:2px !important;
         background:var(--surface) !important;
       }
-      .ib { width:44px; height:44px; font-size:1.2rem; flex-shrink:0; }
-      .ib-hamburger { width:44px; height:44px; margin-bottom:0; flex-shrink:0; }
-      .ib-sep { display:none; }
+      .ib { width:34px; height:34px; font-size:1rem; flex-shrink:0; }
+      .ib-hamburger { width:34px; height:34px; margin-bottom:2px; flex-shrink:0; }
+      .ib-sep { width:80%; height:1px !important; background:var(--border); margin:2px 0; }
       .ib-tip, .ib-hamburger .ib-tip { display:none !important; }
 
-      /* Panels: full-width on mobile */
+      /* Layout: adjusted — chart pushed left by 42px toolbar, bottom by 44px draw bar */
+      .layout {
+        position:fixed !important;
+        top:78px !important; bottom:44px !important;
+        left:0 !important; right:42px !important;
+        width:auto !important; height:auto !important;
+        padding-right:0 !important; padding-left:0 !important;
+        display:block !important; overflow:hidden !important;
+      }
+
+      /* Panels: full-width on mobile, right of toolbar */
       .ib-panel, .ib-panel-wide {
-        right:0 !important; left:0 !important;
-        bottom:56px !important; top:42px !important;
-        width:100% !important;
-        max-height:calc(100vh - 98px) !important;
+        right:42px !important; left:0 !important;
+        bottom:44px !important; top:78px !important;
+        width:auto !important;
+        max-height:calc(100vh - 122px) !important;
         border-radius:0 !important;
       }
 
       /* Popups */
-      #portfolioPopup,#alertPopup,#newsPopup { width:100vw; right:0; left:0; bottom:56px; top:42px; border-radius:0; }
-      #portfolioPopup,#alertPopup { right:0; }
+      #portfolioPopup,#alertPopup,#newsPopup { width:calc(100vw - 42px); right:42px; left:0; bottom:44px; top:78px; border-radius:0; }
       #newsPopup { left:0; transform:none; }
       #newsPopup.open { transform:none; }
 
       /* Search modal */
       .sm-box { width:100vw; max-height:calc(100vh - 56px); border-radius:0; }
 
-      /* PWA install button above bottom bar */
-      #pwaInstallBtn { bottom:64px; }
+      /* PWA install button above bottom draw bar */
+      #pwaInstallBtn { bottom:52px; }
 
       /* User avatar */
       .topbar .user-avatar { width:28px; height:28px; font-size:.82rem; }
 
-      /* Position panel: wider on mobile, sits below mobile TF bar */
-      #positionPanel { width:calc(100vw - 32px) !important; left:16px !important; top:86px !important; right:auto !important; }
+      /* Position panel: fits within chart area on mobile */
+      #positionPanel { width:calc(100vw - 74px) !important; left:16px !important; top:86px !important; right:auto !important; }
     }
   </style>
 </head>
@@ -1097,7 +1168,9 @@
       <button class="tf-btn"        id="tf-1Q" onclick="setTimeframe('1Q',this)" title="Alt+7">1Q</button>
       <button class="tf-btn"        id="tf-6M" onclick="setTimeframe('6M',this)" title="Alt+8">6M</button>
       <div class="tf-sep"></div>
-      <span class="tase-badge" id="taseBadge">&#128336; בודק...</span>
+      <button class="tf-btn" id="tf-trade" onclick="openPortPage()" style="background:rgba(41,98,255,.12);color:var(--accent);border-color:rgba(41,98,255,.4);font-weight:800">TRADE</button>
+      <div class="tf-sep"></div>
+      <span id="taseBadge" class="tase-dot" title="מצב שוק"></span>
       <!-- SPACER -->
       <div style="flex:1"></div>
       <!-- SEARCH + USER -->
@@ -1133,13 +1206,6 @@
       <div>
         <ul id="watchlist" style="list-style:none;"></ul>
       </div>
-      <div class="divider"></div>
-      <div>
-        <button class="port-open-btn" onclick="openPortPage()">
-          <span>&#128188; תיק השקעות</span>
-          <span style="font-size:.7rem">&#9654;</span>
-        </button>
-      </div>
     </aside>
     <main class="main-area" style="position:relative">
 
@@ -1168,6 +1234,22 @@
         <h2 id="chartTitle" style="display:none">בחר מניה</h2>
         <div id="chartSubtitle" style="display:none"></div>
         <div class="chart-wrap">
+          <!-- Position action bar (trash, lock, color pickers) -->
+          <div id="posActionBar">
+            <button class="pab-btn" id="pabTrash" title="מחק עסקה">🗑</button>
+            <button class="pab-btn" id="pabLock" title="נעל על המסך">🔒</button>
+            <span class="pab-sep"></span>
+            <button class="pab-btn" id="pabColorSL" title="צבע סטופ לוס" style="position:relative">
+              <span style="font-size:.7rem">🔻</span>
+              <div class="pab-line-sl" style="position:absolute;bottom:2px;left:3px;right:3px"></div>
+              <div class="pab-colors" id="pabColorsSL"></div>
+            </button>
+            <button class="pab-btn" id="pabColorTP" title="צבע יעד" style="position:relative">
+              <span style="font-size:.7rem">🔺</span>
+              <div class="pab-line-tp" style="position:absolute;bottom:2px;left:3px;right:3px"></div>
+              <div class="pab-colors" id="pabColorsTP"></div>
+            </button>
+          </div>
           <!-- floating stock info — top-left of chart -->
           <div id="chartInfoBar">
             <span class="ci-sym"    id="ciSym"></span>
@@ -1203,9 +1285,9 @@
     </main>
   </div>
 </div>
-<script src="main.js?v=20260624-5"></script>
-<script src="drawing.js?v=20260624-5"></script>
-<script src="features.js?v=20260624-5"></script>
+<script src="main.js?v=20260628-1"></script>
+<script src="drawing.js?v=20260628-1"></script>
+<script src="features.js?v=20260628-1"></script>
 
 <!-- VERTICAL ICON TOOLBAR -->
 <div class="icon-toolbar" id="iconToolbar">
