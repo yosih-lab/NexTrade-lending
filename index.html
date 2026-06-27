@@ -34,11 +34,11 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg:#0b0e17; --surface:#131722; --surface2:#1a1f2e; --border:#252d3d;
-      --accent:#2962ff; --green:#26a69a; --red:#ef5350; --text:#d1d4dc;
-      --text-muted:#6b7280; --gold:#f5a623; --sidebar-w:320px;
+      --bg:#04060c; --surface:#0a0d16; --surface2:#0f1420; --border:#1e2637;
+      --accent:#2962ff; --green:#26a69a; --red:#ef5350; --text:#ffffff;
+      --text-muted:#8b9ab5; --gold:#f5a623; --sidebar-w:320px;
     }
-    body { font-family:'Heebo',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; }
+    body { font-family:'Heebo',sans-serif; background:var(--bg); color:var(--text); font-weight:600; min-height:100vh; overflow-x:hidden; }
 
     /* AUTH */
     #authOverlay { position:fixed; inset:0; background:var(--bg); z-index:9999; display:flex; align-items:center; justify-content:center; }
@@ -236,7 +236,9 @@
       justify-content:center;
       font-size:.95rem;
       line-height:1;
+      visibility:hidden;
     }
+    .watch-item:hover .watch-remove-btn { visibility:visible; }
     .watch-remove-btn:hover {
       color:var(--red);
       border-color:rgba(239,83,80,.35);
@@ -334,17 +336,17 @@
     /* CHART WRAP + OHLCV LEGEND */
     .chart-wrap { position:relative; flex:1; min-height:0; overflow:hidden; }
     .chart-legend { display:none !important; } /* merged into chartInfoBar */
-    /* chartInfoBar — single row, top-left */
+    /* chartInfoBar — single row, top-right */
     #chartInfoBar {
-      position:absolute; top:8px; left:10px; z-index:11;
+      position:absolute; top:8px; right:10px; z-index:11;
       display:flex; align-items:baseline; gap:.38rem; flex-wrap:nowrap;
-      pointer-events:none; font-family:'Heebo',sans-serif;
+      pointer-events:none; font-family:'Heebo',sans-serif; direction:ltr;
     }
-    #chartInfoBar .ci-sym    { font-size:.84rem; font-weight:800; color:var(--text); letter-spacing:.2px; }
-    #chartInfoBar .ci-name   { font-size:.72rem; color:var(--text-muted); font-weight:400; }
+    #chartInfoBar .ci-sym    { font-size:.84rem; font-weight:800; color:#fff; letter-spacing:.2px; }
+    #chartInfoBar .ci-name   { font-size:.72rem; color:#b0bfd4; font-weight:600; }
     #chartInfoBar .ci-sep    { font-size:.65rem; color:var(--border); }
-    #chartInfoBar .ci-change { font-size:.78rem; font-weight:700; }
-    #chartInfoBar .ci-price  { font-size:.75rem; color:var(--text-muted); }
+    #chartInfoBar .ci-change { font-size:.78rem; font-weight:800; }
+    #chartInfoBar .ci-price  { font-size:.75rem; color:#b0bfd4; font-weight:600; }
     #chartInfoBar .ci-vol    { font-size:.68rem; color:var(--text-muted); }
     #chartInfoBar .ci-ohlcv  { display:flex; align-items:baseline; gap:.28rem; visibility:hidden; }
     #chartInfoBar .ci-ohlcv.visible { visibility:visible; }
@@ -378,9 +380,9 @@
     /* Clock below chart price axis */
     #chartClock {
       position:absolute; bottom:2px; right:4px; z-index:12;
-      font-size:.68rem; font-weight:600; color:var(--text-muted);
+      font-size:.68rem; font-weight:700; color:#fff;
       font-family:'Heebo',sans-serif; pointer-events:none;
-      background:rgba(15,17,23,.85); padding:1px 5px; border-radius:3px;
+      background:rgba(4,6,12,.9); padding:1px 5px; border-radius:3px;
     }
     .tv-lightweight-charts .tv-lightweight-charts-attribution,
     .tv-lightweight-charts a[href*="tradingview.com"] { display:none !important; }
@@ -1334,9 +1336,9 @@
     </main>
   </div>
 </div>
-<script src="main.js?v=20260628-3"></script>
-<script src="drawing.js?v=20260628-3"></script>
-<script src="features.js?v=20260628-3"></script>
+<script src="main.js?v=20260628-4"></script>
+<script src="drawing.js?v=20260628-4"></script>
+<script src="features.js?v=20260628-4"></script>
 
 <!-- VERTICAL ICON TOOLBAR -->
 <div class="icon-toolbar" id="iconToolbar">
