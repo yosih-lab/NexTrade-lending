@@ -276,18 +276,7 @@
     /* CHART PANEL */
     .chart-panel { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:visible; display:flex; flex-direction:column; height:100%; }
     .chart-header { display:none; }
-    /* Stock info overlay — floats top-left inside chart canvas */
-    #chartInfoBar {
-      position:absolute; top:8px; left:10px; z-index:11;
-      display:flex; align-items:baseline; gap:.42rem; flex-wrap:nowrap;
-      pointer-events:none; font-family:'Heebo',sans-serif;
-    }
-    #chartInfoBar .ci-sym    { font-size:.84rem; font-weight:800; color:var(--text); letter-spacing:.2px; }
-    #chartInfoBar .ci-name   { font-size:.72rem; color:var(--text-muted); font-weight:400; }
-    #chartInfoBar .ci-sep    { font-size:.65rem; color:var(--border); }
-    #chartInfoBar .ci-change { font-size:.78rem; font-weight:700; }
-    #chartInfoBar .ci-price  { font-size:.75rem; color:var(--text-muted); }
-    #chartInfoBar .ci-vol    { font-size:.68rem; color:var(--text-muted); }
+    /* Stock info overlay — removed duplicate (see below in CHART WRAP section) */
     /* TIMEFRAME TOOLBAR */
     .tf-toolbar { display:flex; gap:.22rem; align-items:center; flex:1; min-width:0; overflow:visible; position:relative; z-index:60; }
     .tf-btn { background:transparent; border:1px solid transparent; color:var(--text-muted); border-radius:5px; padding:.18rem .52rem; font-size:.72rem; font-weight:700; font-family:'Heebo',sans-serif; cursor:pointer; transition:all .15s; letter-spacing:.3px; white-space:nowrap; }
@@ -368,6 +357,13 @@
     }
     .nextrade-watermark .nex { color:#2962ff; }
     .nextrade-watermark .trade { color:var(--gold); }
+    /* Clock below chart price axis */
+    #chartClock {
+      position:absolute; bottom:2px; right:4px; z-index:12;
+      font-size:.68rem; font-weight:600; color:var(--text-muted);
+      font-family:'Heebo',sans-serif; pointer-events:none;
+      background:rgba(15,17,23,.85); padding:1px 5px; border-radius:3px;
+    }
     .tv-lightweight-charts .tv-lightweight-charts-attribution,
     .tv-lightweight-charts a[href*="tradingview.com"] { display:none !important; }
     /* MA INDICATOR PANEL */
@@ -1250,21 +1246,16 @@
               <div class="pab-colors" id="pabColorsTP"></div>
             </button>
           </div>
-          <!-- floating stock info — top-left of chart -->
+          <!-- floating stock info — top-left of chart (single unified bar) -->
           <div id="chartInfoBar">
-            <span class="ci-sym"    id="ciSym"></span>
-            <span class="ci-name"   id="ciName"></span>
+            <span class="ci-sym" id="ciSym"></span>
+            <span class="ci-name" id="ciName"></span>
             <span class="ci-sep">|</span>
             <span class="ci-change" id="ciChange"></span>
             <span class="ci-sep">·</span>
-            <span class="ci-price"  id="ciPrice"></span>
-            <span class="ci-sep">·</span>
-            <span class="ci-vol"    id="ciVol"></span>
-            <!-- OHLCV — shown on crosshair hover -->
+            <span class="ci-price" id="ciPrice"></span>
             <span class="ci-sep ci-ohlcv-sep">|</span>
             <div class="ci-ohlcv" id="ciOhlcv">
-              <span class="ohlcv-sym" id="ciOhlcvSym"></span>
-              <span class="legend-sep">·</span>
               <span class="ohlcv-pair"><span class="ohlcv-lbl">O</span><span class="ohlcv-val" id="lgO"></span></span>
               <span class="ohlcv-pair"><span class="ohlcv-lbl">H</span><span class="ohlcv-val" id="lgH"></span></span>
               <span class="ohlcv-pair"><span class="ohlcv-lbl">L</span><span class="ohlcv-val" id="lgL"></span></span>
@@ -1279,15 +1270,17 @@
           <div id="chartLegend" style="display:none"></div>
           <span id="volLegendText" style="display:none"></span>
           <div class="nextrade-watermark"><span class="nex">Nex</span><span class="trade">Trade</span></div>
+          <!-- Clock below price axis -->
+          <div id="chartClock"></div>
           <div id="chart"></div>
         </div>
       </div>
     </main>
   </div>
 </div>
-<script src="main.js?v=20260628-1"></script>
-<script src="drawing.js?v=20260628-1"></script>
-<script src="features.js?v=20260628-1"></script>
+<script src="main.js?v=20260628-2"></script>
+<script src="drawing.js?v=20260628-2"></script>
+<script src="features.js?v=20260628-2"></script>
 
 <!-- VERTICAL ICON TOOLBAR -->
 <div class="icon-toolbar" id="iconToolbar">
@@ -1295,9 +1288,7 @@
     <span></span><span></span><span></span>
     <span class="ib-tip">Watchlist &middot; Details &middot; News</span>
   </button>
-  <button class="ib" id="ib-clock"   onclick="ibToggle('clock')"   title="">
-    🕐<span class="ib-tip">שעון התראות</span>
-  </button>
+  <!-- clock removed from toolbar, shown below chart -->
   <div class="ib-sep"></div>
   <button class="ib" id="ib-tree"    onclick="ibToggle('tree')"    title="">
     📂<span class="ib-tip">Object Tree</span>

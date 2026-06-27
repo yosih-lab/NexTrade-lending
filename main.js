@@ -438,6 +438,15 @@ function updateTASEBadge() {
   // Just show dot color
   badge.className = 'tase-dot ' + s.status;
   badge.title = s.status === 'open' ? 'שוק פתוח' : s.status === 'pre' ? 'טרום מסחר' : 'שוק סגור';
+  // Update chart clock (Israel time)
+  var now = new Date();
+  var utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  var il = new Date(utc + 3 * 3600000);
+  var hh = String(il.getHours()).padStart(2, '0');
+  var mm = String(il.getMinutes()).padStart(2, '0');
+  var ss = String(il.getSeconds()).padStart(2, '0');
+  var clockEl = document.getElementById('chartClock');
+  if (clockEl) clockEl.textContent = hh + ':' + mm + ':' + ss + ' IL';
 }
 
 // ============================================
@@ -693,8 +702,10 @@ function initChart() {
     layout: { background: { color: '#0f1117' }, textColor: '#8899aa' },
     grid:   { vertLines: { color: 'transparent' }, horzLines: { color: 'transparent' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-    rightPriceScale: { borderColor: '#1e2533' },
+    rightPriceScale: { borderColor: '#1e2533', autoScale: true },
     timeScale: { borderColor: '#1e2533', timeVisible: true, secondsVisible: false },
+    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+    handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: { time: true, price: true } },
   });
 
   lineSeries = chartInstance.addLineSeries({
@@ -1466,7 +1477,7 @@ async function init() {
     console.log('[NexTrade] Chart initialized.');
     
     updateTASEBadge();
-    setInterval(updateTASEBadge, 60000);
+    setInterval(updateTASEBadge, 1000); // clock updates every second
     
     renderWatchlist();
     renderPortfolio();
@@ -1753,7 +1764,7 @@ function smRender(q) {
     body.innerHTML = '<div class="sm-empty">' + (q ? 'לא נמצאו תוצאות עבור "' + q + '"' : 'אין פריטים') + '</div>';
     return;
   }
-  var wl = JSON.parse(localStorage.getItem('watchlist') || '[]');
+  var wl = watchlist || [];
   body.innerHTML = items.map(function(it) {
     var initials = smInitials(it.short);
     var bgCol = smColor(it.short);
@@ -1807,18 +1818,17 @@ function smPick(sym) {
 }
 
 function smToggleWL(btn, sym) {
-  var wl = JSON.parse(localStorage.getItem('watchlist') || '[]');
-  var idx = wl.indexOf(sym);
+  var idx = watchlist.indexOf(sym);
   if (idx === -1) {
-    wl.push(sym);
+    watchlist.push(sym);
     btn.textContent = '✓';
     btn.classList.add('added');
   } else {
-    wl.splice(idx, 1);
+    watchlist.splice(idx, 1);
     btn.textContent = '+';
     btn.classList.remove('added');
   }
-  localStorage.setItem('watchlist', JSON.stringify(wl));
+  localStorage.setItem('ml_watchlist', JSON.stringify(watchlist));
   renderWatchlist();
 }
 
