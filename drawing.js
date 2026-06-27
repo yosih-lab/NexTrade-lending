@@ -569,14 +569,16 @@
       var sel = shapeById(selectedId);
       if (sel) {
         var hk = handleHit(sel, px);
-        if (hk) { dragState = { kind: 'resize', id: sel.id, handle: hk, start: px }; e.preventDefault(); return; }
+        if (hk && !(sel.type === 'position' && posLocked)) { dragState = { kind: 'resize', id: sel.id, handle: hk, start: px }; e.preventDefault(); return; }
       }
       // else: hit any shape (select + move)
       var hit = topShapeAt(px);
       if (hit) {
         selectedId = hit.id;
         showActionBar(hit);
-        dragState = { kind: 'move', id: hit.id, start: px, orig: clone(hit) };
+        if (!(hit.type === 'position' && posLocked)) {
+          dragState = { kind: 'move', id: hit.id, start: px, orig: clone(hit) };
+        }
       } else {
         selectedId = null; hideActionBar();
       }
@@ -1141,7 +1143,10 @@
     document.getElementById('pabLock').addEventListener('click', function() {
       posLocked = !posLocked;
       this.classList.toggle('active', posLocked);
-      this.textContent = posLocked ? '🔓' : '🔒';
+      var svgL = document.getElementById('svgLocked');
+      var svgU = document.getElementById('svgUnlocked');
+      if (svgL) svgL.style.display = posLocked ? 'none' : '';
+      if (svgU) svgU.style.display = posLocked ? '' : 'none';
     });
     // Color pickers
     buildColorGrid('pabColorsSL', function(col, opacity) { posSLColor = col; posSLOpacity = opacity; applyPosColors(); });
@@ -1217,9 +1222,14 @@
   // Override showActionBar to also show pos bar for position shapes
   var _origShowActionBar = showActionBar;
   showActionBar = function(s) {
-    _origShowActionBar(s);
-    if (s && s.type === 'position') showPosActionBar();
-    else hidePosActionBar();
+    if (s && s.type === 'position') {
+      // Position shapes: skip the generic drawActionBar, use posActionBar only
+      if (actionBar) actionBar.style.display = 'none';
+      showPosActionBar();
+    } else {
+      _origShowActionBar(s);
+      hidePosActionBar();
+    }
   };
   var _origHideActionBar = hideActionBar;
   hideActionBar = function() {

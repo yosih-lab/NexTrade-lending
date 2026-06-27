@@ -177,6 +177,24 @@
     .badge { font-size:.72rem; padding:.15rem .45rem; border-radius:4px; font-weight:600; }
     .badge.up { background:rgba(38,166,154,.15); color:var(--green); }
     .badge.down { background:rgba(239,83,80,.15); color:var(--red); }
+    /* Watchlist Management Panel */
+    .wl-mgr { padding:.6rem .5rem .3rem; flex-shrink:0; }
+    .wl-mgr-title { font-size:.75rem; font-weight:800; color:var(--text); letter-spacing:.5px; margin-bottom:.45rem; }
+    .wl-mgr-filters { display:flex; flex-direction:column; gap:.3rem; }
+    .wl-filter-inp {
+      width:100%; background:var(--surface2); border:1px solid var(--border);
+      border-radius:6px; padding:.3rem .5rem; color:var(--text); font-size:.74rem;
+      font-family:'Heebo',sans-serif; direction:rtl; box-sizing:border-box;
+    }
+    .wl-filter-inp:focus { outline:none; border-color:var(--accent); }
+    .wl-filter-sel {
+      width:100%; background:var(--surface2); border:1px solid var(--border);
+      border-radius:6px; padding:.28rem .4rem; color:var(--text); font-size:.72rem;
+      font-family:'Heebo',sans-serif; direction:rtl; cursor:pointer;
+    }
+    .wl-filter-sel:focus { outline:none; border-color:var(--accent); }
+    .wl-divider { height:1px; background:var(--border); margin:.5rem 0 .2rem; border:none; }
+    .wl-logo { border-radius:3px; object-fit:contain; flex-shrink:0; background:transparent; }
     .watch-item {
       display:flex;
       flex-direction:row;
@@ -869,12 +887,12 @@
     }
     #posActionBar.open { display:flex; }
     .pab-btn {
-      width:26px; height:26px; display:flex; align-items:center; justify-content:center;
-      background:#111; border:1px solid var(--border); border-radius:5px;
-      cursor:pointer; color:#fff; font-size:.8rem; transition:all .12s;
+      width:28px; height:28px; display:flex; align-items:center; justify-content:center;
+      background:#fff; border:1px solid #bbb; border-radius:5px;
+      cursor:pointer; color:#222; transition:all .12s;
     }
-    .pab-btn:hover { border-color:var(--accent); background:#1a1f2e; }
-    .pab-btn.active { background:rgba(41,98,255,.2); border-color:var(--accent); }
+    .pab-btn:hover { border-color:#888; background:#f0f0f0; }
+    .pab-btn.active { background:#dce8ff; border-color:#2962ff; color:#2962ff; }
     .pab-sep { width:1px; height:20px; background:var(--border); margin:0 2px; }
     /* Color picker panel (80 colors) */
     .pab-colors {
@@ -1199,9 +1217,26 @@
   </div>
   <div class="layout">
     <aside class="sidebar">
-      <div>
-        <ul id="watchlist" style="list-style:none;"></ul>
+      <!-- Watchlist Management Panel -->
+      <div class="wl-mgr">
+        <div class="wl-mgr-title">רשימות מעקב</div>
+        <div class="wl-mgr-filters">
+          <input type="text" id="wlSymFilter" class="wl-filter-inp" placeholder="סנן לפי סמל..." oninput="renderWatchlist()" autocomplete="off" />
+          <select id="wlPctFilter" class="wl-filter-sel" onchange="renderWatchlist()">
+            <option value="">כל השינויים</option>
+            <option value="up">עלייה בלבד &#9650;</option>
+            <option value="down">ירידה בלבד &#9660;</option>
+            <option value="1">+1% ומעלה</option>
+            <option value="-1">&#8722;1% ומטה</option>
+            <option value="3">+3% ומעלה</option>
+            <option value="-3">&#8722;3% ומטה</option>
+            <option value="5">+5% ומעלה</option>
+            <option value="-5">&#8722;5% ומטה</option>
+          </select>
+        </div>
+        <div class="wl-divider"></div>
       </div>
+      <ul id="watchlist" style="list-style:none;padding:0;margin:0;"></ul>
     </aside>
     <main class="main-area" style="position:relative">
 
@@ -1232,17 +1267,38 @@
         <div class="chart-wrap">
           <!-- Position action bar (trash, lock, color pickers) -->
           <div id="posActionBar">
-            <button class="pab-btn" id="pabTrash" title="מחק עסקה">🗑</button>
-            <button class="pab-btn" id="pabLock" title="נעל על המסך">🔒</button>
+            <button class="pab-btn" id="pabTrash" title="מחק עסקה">
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2.5 4h11M6 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4"/>
+                <path d="M5.5 4l.5 9.5h4l.5-9.5"/>
+                <line x1="7" y1="7" x2="7" y2="11"/><line x1="9" y1="7" x2="9" y2="11"/>
+              </svg>
+            </button>
+            <button class="pab-btn" id="pabLock" title="נעל על המסך">
+              <svg id="svgLocked" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                <rect x="3.5" y="7.5" width="9" height="7" rx="1.5"/>
+                <path d="M5.5 7.5V5a2.5 2.5 0 015 0v2.5"/>
+                <circle cx="8" cy="11" r="1" fill="currentColor" stroke="none"/>
+              </svg>
+              <svg id="svgUnlocked" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="display:none">
+                <rect x="3.5" y="7.5" width="9" height="7" rx="1.5"/>
+                <path d="M5.5 7.5V4.5a3.5 3.5 0 016 0"/>
+                <circle cx="8" cy="11" r="1" fill="currentColor" stroke="none"/>
+              </svg>
+            </button>
             <span class="pab-sep"></span>
             <button class="pab-btn" id="pabColorSL" title="צבע סטופ לוס" style="position:relative">
-              <span style="font-size:.7rem">🔻</span>
-              <div class="pab-line-sl" style="position:absolute;bottom:2px;left:3px;right:3px"></div>
+              <svg viewBox="0 0 14 14" width="14" height="14">
+                <rect x="1" y="4" width="12" height="6" rx="1.5" fill="#ef5350" opacity="0.85"/>
+                <line x1="1" y1="7" x2="13" y2="7" stroke="#ef5350" stroke-width="1.5"/>
+              </svg>
               <div class="pab-colors" id="pabColorsSL"></div>
             </button>
             <button class="pab-btn" id="pabColorTP" title="צבע יעד" style="position:relative">
-              <span style="font-size:.7rem">🔺</span>
-              <div class="pab-line-tp" style="position:absolute;bottom:2px;left:3px;right:3px"></div>
+              <svg viewBox="0 0 14 14" width="14" height="14">
+                <rect x="1" y="4" width="12" height="6" rx="1.5" fill="#26a69a" opacity="0.85"/>
+                <line x1="1" y1="7" x2="13" y2="7" stroke="#26a69a" stroke-width="1.5"/>
+              </svg>
               <div class="pab-colors" id="pabColorsTP"></div>
             </button>
           </div>
@@ -1278,9 +1334,9 @@
     </main>
   </div>
 </div>
-<script src="main.js?v=20260628-2"></script>
-<script src="drawing.js?v=20260628-2"></script>
-<script src="features.js?v=20260628-2"></script>
+<script src="main.js?v=20260628-3"></script>
+<script src="drawing.js?v=20260628-3"></script>
+<script src="features.js?v=20260628-3"></script>
 
 <!-- VERTICAL ICON TOOLBAR -->
 <div class="icon-toolbar" id="iconToolbar">

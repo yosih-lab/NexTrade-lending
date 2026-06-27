@@ -297,6 +297,30 @@ var volumeSeries    = null;
 var chartType       = 'candle';
 var volumeVisible   = true;
 var priceCache      = {};
+var logoCache       = {};
+
+function getStockLogo(sym) {
+  var clean = sym.replace('.TA','').toUpperCase();
+  if (logoCache[clean] !== undefined) return logoCache[clean];
+  var cached = localStorage.getItem('nt_logo_' + clean);
+  if (cached !== null) { logoCache[clean] = cached; return cached; }
+  return null; // not yet fetched
+}
+async function fetchStockLogoAsync(sym) {
+  var clean = sym.replace('.TA','').toUpperCase();
+  if (logoCache[clean] !== undefined) return;
+  logoCache[clean] = ''; // prevent double fetch
+  try {
+    var r = await fetch('https://api.twelvedata.com/logo?symbol=' + encodeURIComponent(clean) + '&apikey=c73725be3168443e88ac257aa9baa547');
+    var j = await r.json();
+    var url = (j && j.url) ? j.url : '';
+    logoCache[clean] = url;
+    if (url) localStorage.setItem('nt_logo_' + clean, url);
+    document.querySelectorAll('.wl-logo[data-sym="' + clean + '"]').forEach(function(img) {
+      if (url) { img.src = url; img.style.display = ''; }
+    });
+  } catch(e) { logoCache[clean] = ''; }
+}
 var candleCache     = {};   // candleCache[symbol][tf] = []
 var watchlist       = JSON.parse(localStorage.getItem('ml_watchlist') || '["TEVA.TA","ELBIT.TA","BEZQ.TA","POLI.TA","LUMI.TA","AZRG.TA"]');
 var portfolio       = JSON.parse(localStorage.getItem('ml_portfolio') || '[]');
@@ -1255,14 +1279,39 @@ document.addEventListener('click', function(e) {
 //   WATCHLIST
 // ============================================
 function renderWatchlist() {
+  var symFilter = ((document.getElementById('wlSymFilter') || {}).value || '').trim().toUpperCase();
+  var pctFilter = ((document.getElementById('wlPctFilter') || {}).value || '');
   var ul = document.getElementById('watchlist');
-  ul.innerHTML = watchlist.map(function(sym) {
+  var toShow = watchlist.filter(function(sym) {
+    if (symFilter && sym.replace('.TA','').indexOf(symFilter) === -1) return false;
+    if (pctFilter) {
+      var d = priceCache[sym];
+      if (d) {
+        var pct = d.changePct;
+        if (pctFilter === 'up' && pct < 0) return false;
+        if (pctFilter === 'down' && pct >= 0) return false;
+        var thresh = parseFloat(pctFilter);
+        if (!isNaN(thresh)) {
+          if (thresh > 0 && pct < thresh) return false;
+          if (thresh < 0 && pct > thresh) return false;
+        }
+      }
+    }
+    return true;
+  });
+  ul.innerHTML = toShow.map(function(sym) {
     var d   = priceCache[sym];
     var cls = d ? (d.change >= 0 ? 'up' : 'down') : '';
     var pct = d ? (d.change >= 0 ? '+' : '') + d.changePct.toFixed(2) + '%' : '';
     var name = (NAMES[sym] || (d && d.name) || sym).replace(/\s*\(.*?\)\s*/g, '').trim();
     var shortSym = sym.replace('.TA','');
+    var logoUrl = getStockLogo(sym);
+    if (logoUrl === null) fetchStockLogoAsync(sym);
+    var logoImg = '<img class="wl-logo" data-sym="' + shortSym + '" src="' + (logoUrl || '') + '"'
+      + (logoUrl ? '' : ' style="display:none"')
+      + ' width="18" height="18" onerror="this.style.display=\'none\'">';
     return '<li class="watch-item" onclick="selectSymbol(\'' + sym + '\')">'
+      + logoImg
       + '<div class="watch-main">'
       + '<span class="watch-sym">' + shortSym + '</span>'
       + '<span class="watch-name">' + name + '</span>'
