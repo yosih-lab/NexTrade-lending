@@ -868,98 +868,85 @@ var CTX_COLORS = [
   '#0891b2','#06b6d4','#67e8f9','#a5f3fc','#164e63','#155e75','#083344','#cffafe',
   '#059669','#10b981','#6ee7b7','#a7f3d0','#064e3b','#065f46','#022c22','#d1fae5'
 ];
-
 var _ctxBgSolid = '#0f1117';
 var _ctxBgGradTop = '#0f1117', _ctxBgGradBot = '#1a1f2e';
+var _ctxBgMode = 'solid';
 
 function initChartContextMenu() {
-  var menu   = document.getElementById('chartCtxMenu');
+  var menu    = document.getElementById('chartCtxMenu');
   var chartEl = document.getElementById('chart');
   if (!menu || !chartEl) return;
 
-  function applyBg(type) {
+  function applyBg() {
     if (!chartInstance) return;
-    if (type === 'solid') {
+    if (_ctxBgMode === 'solid') {
       chartInstance.applyOptions({ layout: { background: { type: 'solid', color: _ctxBgSolid } } });
     } else {
       chartInstance.applyOptions({ layout: { background: { type: 'gradient', topColor: _ctxBgGradTop, bottomColor: _ctxBgGradBot } } });
     }
   }
 
-  function activeTab() {
-    var t = menu.querySelector('.ctxm-tab.active');
-    return t ? t.getAttribute('data-tab') : 'solid';
-  }
-
-  function buildGrid(containerId, onPick) {
+  function buildSwatches(containerId, onPick) {
     var el = document.getElementById(containerId);
     if (!el) return;
     el.innerHTML = CTX_COLORS.map(function(c) {
-      return '<div class="ctxm-swatch" data-c="' + c + '" style="background:' + c + '" title="' + c + '"></div>';
+      return '<div class="ctxm-swatch" style="background:' + c + '" title="' + c + '"></div>';
     }).join('');
     el.querySelectorAll('.ctxm-swatch').forEach(function(sw) {
       sw.addEventListener('click', function(e) {
         e.stopPropagation();
         el.querySelectorAll('.ctxm-swatch').forEach(function(s) { s.classList.remove('selected'); });
         sw.classList.add('selected');
-        onPick(sw.getAttribute('data-c'));
+        onPick(sw.style.background);
       });
     });
   }
 
-  buildGrid('ctxSolidColors', function(col) {
-    _ctxBgSolid = col;
-    applyBg('solid');
+  buildSwatches('ctxSolidColors', function(col) {
+    _ctxBgSolid = col; _ctxBgMode = 'solid'; applyBg();
+  });
+  buildSwatches('ctxGradTopColors', function(col) {
+    _ctxBgGradTop = col; _ctxBgMode = 'gradient';
+    var d = document.getElementById('ctxGradTopDot'); if (d) d.style.background = col;
+    applyBg();
+  });
+  buildSwatches('ctxGradBotColors', function(col) {
+    _ctxBgGradBot = col; _ctxBgMode = 'gradient';
+    var d = document.getElementById('ctxGradBotDot'); if (d) d.style.background = col;
+    applyBg();
   });
 
-  buildGrid('ctxGradTopColors', function(col) {
-    _ctxBgGradTop = col;
-    var dot = document.getElementById('ctxGradTopDot');
-    if (dot) dot.style.background = col;
-    applyBg('gradient');
+  document.getElementById('ctxTabSolid').addEventListener('click', function(e) {
+    e.stopPropagation();
+    this.classList.add('active');
+    document.getElementById('ctxTabGrad').classList.remove('active');
+    document.getElementById('ctxSolidPanel').style.display = '';
+    document.getElementById('ctxGradPanel').style.display = 'none';
+    _ctxBgMode = 'solid';
+  });
+  document.getElementById('ctxTabGrad').addEventListener('click', function(e) {
+    e.stopPropagation();
+    this.classList.add('active');
+    document.getElementById('ctxTabSolid').classList.remove('active');
+    document.getElementById('ctxSolidPanel').style.display = 'none';
+    document.getElementById('ctxGradPanel').style.display = '';
+    _ctxBgMode = 'gradient';
   });
 
-  buildGrid('ctxGradBotColors', function(col) {
-    _ctxBgGradBot = col;
-    var dot = document.getElementById('ctxGradBotDot');
-    if (dot) dot.style.background = col;
-    applyBg('gradient');
-  });
-
-  // Tabs
-  menu.querySelectorAll('.ctxm-tab').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      menu.querySelectorAll('.ctxm-tab').forEach(function(b) { b.classList.remove('active'); });
-      btn.classList.add('active');
-      var tab = btn.getAttribute('data-tab');
-      document.getElementById('ctxSolidPanel').style.display = tab === 'solid' ? '' : 'none';
-      document.getElementById('ctxGradPanel').style.display  = tab === 'gradient' ? '' : 'none';
-    });
-  });
-
-  // Show on right-click over chart area
   chartEl.addEventListener('contextmenu', function(e) {
     e.preventDefault();
-    e.stopPropagation();
     var x = e.clientX, y = e.clientY;
-    menu.style.left = 'auto'; menu.style.right = 'auto';
-    menu.style.top  = 'auto'; menu.style.bottom = 'auto';
-    // Flip if near right/bottom edge
-    if (x + 260 > window.innerWidth)  { menu.style.right = (window.innerWidth  - x) + 'px'; }
-    else                               { menu.style.left  = x + 'px'; }
-    if (y + 400 > window.innerHeight)  { menu.style.bottom = (window.innerHeight - y) + 'px'; }
+    menu.style.left = ''; menu.style.right = '';
+    menu.style.top  = ''; menu.style.bottom = '';
+    if (x + 260 > window.innerWidth)  { menu.style.right  = (window.innerWidth  - x) + 'px'; }
+    else                               { menu.style.left   = x + 'px'; }
+    if (y + 420 > window.innerHeight) { menu.style.bottom = (window.innerHeight - y) + 'px'; }
     else                               { menu.style.top    = y + 'px'; }
     menu.classList.add('open');
   });
 
-  // Close on any click outside
-  document.addEventListener('click', function(e) {
-    if (!menu.contains(e.target)) menu.classList.remove('open');
-  });
-  document.addEventListener('contextmenu', function(e) {
-    if (!chartEl.contains(e.target) && !menu.contains(e.target)) menu.classList.remove('open');
-  });
+  document.addEventListener('click', function() { menu.classList.remove('open'); });
+  menu.addEventListener('click', function(e) { e.stopPropagation(); });
 }
   var legend = document.getElementById('chartLegend'); // kept for compat
   var ciOhlcv = document.getElementById('ciOhlcv');

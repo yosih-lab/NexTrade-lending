@@ -388,55 +388,24 @@
     .tv-lightweight-charts a[href*="tradingview.com"] { display:none !important; }
     /* ===== CHART CONTEXT MENU ===== */
     #chartCtxMenu {
-      position:fixed; z-index:9999;
+      position:fixed; z-index:9999; display:none;
       background:#050810; border:1px solid #1e2637;
       border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,.9);
-      min-width:240px; display:none; font-family:'Heebo',sans-serif;
-      overflow:hidden; direction:rtl;
+      min-width:250px; font-family:'Heebo',sans-serif; overflow:hidden; direction:rtl;
     }
     #chartCtxMenu.open { display:block; }
-    .ctxm-header {
-      padding:.5rem .85rem .35rem;
-      font-size:.72rem; font-weight:800; color:#8b9ab5;
-      text-transform:uppercase; letter-spacing:.8px;
-      border-bottom:1px solid #1e2637;
-    }
+    .ctxm-header { padding:.5rem .85rem .35rem; font-size:.72rem; font-weight:800; color:#8b9ab5; text-transform:uppercase; letter-spacing:.8px; border-bottom:1px solid #1e2637; }
     .ctxm-section { padding:.4rem 0; }
-    .ctxm-section + .ctxm-section { border-top:1px solid #1e2637; }
-    .ctxm-label {
-      display:flex; align-items:center; gap:.5rem;
-      padding:.38rem .85rem; font-size:.8rem; font-weight:700; color:#fff;
-      cursor:default;
-    }
-    .ctxm-tabs {
-      display:flex; margin:.25rem .7rem .4rem; gap:.3rem;
-    }
-    .ctxm-tab {
-      flex:1; padding:.26rem .4rem; font-size:.72rem; font-weight:700;
-      border-radius:6px; border:1px solid #1e2637; background:#0a0d16;
-      color:#8b9ab5; cursor:pointer; font-family:'Heebo',sans-serif;
-      transition:all .15s;
-    }
+    .ctxm-label { display:flex; align-items:center; gap:.5rem; padding:.38rem .85rem; font-size:.8rem; font-weight:700; color:#fff; cursor:default; }
+    .ctxm-tabs { display:flex; margin:.25rem .7rem .4rem; gap:.3rem; }
+    .ctxm-tab { flex:1; padding:.26rem .4rem; font-size:.72rem; font-weight:700; border-radius:6px; border:1px solid #1e2637; background:#0a0d16; color:#8b9ab5; cursor:pointer; font-family:'Heebo',sans-serif; transition:all .15s; }
     .ctxm-tab.active { background:#2962ff; border-color:#2962ff; color:#fff; }
-    .ctxm-colors {
-      display:flex; flex-wrap:wrap; gap:3px;
-      padding:.2rem .7rem .55rem;
-    }
-    .ctxm-swatch {
-      width:20px; height:20px; border-radius:4px;
-      border:1px solid rgba(255,255,255,.1); cursor:pointer;
-      transition:transform .1s, box-shadow .1s;
-    }
+    .ctxm-colors { display:flex; flex-wrap:wrap; gap:3px; padding:.2rem .7rem .55rem; }
+    .ctxm-swatch { width:20px; height:20px; border-radius:4px; border:1px solid rgba(255,255,255,.1); cursor:pointer; transition:transform .1s,box-shadow .1s; }
     .ctxm-swatch:hover { transform:scale(1.35); box-shadow:0 0 0 2px #fff; }
     .ctxm-swatch.selected { box-shadow:0 0 0 2px #2962ff; }
-    .ctxm-grad-row {
-      display:flex; align-items:center; gap:.5rem;
-      padding:.1rem .85rem; font-size:.7rem; color:#8b9ab5; font-weight:700;
-    }
-    .ctxm-grad-dot {
-      width:14px; height:14px; border-radius:3px; border:1px solid #333; flex-shrink:0;
-    }
-    .ctxm-grad-section { font-size:.68rem; color:#666; padding:.15rem .85rem 0; }
+    .ctxm-grad-row { display:flex; align-items:center; gap:.5rem; padding:.1rem .85rem; font-size:.7rem; color:#8b9ab5; font-weight:700; }
+    .ctxm-grad-dot { width:14px; height:14px; border-radius:3px; border:1px solid #333; flex-shrink:0; }
     /* MA INDICATOR PANEL */
     .ma-list { display:flex; flex-direction:column; padding:.35rem .45rem; gap:.18rem; }
     .ma-item { display:flex; align-items:center; gap:.55rem; padding:.32rem .5rem; border-radius:7px; cursor:default; }
@@ -1389,34 +1358,31 @@
     </main>
   </div>
 </div>
-<script src="main.js?v=20260629-3"></script>
-<script src="drawing.js?v=20260629-3"></script>
-<script src="features.js?v=20260629-3"></script>
+<script src="main.js?v=20260629-4"></script>
+<script src="drawing.js?v=20260629-4"></script>
+<script src="features.js?v=20260629-4"></script>
 
 <!-- CHART RIGHT-CLICK CONTEXT MENU -->
 <div id="chartCtxMenu">
   <div class="ctxm-header">הגדרות גרף</div>
   <div class="ctxm-section">
-    <div class="ctxm-label">
-      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="#8b9ab5" stroke-width="1.5"><rect x="1" y="1" width="14" height="14" rx="3"/><rect x="3" y="3" width="10" height="10" rx="2" fill="#8b9ab5" opacity=".25"/></svg>
-      Canvas
-    </div>
+    <div class="ctxm-label">Canvas — רקע</div>
     <div class="ctxm-tabs">
-      <button class="ctxm-tab active" data-tab="solid">צבע אחיד</button>
-      <button class="ctxm-tab" data-tab="gradient">Gradient</button>
+      <button class="ctxm-tab active" id="ctxTabSolid">צבע אחיד</button>
+      <button class="ctxm-tab" id="ctxTabGrad">Gradient</button>
     </div>
     <div id="ctxSolidPanel">
       <div class="ctxm-colors" id="ctxSolidColors"></div>
     </div>
     <div id="ctxGradPanel" style="display:none">
       <div class="ctxm-grad-row">
-        <span>צבע עליון</span>
         <div class="ctxm-grad-dot" id="ctxGradTopDot" style="background:#0f1117"></div>
+        <span>צבע עליון</span>
       </div>
       <div class="ctxm-colors" id="ctxGradTopColors"></div>
       <div class="ctxm-grad-row">
-        <span>צבע תחתון</span>
         <div class="ctxm-grad-dot" id="ctxGradBotDot" style="background:#1a1f2e"></div>
+        <span>צבע תחתון</span>
       </div>
       <div class="ctxm-colors" id="ctxGradBotColors"></div>
     </div>
