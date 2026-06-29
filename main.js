@@ -787,24 +787,28 @@ function initChart() {
 // ============================================
 var _priceMarginTop = 0.1, _priceMarginBottom = 0.1;
 function initPriceAxisScroll() {
-  var wrap = document.querySelector('.chart-wrap');
-  if (!wrap) return;
-  wrap.addEventListener('wheel', function(e) {
+  // Must use capture:true so we intercept BEFORE LightweightCharts' own handler
+  var chartEl = document.getElementById('chart');
+  if (!chartEl) return;
+  chartEl.addEventListener('wheel', function(e) {
     if (!chartInstance) return;
-    // Only intercept when hovering over the price axis (rightmost ~65px)
-    var rect = wrap.getBoundingClientRect();
+    var rect = chartEl.getBoundingClientRect();
     var xFromRight = rect.right - e.clientX;
-    if (xFromRight > 65) return; // outside price axis — let chart scroll normally
+    // Only activate when cursor is over the price axis (rightmost ~65px)
+    if (xFromRight > 65) return;
+    // Block LightweightCharts from also handling this event
     e.preventDefault();
-    e.stopPropagation();
-    var dir = e.deltaY > 0 ? 1 : -1; // scroll down = chart moves up = margins shift
-    var step = 0.025;
-    _priceMarginTop    = Math.max(0.01, Math.min(0.85, _priceMarginTop    + dir * step));
-    _priceMarginBottom = Math.max(0.01, Math.min(0.85, _priceMarginBottom - dir * step));
+    e.stopImmediatePropagation();
+    // Scroll UP (deltaY < 0) = zoom in (prices stretch) = shrink margins
+    // Scroll DOWN (deltaY > 0) = zoom out (prices compress) = grow margins
+    var dir = e.deltaY > 0 ? 1 : -1;
+    var step = 0.03;
+    _priceMarginTop    = Math.max(0.01, Math.min(0.88, _priceMarginTop    + dir * step));
+    _priceMarginBottom = Math.max(0.01, Math.min(0.88, _priceMarginBottom + dir * step));
     chartInstance.applyOptions({
       rightPriceScale: { scaleMargins: { top: _priceMarginTop, bottom: _priceMarginBottom } }
     });
-  }, { passive: false });
+  }, { passive: false, capture: true });
 }
 function updateLegend(param) {
   var legend = document.getElementById('chartLegend'); // kept for compat
