@@ -852,7 +852,115 @@ function initChartVerticalPan() {
 
   window.addEventListener('mouseup', function() { dragging = false; });
 }
-function updateLegend(param) {
+
+// ============================================
+//   CHART RIGHT-CLICK CONTEXT MENU
+// ============================================
+var CTX_COLORS = [
+  '#000000','#121212','#1a1a2e','#0f1117','#0d1b2a','#111827','#1f2937','#374151',
+  '#4b5563','#6b7280','#9ca3af','#d1d5db','#f3f4f6','#ffffff','#fafafa','#e5e7eb',
+  '#dc2626','#ef4444','#f87171','#fca5a5','#b91c1c','#7f1d1d','#991b1b','#450a0a',
+  '#d97706','#f59e0b','#fbbf24','#fcd34d','#92400e','#78350f','#451a03','#fde68a',
+  '#16a34a','#22c55e','#4ade80','#86efac','#14532d','#166534','#15803d','#dcfce7',
+  '#2563eb','#3b82f6','#60a5fa','#93c5fd','#1d4ed8','#1e40af','#1e3a8a','#dbeafe',
+  '#7c3aed','#8b5cf6','#a78bfa','#c4b5fd','#5b21b6','#4c1d95','#3b0764','#ede9fe',
+  '#db2777','#ec4899','#f472b6','#fbcfe8','#9d174d','#831843','#500724','#fce7f3',
+  '#0891b2','#06b6d4','#67e8f9','#a5f3fc','#164e63','#155e75','#083344','#cffafe',
+  '#059669','#10b981','#6ee7b7','#a7f3d0','#064e3b','#065f46','#022c22','#d1fae5'
+];
+
+var _ctxBgSolid = '#0f1117';
+var _ctxBgGradTop = '#0f1117', _ctxBgGradBot = '#1a1f2e';
+
+function initChartContextMenu() {
+  var menu   = document.getElementById('chartCtxMenu');
+  var chartEl = document.getElementById('chart');
+  if (!menu || !chartEl) return;
+
+  function applyBg(type) {
+    if (!chartInstance) return;
+    if (type === 'solid') {
+      chartInstance.applyOptions({ layout: { background: { type: 'solid', color: _ctxBgSolid } } });
+    } else {
+      chartInstance.applyOptions({ layout: { background: { type: 'gradient', topColor: _ctxBgGradTop, bottomColor: _ctxBgGradBot } } });
+    }
+  }
+
+  function activeTab() {
+    var t = menu.querySelector('.ctxm-tab.active');
+    return t ? t.getAttribute('data-tab') : 'solid';
+  }
+
+  function buildGrid(containerId, onPick) {
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = CTX_COLORS.map(function(c) {
+      return '<div class="ctxm-swatch" data-c="' + c + '" style="background:' + c + '" title="' + c + '"></div>';
+    }).join('');
+    el.querySelectorAll('.ctxm-swatch').forEach(function(sw) {
+      sw.addEventListener('click', function(e) {
+        e.stopPropagation();
+        el.querySelectorAll('.ctxm-swatch').forEach(function(s) { s.classList.remove('selected'); });
+        sw.classList.add('selected');
+        onPick(sw.getAttribute('data-c'));
+      });
+    });
+  }
+
+  buildGrid('ctxSolidColors', function(col) {
+    _ctxBgSolid = col;
+    applyBg('solid');
+  });
+
+  buildGrid('ctxGradTopColors', function(col) {
+    _ctxBgGradTop = col;
+    var dot = document.getElementById('ctxGradTopDot');
+    if (dot) dot.style.background = col;
+    applyBg('gradient');
+  });
+
+  buildGrid('ctxGradBotColors', function(col) {
+    _ctxBgGradBot = col;
+    var dot = document.getElementById('ctxGradBotDot');
+    if (dot) dot.style.background = col;
+    applyBg('gradient');
+  });
+
+  // Tabs
+  menu.querySelectorAll('.ctxm-tab').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      menu.querySelectorAll('.ctxm-tab').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      var tab = btn.getAttribute('data-tab');
+      document.getElementById('ctxSolidPanel').style.display = tab === 'solid' ? '' : 'none';
+      document.getElementById('ctxGradPanel').style.display  = tab === 'gradient' ? '' : 'none';
+    });
+  });
+
+  // Show on right-click over chart area
+  chartEl.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var x = e.clientX, y = e.clientY;
+    menu.style.left = 'auto'; menu.style.right = 'auto';
+    menu.style.top  = 'auto'; menu.style.bottom = 'auto';
+    // Flip if near right/bottom edge
+    if (x + 260 > window.innerWidth)  { menu.style.right = (window.innerWidth  - x) + 'px'; }
+    else                               { menu.style.left  = x + 'px'; }
+    if (y + 400 > window.innerHeight)  { menu.style.bottom = (window.innerHeight - y) + 'px'; }
+    else                               { menu.style.top    = y + 'px'; }
+    menu.classList.add('open');
+  });
+
+  // Close on any click outside
+  document.addEventListener('click', function(e) {
+    if (!menu.contains(e.target)) menu.classList.remove('open');
+  });
+  document.addEventListener('contextmenu', function(e) {
+    if (!chartEl.contains(e.target) && !menu.contains(e.target)) menu.classList.remove('open');
+  });
+}
   var legend = document.getElementById('chartLegend'); // kept for compat
   var ciOhlcv = document.getElementById('ciOhlcv');
   var ohlcvSep = document.querySelector('.ci-ohlcv-sep');
@@ -1591,6 +1699,7 @@ async function init() {
     initChart();
     initPriceAxisScroll();
     initChartVerticalPan();
+    initChartContextMenu();
     renderMAPanel();
     console.log('[NexTrade] Chart initialized.');
     
