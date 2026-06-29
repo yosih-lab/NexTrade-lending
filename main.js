@@ -810,6 +810,48 @@ function initPriceAxisScroll() {
     });
   }, { passive: false, capture: true });
 }
+
+// ============================================
+//   VERTICAL PAN — drag chart canvas up/down
+// ============================================
+function initChartVerticalPan() {
+  var chartEl = document.getElementById('chart');
+  if (!chartEl) return;
+  var dragging = false;
+  var lastY = 0;
+
+  chartEl.addEventListener('mousedown', function(e) {
+    if (e.button !== 0) return;
+    var rect = chartEl.getBoundingClientRect();
+    // Ignore clicks on the price axis itself
+    if (rect.right - e.clientX <= 65) return;
+    dragging = true;
+    lastY = e.clientY;
+  });
+
+  window.addEventListener('mousemove', function(e) {
+    if (!dragging || !chartInstance) return;
+    var dy = e.clientY - lastY;
+    lastY = e.clientY;
+    if (Math.abs(dy) < 0.5) return;
+    var h = chartEl.clientHeight || 600;
+    // dy > 0 = drag down = pan to lower prices: top grows, bottom shrinks
+    // dy < 0 = drag up   = pan to higher prices: top shrinks, bottom grows
+    var step = dy / h * 0.9;
+    var newTop    = Math.max(0.01, Math.min(0.93, _priceMarginTop    + step));
+    var newBottom = Math.max(0.01, Math.min(0.93, _priceMarginBottom - step));
+    // Guard: don't let top+bottom push content off screen entirely
+    if (newTop + newBottom < 0.97) {
+      _priceMarginTop    = newTop;
+      _priceMarginBottom = newBottom;
+      chartInstance.applyOptions({
+        rightPriceScale: { scaleMargins: { top: _priceMarginTop, bottom: _priceMarginBottom } }
+      });
+    }
+  });
+
+  window.addEventListener('mouseup', function() { dragging = false; });
+}
 function updateLegend(param) {
   var legend = document.getElementById('chartLegend'); // kept for compat
   var ciOhlcv = document.getElementById('ciOhlcv');
@@ -1548,6 +1590,7 @@ async function init() {
     console.log('[NexTrade] init() starting...');
     initChart();
     initPriceAxisScroll();
+    initChartVerticalPan();
     renderMAPanel();
     console.log('[NexTrade] Chart initialized.');
     
