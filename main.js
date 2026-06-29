@@ -732,6 +732,13 @@ function initChart() {
     handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: { time: true, price: true } },
   });
 
+  // Restore saved background preference
+  if (_ctxBgMode === 'solid') {
+    chartInstance.applyOptions({ layout: { background: { type: 'solid', color: _ctxBgSolid } } });
+  } else if (_ctxBgMode === 'gradient') {
+    chartInstance.applyOptions({ layout: { background: { type: 'gradient', topColor: _ctxBgGradTop, bottomColor: _ctxBgGradBot } } });
+  }
+
   lineSeries = chartInstance.addLineSeries({
     color: '#2962ff', lineWidth: 2,
     lastValueVisible: true, priceLineVisible: true,
@@ -871,6 +878,15 @@ var CTX_COLORS = [
 var _ctxBgSolid = '#0f1117';
 var _ctxBgGradTop = '#0f1117', _ctxBgGradBot = '#1a1f2e';
 var _ctxBgMode = 'solid';
+(function loadBgPref() {
+  try {
+    var s = JSON.parse(localStorage.getItem('nt_chartBg'));
+    if (s) { _ctxBgMode = s.mode || 'solid'; _ctxBgSolid = s.solid || '#0f1117'; _ctxBgGradTop = s.top || '#0f1117'; _ctxBgGradBot = s.bot || '#1a1f2e'; }
+  } catch(e) {}
+})();
+function _saveBgPref() {
+  localStorage.setItem('nt_chartBg', JSON.stringify({ mode: _ctxBgMode, solid: _ctxBgSolid, top: _ctxBgGradTop, bot: _ctxBgGradBot }));
+}
 
 function initChartContextMenu() {
   var menu    = document.getElementById('chartCtxMenu');
@@ -884,6 +900,7 @@ function initChartContextMenu() {
     } else {
       chartInstance.applyOptions({ layout: { background: { type: 'gradient', topColor: _ctxBgGradTop, bottomColor: _ctxBgGradBot } } });
     }
+    _saveBgPref();
   }
 
   function buildSwatches(containerId, onPick) {
