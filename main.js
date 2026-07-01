@@ -1572,17 +1572,94 @@ function removeFromPortfolio(i) {
 // ============================================
 //   ALERTS
 // ============================================
+// ============================================
+//   EMAILJS — email alerts
+// ============================================
+var EJS_KEY = 'nt_emailjs_cfg';
+var _ejsCfg = null;
+
+(function loadEJSConfig() {
+  try { _ejsCfg = JSON.parse(localStorage.getItem(EJS_KEY)) || null; } catch(e) {}
+  if (_ejsCfg && _ejsCfg.publicKey) {
+    try { emailjs.init({ publicKey: _ejsCfg.publicKey }); } catch(e) {}
+  }
+  updateEJSStatusUI();
+})();
+
+function updateEJSStatusUI() {
+  var el = document.getElementById('ejsStatus');
+  if (!el) return;
+  if (_ejsCfg && _ejsCfg.serviceId && _ejsCfg.templateId && _ejsCfg.publicKey) {
+    el.textContent = '✅ EmailJS מוגדר — מיילים ישלחו';
+    el.style.color = '#26a69a';
+  } else {
+    el.textContent = '⚠️ EmailJS לא מוגדר — מיילים לא ישלחו';
+    el.style.color = '#8b9ab5';
+  }
+}
+
+function toggleEmailJSForm() {
+  var f = document.getElementById('alertEmailJSForm');
+  if (!f) return;
+  var visible = f.style.display !== 'none';
+  f.style.display = visible ? 'none' : '';
+  if (!visible && _ejsCfg) {
+    if (_ejsCfg.serviceId)  document.getElementById('ejsServiceId').value  = _ejsCfg.serviceId;
+    if (_ejsCfg.templateId) document.getElementById('ejsTemplateId').value = _ejsCfg.templateId;
+    if (_ejsCfg.publicKey)  document.getElementById('ejsPublicKey').value  = _ejsCfg.publicKey;
+  }
+}
+
+function saveEmailJSConfig() {
+  var svc  = (document.getElementById('ejsServiceId').value  || '').trim();
+  var tmpl = (document.getElementById('ejsTemplateId').value || '').trim();
+  var key  = (document.getElementById('ejsPublicKey').value  || '').trim();
+  if (!svc || !tmpl || !key) { alert('נא למלא את כל שלושת השדות'); return; }
+  _ejsCfg = { serviceId: svc, templateId: tmpl, publicKey: key };
+  localStorage.setItem(EJS_KEY, JSON.stringify(_ejsCfg));
+  try { emailjs.init({ publicKey: key }); } catch(e) {}
+  updateEJSStatusUI();
+  document.getElementById('alertEmailJSForm').style.display = 'none';
+}
+
+var _alertFired = {};  // track already-sent alerts to avoid spam
+
+async function sendAlertEmail(a, currentPrice) {
+  if (!_ejsCfg || !_ejsCfg.serviceId || !a.email) return;
+  var fireKey = a.symbol + '_' + a.condition + '_' + a.price;
+  if (_alertFired[fireKey]) return; // already sent this session
+  _alertFired[fireKey] = true;
+  var condLabel = a.condition === 'above' ? 'עלה מעל' : 'ירד מתחת ל';
+  try {
+    await emailjs.send(_ejsCfg.serviceId, _ejsCfg.templateId, {
+      to_email:    a.email,
+      symbol:      a.symbol,
+      condition:   condLabel,
+      target:      formatPrice(a.price, a.symbol),
+      current:     formatPrice(currentPrice, a.symbol),
+      time:        new Date().toLocaleTimeString('he-IL', { timeZone: 'Asia/Jerusalem' }),
+    });
+    console.log('[NexTrade] Alert email sent for', a.symbol);
+  } catch(e) {
+    console.error('[NexTrade] EmailJS error:', e);
+    _alertFired[fireKey] = false; // allow retry
+  }
+}
+
 function renderAlerts() {
   var ul = document.getElementById('alertsList');
+  if (!ul) return;
   if (!alerts.length) { ul.innerHTML = ''; return; }
   ul.innerHTML = alerts.map(function(a, i) {
     var triggered = checkAlert(a);
     return '<li class="watch-item">'
-      + '<div><span class="watch-sym">' + a.symbol + '</span>'
+      + '<div style="flex:1;min-width:0">'
+      + '<span class="watch-sym">' + a.symbol + '</span>'
       + ' <span style="font-size:.72rem;color:var(--text-muted)">' + (a.condition === 'above' ? 'מעל' : 'מתחת') + ' ' + formatPrice(a.price) + '</span>'
-      + (triggered ? ' <span style="font-size:.68rem;background:rgba(245,166,35,.15);color:#f5a623;padding:.1rem .4rem;border-radius:4px;font-weight:700"> הופעל</span>' : '')
+      + (a.email ? '<div style="font-size:.64rem;color:var(--text-muted);margin-top:.1rem">✉️ ' + a.email + '</div>' : '')
+      + (triggered ? ' <span style="font-size:.68rem;background:rgba(245,166,35,.15);color:#f5a623;padding:.1rem .4rem;border-radius:4px;font-weight:700">הופעל</span>' : '')
       + '</div>'
-      + '<button class="remove-btn" onclick="removeAlert(' + i + ')"></button>'
+      + '<button class="watch-remove-btn" onclick="removeAlert(' + i + ')" style="visibility:visible">✕</button>'
       + '</li>';
   }).join('');
 }
@@ -1591,15 +1668,19 @@ function addAlert() {
   var sym   = document.getElementById('alertSymbol').value.trim().toUpperCase();
   var cond  = document.getElementById('alertCondition').value;
   var price = parseFloat(document.getElementById('alertPrice').value);
+  var email = (document.getElementById('alertEmail').value || '').trim().toLowerCase();
   if (!sym || !price) return;
-  alerts.push({ symbol: sym, condition: cond, price: price });
+  alerts.push({ symbol: sym, condition: cond, price: price, email: email || null });
   localStorage.setItem('ml_alerts', JSON.stringify(alerts));
   document.getElementById('alertSymbol').value = '';
   document.getElementById('alertPrice').value  = '';
+  document.getElementById('alertEmail').value  = '';
   renderAlerts();
 }
 
 function removeAlert(i) {
+  var a = alerts[i];
+  if (a) { var k = a.symbol + '_' + a.condition + '_' + a.price; delete _alertFired[k]; }
   alerts.splice(i, 1);
   localStorage.setItem('ml_alerts', JSON.stringify(alerts));
   renderAlerts();
@@ -1608,7 +1689,9 @@ function removeAlert(i) {
 function checkAlert(a) {
   var current = priceCache[a.symbol] && priceCache[a.symbol].price;
   if (!current) return false;
-  return (a.condition === 'above' && current > a.price) || (a.condition === 'below' && current < a.price);
+  var triggered = (a.condition === 'above' && current > a.price) || (a.condition === 'below' && current < a.price);
+  if (triggered) sendAlertEmail(a, current);
+  return triggered;
 }
 
 // ============================================
