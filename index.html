@@ -740,6 +740,7 @@
       white-space:nowrap; animation:pwaSlide .4s ease;
     }
     @keyframes pwaSlide { from{opacity:0;transform:translateX(-50%) translateY(20px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+    @keyframes bellPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.4)} }
     #pwaInstallBtn:hover { background:#1a4fd6; }
     /* ===== DRAWING / ANALYSIS TOOLS — permanent left panel ===== */
     #drawToolbar {
@@ -1402,13 +1403,10 @@
 <div class="icon-toolbar" id="iconToolbar">
   <button class="ib-hamburger active" id="ib-sidebar" onclick="ibToggleSidebar()" title="">
     <span></span><span></span><span></span>
-    <span class="ib-tip">Watchlist &middot; Details &middot; News</span>
+    <span class="ib-tip">Watchlist</span>
   </button>
   <!-- clock removed from toolbar, shown below chart -->
   <div class="ib-sep"></div>
-  <button class="ib" id="ib-tree"    onclick="ibToggle('tree')"    title="">
-    📂<span class="ib-tip">Object Tree</span>
-  </button>
   <button class="ib" id="ib-chat"    onclick="ibToggle('chat')"    title="">
     💬<span class="ib-tip">צ'אטים</span>
   </button>
@@ -1445,7 +1443,6 @@
 <!-- TOOLBAR PANELS -->
 <div id="ibPanel-tasks"   class="ib-panel"><div class="ib-panel-hdr"><span>🗒️ סרגל משימות</span><button class="ib-panel-close" onclick="ibClose('tasks')">&times;</button></div><div class="ib-panel-body"><div class="ib-panel-add-row"><input id="taskInput" placeholder="משימה חדשה..." onkeydown="if(event.key==='Enter')ibAddTask()" /><button class="btn btn-sm" onclick="ibAddTask()">הוסף</button></div><ul id="taskList" style="list-style:none;margin-top:.5rem"></ul></div></div>
 <div id="ibPanel-clock"   class="ib-panel"><div class="ib-panel-hdr"><span>🕐 שעון התראות</span><button class="ib-panel-close" onclick="ibClose('clock')">&times;</button></div><div class="ib-panel-body" id="ibClockBody"></div></div>
-<div id="ibPanel-tree"    class="ib-panel"><div class="ib-panel-hdr"><span>📂 Object Tree</span><button class="ib-panel-close" onclick="ibClose('tree')">&times;</button></div><div class="ib-panel-body" id="ibTreeBody"></div></div>
 <div id="ibPanel-chat"    class="ib-panel"><div class="ib-panel-hdr"><span>💬 צ'אט</span><button class="ib-panel-close" onclick="ibClose('chat')">&times;</button></div><div class="ib-panel-body"><div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:2rem 0">צ'אט בקרוב</div></div></div>
 <div id="ibPanel-scanner" class="ib-panel"><div class="ib-panel-hdr"><span>🔍 סורק חכם</span><button class="ib-panel-close" onclick="ibClose('scanner')">&times;</button></div><div class="ib-panel-body" id="ibScannerBody"><div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:1rem">לחץ רענן לסריקה</div><button class="btn btn-sm" style="width:100%;margin-top:.3rem" onclick="ibRunScanner2()">🔄 סרוק</button></div></div>
 <div id="ibPanel-indicators" class="ib-panel">
@@ -1573,10 +1570,26 @@ function ibToggleSidebar() {
   var isOpen = !sidebar.classList.contains('collapsed');
   sidebar.classList.toggle('collapsed', isOpen);
   btn.classList.toggle('active', !isOpen);
+  // Close all icon panels when opening sidebar
+  if (!isOpen) {
+    ['clock','chat','scanner','alerts','indicators','insights','risk','calendar','lab'].forEach(function(p) {
+      var el  = document.getElementById('ibPanel-' + p);
+      var b2  = document.getElementById('ib-' + p);
+      if (el) el.classList.remove('open');
+      if (b2) b2.classList.remove('active');
+    });
+  }
 }
 
 function ibToggle(name) {
-  ['clock','tree','chat','scanner','alerts','indicators','insights','risk','calendar','lab'].forEach(function(p) {
+  // Close sidebar when opening any panel
+  var sidebar = document.querySelector('aside.sidebar');
+  var sideBtn = document.getElementById('ib-sidebar');
+  if (sidebar && !sidebar.classList.contains('collapsed')) {
+    sidebar.classList.add('collapsed');
+    if (sideBtn) sideBtn.classList.remove('active');
+  }
+  ['clock','chat','scanner','alerts','indicators','insights','risk','calendar','lab'].forEach(function(p) {
     var el  = document.getElementById('ibPanel-' + p);
     var btn = document.getElementById('ib-' + p);
     if (p === name) {
@@ -1585,7 +1598,6 @@ function ibToggle(name) {
       if (btn) btn.classList.toggle('active', !isOpen);
       if (!isOpen) {
         if (p === 'clock')   ibRenderClock();
-        if (p === 'tree')    ibRenderTree();
         if (p === 'tasks')   ibRenderTasks();
         if (p === 'alerts')  ibRenderAlerts2();
         if (p === 'scanner') ibRunScanner2();
@@ -1725,14 +1737,13 @@ async function ibRunScanner2() {
 // ALERTS 2
 function ibRenderAlerts2() {
   var ul = document.getElementById('ibAlertList'); if (!ul) return;
+  var ibAlerts2 = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
   if (!ibAlerts2.length) { ul.innerHTML = '<li style="color:var(--text-muted);padding:.4rem 0">אין התראות</li>'; return; }
   ul.innerHTML = ibAlerts2.map(function(a, i) {
-    var d = (typeof priceCache !== 'undefined') ? priceCache[a.sym] : null;
-    var triggered = d && d.price >= a.price;
-    return '<li class="ib-alert-item' + (triggered?' triggered':'') + '">'
-      + '<span>' + a.sym.replace('.TA','') + ' ≥ ' + a.price + '</span>'
-      + (triggered ? '<span style="color:var(--green)">✓</span>'
-                   : '<span style="color:var(--text-muted)">' + (d ? d.price.toFixed(2) : '—') + '</span>')
+    var condText = a.condition === 'above' ? '▲ מעל' : '▼ מתחת';
+    return '<li class="ib-alert-item triggered">'
+      + '<span style="flex:1">' + a.sym.replace('.TA','') + ' ' + condText + ' ' + (typeof formatPrice==='function'? formatPrice(a.price) : a.price) + '</span>'
+      + '<span style="font-size:.68rem;color:var(--text-muted)">' + (a.time || '') + '</span>'
       + '<button class="ib-task-del" onclick="ibDelAlert2('+i+')">✕</button>'
       + '</li>';
   }).join('');
@@ -1749,6 +1760,7 @@ function ibAddAlert() {
   ibRenderAlerts2();
 }
 function ibDelAlert2(i) {
+  var ibAlerts2 = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
   ibAlerts2.splice(i, 1);
   localStorage.setItem('ib_alerts2', JSON.stringify(ibAlerts2));
   ibRenderAlerts2();

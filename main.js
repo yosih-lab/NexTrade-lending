@@ -1699,7 +1699,7 @@ async function sendAlertEmail(a, currentPrice) {
 function renderAlerts() {
   var ul = document.getElementById('alertsList');
   if (!ul) return;
-  if (!alerts.length) { ul.innerHTML = ''; return; }
+  if (!alerts.length) { ul.innerHTML = ''; drawAlertLines(); return; }
   ul.innerHTML = alerts.map(function(a, i) {
     var triggered = checkAlert(a);
     return '<li class="watch-item">'
@@ -1712,6 +1712,7 @@ function renderAlerts() {
       + '<button class="watch-remove-btn" onclick="removeAlert(' + i + ')" style="visibility:visible">✕</button>'
       + '</li>';
   }).join('');
+  drawAlertLines();
 }
 
 function addAlert() {
@@ -1740,8 +1741,170 @@ function checkAlert(a) {
   var current = priceCache[a.symbol] && priceCache[a.symbol].price;
   if (!current) return false;
   var triggered = (a.condition === 'above' && current > a.price) || (a.condition === 'below' && current < a.price);
-  if (triggered) sendAlertEmail(a, current);
+  if (triggered) {
+    sendAlertEmail(a, current);
+    // Add triggered alert to bell panel
+    addTriggeredToBell(a, current);
+  }
   return triggered;
+}
+
+function addTriggeredToBell(a, currentPrice) {
+  var key = a.symbol + '_' + a.condition + '_' + a.price;
+  // Check if already in bell panel
+  var ibAlerts2 = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
+  var exists = ibAlerts2.some(function(b) { return b.key === key; });
+  if (exists) return;
+  ibAlerts2.push({
+    sym: a.symbol,
+    price: a.price,
+    current: currentPrice,
+    condition: a.condition,
+    time: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
+    key: key
+  });
+  localStorage.setItem('ib_alerts2', JSON.stringify(ibAlerts2));
+  // Update global and UI
+  if (typeof window.ibAlerts2 !== 'undefined') window.ibAlerts2 = ibAlerts2;
+  if (typeof ibRenderAlerts2 === 'function') ibRenderAlerts2();
+  // Flash bell icon
+  var bellBtn = document.getElementById('ib-alerts');
+  if (bellBtn) {
+    bellBtn.style.animation = 'none';
+    bellBtn.offsetHeight; // reflow
+    bellBtn.style.animation = 'bellPulse 0.6s ease 3';
+  }
+}
+
+// ============================================
+//   ALERT LINES ON CHART
+// ============================================
+var _alertPriceLines = []; // { idx, priceLine, color }
+var _alertLineColors = ['#f5a623','#e91e63','#00bcd4','#8bc34a','#9c27b0','#ff5722','#03a9f4','#cddc39'];
+var _alertOverlayContainer = null;
+
+function getAlertLineColor(idx) {
+  return _alertLineColors[idx % _alertLineColors.length];
+}
+
+function drawAlertLines() {
+  // Remove old price lines
+  var series = candleSeries || lineSeries || barSeries;
+  if (!series) return;
+  _alertPriceLines.forEach(function(item) {
+    try { series.removePriceLine(item.priceLine); } catch(e) {}
+  });
+  _alertPriceLines = [];
+
+  // Draw price lines for alerts matching current symbol
+  var symbolAlerts = [];
+  alerts.forEach(function(a, i) {
+    if (a.symbol === currentSymbol) symbolAlerts.push({ alert: a, idx: i });
+  });
+
+  symbolAlerts.forEach(function(item, colorIdx) {
+    var color = getAlertLineColor(colorIdx);
+    var pl = series.createPriceLine({
+      price: item.alert.price,
+      color: color,
+      lineWidth: 2,
+      lineStyle: LightweightCharts.LineStyle.Dashed,
+      axisLabelVisible: true,
+      title: (item.alert.condition === 'above' ? '▲' : '▼') + ' ' + formatPrice(item.alert.price),
+    });
+    _alertPriceLines.push({ idx: item.idx, priceLine: pl, color: color });
+  });
+
+  // Update overlay icons
+  updateAlertOverlays();
+}
+
+function updateAlertOverlays() {
+  if (!_alertOverlayContainer) {
+    _alertOverlayContainer = document.createElement('div');
+    _alertOverlayContainer.id = 'alertLinesOverlay';
+    _alertOverlayContainer.style.cssText = 'position:absolute;top:0;left:0;right:65px;bottom:0;pointer-events:none;z-index:20;overflow:hidden;';
+    var chartEl = document.getElementById('chart');
+    if (chartEl) {
+      chartEl.style.position = 'relative';
+      chartEl.appendChild(_alertOverlayContainer);
+    }
+  }
+  _alertOverlayContainer.innerHTML = '';
+
+  var series = candleSeries || lineSeries || barSeries;
+  if (!series || !chartInstance) return;
+
+  _alertPriceLines.forEach(function(item) {
+    var a = alerts[item.idx];
+    if (!a) return;
+    var y = series.priceToCoordinate(a.price);
+    if (y === null || y === undefined) return;
+
+    var row = document.createElement('div');
+    row.className = 'alert-line-icons';
+    row.style.cssText = 'position:absolute;left:8px;top:' + (y - 12) + 'px;pointer-events:auto;display:flex;gap:4px;align-items:center;cursor:ns-resize;';
+    row.dataset.alertIdx = item.idx;
+
+    // Clock icon
+    var clock = document.createElement('span');
+    clock.textContent = '⏰';
+    clock.style.cssText = 'font-size:14px;opacity:0.9;';
+    clock.title = 'התראה פעילה';
+    row.appendChild(clock);
+
+    // Trash icon
+    var trash = document.createElement('span');
+    trash.textContent = '🗑️';
+    trash.style.cssText = 'font-size:14px;opacity:0.9;cursor:pointer;';
+    trash.title = 'מחק התראה';
+    trash.onclick = function(e) {
+      e.stopPropagation();
+      removeAlert(item.idx);
+      drawAlertLines();
+    };
+    row.appendChild(trash);
+
+    // Drag to move alert line
+    row.onmousedown = function(e) {
+      if (e.target === trash) return;
+      e.preventDefault();
+      var startY = e.clientY;
+      var startPrice = a.price;
+      var chartEl = document.getElementById('chart');
+      var rect = chartEl.getBoundingClientRect();
+
+      function onMove(ev) {
+        var localY = ev.clientY - rect.top;
+        var newPrice = series.coordinateToPrice(localY);
+        if (newPrice !== null && newPrice > 0) {
+          a.price = Math.round(newPrice * 100) / 100;
+          localStorage.setItem('ml_alerts', JSON.stringify(alerts));
+          drawAlertLines();
+          renderAlerts();
+        }
+      }
+      function onUp() {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    };
+
+    _alertOverlayContainer.appendChild(row);
+  });
+}
+
+// Re-position overlays on crosshair/scale changes
+function initAlertLineUpdater() {
+  if (!chartInstance) return;
+  chartInstance.subscribeCrosshairMove(function() {
+    if (_alertPriceLines.length) updateAlertOverlays();
+  });
+  chartInstance.timeScale().subscribeVisibleLogicalRangeChange(function() {
+    if (_alertPriceLines.length) updateAlertOverlays();
+  });
 }
 
 // ============================================
@@ -1836,6 +1999,7 @@ async function init() {
     initPriceAxisScroll();
     initChartVerticalPan();
     initChartContextMenu();
+    initAlertLineUpdater();
     renderMAPanel();
     console.log('[NexTrade] Chart initialized.');
     
