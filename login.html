@@ -153,11 +153,16 @@
 
   <div id="msg" class="msg"></div>
 
-  <div class="server-note">⚠️ נדרש שרת NexTrade פעיל. הגדר <code>NEXT_API</code> בקוד.</div>
+  <div id="serverNote" style="margin-top:1rem;font-size:.72rem;color:#8899aa;padding:.5rem .7rem;background:#0f1420;border-radius:6px;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
+    <span id="serverDot" style="font-size:10px">⏳</span>
+    <span id="serverNoteText">בודק חיבור לשרת...</span>
+    <span style="flex:1"></span>
+    <input id="apiBaseInput" placeholder="כתובת שרת" style="background:#04060c;border:1px solid #1e2637;border-radius:4px;color:#fff;padding:.2rem .5rem;font-size:.72rem;font-family:Heebo,sans-serif;width:180px;outline:none"/>
+    <button onclick="saveApiBase()" style="background:#1e2637;border:none;border-radius:4px;color:#fff;padding:.2rem .5rem;font-size:.72rem;cursor:pointer;font-family:Heebo,sans-serif">שמור</button>
+  </div>
 </div>
 
 <script>
-  // ← כתובת השרת (לשנות לכתובת האמיתית לאחר פריסה)
   var API_BASE = localStorage.getItem('nt_api_base') || 'http://localhost:3000';
 
   function switchTab(t) {
@@ -215,6 +220,36 @@
     } catch(e2) {
       setMsg('❌ לא ניתן להתחבר לשרת: ' + e2.message, 'err');
     }
+  }
+
+  // Server connectivity check
+  document.getElementById('apiBaseInput').value = API_BASE;
+  (async function checkServer() {
+    var dot  = document.getElementById('serverDot');
+    var note = document.getElementById('serverNoteText');
+    try {
+      var r = await fetch(API_BASE + '/', { cache: 'no-store' });
+      if (r.ok) {
+        dot.textContent  = '🟢';
+        note.textContent = 'שרת מחובר — ' + API_BASE;
+        note.style.color = '#26a69a';
+      } else { throw new Error('status ' + r.status); }
+    } catch(e) {
+      dot.textContent  = '🔴';
+      note.textContent = 'שרת לא נגיש — הפעל npm start בתיקיית server/';
+      note.style.color = '#ef5350';
+    }
+  })();
+
+  function saveApiBase() {
+    var val = (document.getElementById('apiBaseInput').value || '').trim().replace(/\/$/, '');
+    if (!val) return;
+    localStorage.setItem('nt_api_base', val);
+    API_BASE = val;
+    document.getElementById('serverDot').textContent = '⏳';
+    document.getElementById('serverNoteText').textContent = 'בודק...';
+    document.getElementById('serverNoteText').style.color = '#8899aa';
+    setTimeout(checkServer, 100);
   }
 
   // If already logged in, go straight to app
