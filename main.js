@@ -941,11 +941,18 @@ function initChartContextMenu() {
   chartEl.addEventListener('contextmenu', function(e) {
     e.preventDefault();
     var x = e.clientX, y = e.clientY;
+    // Reset positioning
     menu.style.left = ''; menu.style.right = ''; menu.style.top = ''; menu.style.bottom = '';
-    if (x + 260 > window.innerWidth) menu.style.right = (window.innerWidth - x) + 'px';
-    else menu.style.left = x + 'px';
-    if (y + 420 > window.innerHeight) menu.style.bottom = (window.innerHeight - y) + 'px';
-    else menu.style.top = y + 'px';
+    // Show temporarily to measure height
+    menu.style.visibility = 'hidden'; menu.classList.add('open');
+    var mw = menu.offsetWidth  || 190;
+    var mh = menu.offsetHeight || 300;
+    menu.classList.remove('open'); menu.style.visibility = '';
+    // Position exactly at click point, flip if near edge
+    if (x + mw + 4 > window.innerWidth)  menu.style.left = (x - mw) + 'px';
+    else                                   menu.style.left = x + 'px';
+    if (y + mh + 4 > window.innerHeight)  menu.style.top  = (y - mh) + 'px';
+    else                                   menu.style.top  = y + 'px';
     menu.classList.add('open');
   });
 
