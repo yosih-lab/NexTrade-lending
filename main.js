@@ -941,6 +941,28 @@ function initChartContextMenu() {
   chartEl.addEventListener('contextmenu', function(e) {
     e.preventDefault();
     var x = e.clientX, y = e.clientY;
+    // Calculate price at cursor Y position
+    var priceAtCursor = null;
+    try {
+      var rect = chartEl.getBoundingClientRect();
+      var localY = e.clientY - rect.top;
+      if (candleSeries) priceAtCursor = candleSeries.coordinateToPrice(localY);
+      else if (lineSeries) priceAtCursor = lineSeries.coordinateToPrice(localY);
+    } catch(err) {}
+    // Update alert section
+    var priceLabel = document.getElementById('ctxAlertPrice');
+    var priceInput = document.getElementById('ctxAlertPriceInp');
+    if (priceAtCursor != null && isFinite(priceAtCursor)) {
+      var rounded = parseFloat(priceAtCursor.toFixed(2));
+      if (priceLabel) priceLabel.textContent = formatPrice(rounded);
+      if (priceInput) priceInput.value = rounded;
+    } else {
+      if (priceLabel) priceLabel.textContent = '';
+      if (priceInput && priceInput.value === '') priceInput.value = '';
+    }
+    // Hide inline form on new open
+    var ctxForm = document.getElementById('ctxAlertForm');
+    if (ctxForm) ctxForm.style.display = 'none';
     // Reset positioning
     menu.style.left = ''; menu.style.right = ''; menu.style.top = ''; menu.style.bottom = '';
     // Show temporarily to measure height
@@ -955,6 +977,16 @@ function initChartContextMenu() {
     else                                   menu.style.top  = y + 'px';
     menu.classList.add('open');
   });
+
+  // Alert button in context menu — toggle inline form
+  var ctxAlertBtn = document.getElementById('ctxAlertBtn');
+  if (ctxAlertBtn) {
+    ctxAlertBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var f = document.getElementById('ctxAlertForm');
+      if (f) f.style.display = f.style.display === 'none' ? '' : 'none';
+    });
+  }
 
   document.addEventListener('click', function() { menu.classList.remove('open'); });
   menu.addEventListener('click', function(e) { e.stopPropagation(); });
@@ -1620,6 +1652,24 @@ function saveEmailJSConfig() {
   try { emailjs.init({ publicKey: key }); } catch(e) {}
   updateEJSStatusUI();
   document.getElementById('alertEmailJSForm').style.display = 'none';
+}
+
+function ctxAddAlert() {
+  var price = parseFloat(document.getElementById('ctxAlertPriceInp').value);
+  var cond  = document.getElementById('ctxAlertCond').value;
+  var email = (document.getElementById('ctxAlertEmail').value || '').trim().toLowerCase();
+  var sym   = currentSymbol;
+  if (!sym || !price || isNaN(price)) return;
+  alerts.push({ symbol: sym, condition: cond, price: price, email: email || null });
+  localStorage.setItem('ml_alerts', JSON.stringify(alerts));
+  renderAlerts();
+  // Close menu and show quick confirmation
+  document.getElementById('chartCtxMenu').classList.remove('open');
+  var banner = document.createElement('div');
+  banner.textContent = '✅ התראה נוספה: ' + sym + ' ' + (cond === 'above' ? 'מעל' : 'מתחת') + ' ' + formatPrice(price);
+  banner.style.cssText = 'position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#0a3020;border:1px solid #26a69a;color:#26a69a;padding:.4rem 1rem;border-radius:8px;font-size:.78rem;z-index:9999;font-family:Heebo,sans-serif;';
+  document.body.appendChild(banner);
+  setTimeout(function() { banner.remove(); }, 2500);
 }
 
 var _alertFired = {};  // track already-sent alerts to avoid spam

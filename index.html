@@ -1356,14 +1356,33 @@
     </main>
   </div>
 </div>
-<script src="main.js?v=20260701-1"></script>
-<script src="drawing.js?v=20260701-1"></script>
-<script src="features.js?v=20260701-1"></script>
+<script src="main.js?v=20260701-2"></script>
+<script src="drawing.js?v=20260701-2"></script>
+<script src="features.js?v=20260701-2"></script>
 
 <!-- CHART RIGHT-CLICK CONTEXT MENU -->
 <div id="chartCtxMenu">
-  <div class="ctxm-header">הגדרות גרף</div>
-  <div class="ctxm-label">Canvas — רקע</div>
+  <!-- ALERT SECTION (top) -->
+  <div id="ctxAlertSection" style="border-bottom:1px solid #1e2637;padding:.3rem 0;">
+    <div class="ctxm-label" id="ctxAlertBtn" style="cursor:pointer;gap:.45rem;">
+      <svg viewBox="0 0 18 18" width="14" height="14" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"><path d="M9 2a5 5 0 015 5c0 3 1 4 1.5 5H2.5C3 12 4 11 4 7a5 5 0 015-5zM7.5 15a1.5 1.5 0 003 0"/></svg>
+      <span>הגדר התראה</span>
+      <span id="ctxAlertPrice" style="margin-right:auto;font-size:.72rem;color:#f5a623;font-weight:800;"></span>
+    </div>
+    <div id="ctxAlertForm" style="display:none;padding:.25rem .75rem .4rem;">
+      <div style="display:flex;gap:.3rem;align-items:center;margin-bottom:.3rem;">
+        <select id="ctxAlertCond" style="flex:1;background:#0a0d16;border:1px solid #1e2637;border-radius:5px;color:#fff;font-size:.7rem;padding:.22rem .3rem;font-family:'Heebo',sans-serif;">
+          <option value="above">מעל</option>
+          <option value="below">מתחת</option>
+        </select>
+        <input id="ctxAlertPriceInp" type="number" step="any" placeholder="מחיר" style="flex:1.2;background:#0a0d16;border:1px solid #1e2637;border-radius:5px;color:#fff;font-size:.7rem;padding:.22rem .35rem;font-family:'Heebo',sans-serif;" />
+      </div>
+      <input id="ctxAlertEmail" type="email" placeholder="מייל (אופציונלי)" style="width:100%;background:#0a0d16;border:1px solid #1e2637;border-radius:5px;color:#fff;font-size:.68rem;padding:.22rem .35rem;margin-bottom:.3rem;box-sizing:border-box;font-family:'Heebo',sans-serif;" />
+      <button onclick="ctxAddAlert()" style="width:100%;background:#2962ff;border:none;border-radius:5px;color:#fff;font-size:.72rem;font-weight:700;padding:.26rem;cursor:pointer;font-family:'Heebo',sans-serif;">הוסף התראה</button>
+    </div>
+  </div>
+  <!-- CANVAS SECTION -->
+  <div class="ctxm-header">רקע גרף</div>
   <div class="ctxm-tabs">
     <button class="ctxm-tab active" id="ctxTabSolid">צבע אחיד</button>
     <button class="ctxm-tab" id="ctxTabGrad">Gradient</button>
