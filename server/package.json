@@ -1,7 +1,7 @@
 ﻿{
   "name": "nextrade-proxy",
   "version": "1.0.0",
-  "description": "NexTrade API proxy server — hides TwelveData key, caches scanner results",
+  "description": "NexTrade API proxy server — hides TwelveData key, caches scanner results, user auth",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -10,6 +10,8 @@
     "node": ">=18"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "bcryptjs": "^2.4.3",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2"
   }
 }

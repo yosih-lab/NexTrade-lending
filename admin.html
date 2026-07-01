@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>NexTrade — Back Office</title>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;900&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Heebo,sans-serif;background:#04060c;color:#fff;min-height:100vh;direction:rtl;padding:0 0 3rem}
+    header{
+      background:#0a0d16;
+      border-bottom:1px solid #1e2637;
+      padding:.8rem 2rem;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .logo{font-size:1.2rem;font-weight:900;color:#2962ff;letter-spacing:2px;}
+    .hdr-right{display:flex;align-items:center;gap:1rem;font-size:.82rem;color:#8899aa;}
+    .btn{
+      padding:.4rem .9rem;
+      border-radius:6px;
+      border:1px solid #1e2637;
+      background:#0f1420;
+      color:#fff;
+      font-family:Heebo,sans-serif;
+      font-size:.8rem;
+      cursor:pointer;
+      transition:background .2s;
+    }
+    .btn:hover{background:#1e2637;}
+    .btn-danger{border-color:#ef5350;color:#ef5350;}
+    .btn-danger:hover{background:rgba(239,83,80,.12);}
+    .btn-primary{background:#2962ff;border-color:#2962ff;color:#fff;}
+    .btn-primary:hover{background:#1a4fd6;}
+    .container{max-width:900px;margin:2rem auto;padding:0 1.2rem;}
+    h1{font-size:1.3rem;font-weight:900;margin-bottom:.3rem;}
+    .stats{
+      display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;
+    }
+    .stat-card{
+      background:#0a0d16;
+      border:1px solid #1e2637;
+      border-radius:10px;
+      padding:.9rem 1.2rem;
+      min-width:130px;
+    }
+    .stat-val{font-size:1.6rem;font-weight:900;color:#2962ff;}
+    .stat-lbl{font-size:.72rem;color:#8899aa;margin-top:.1rem;}
+    table{width:100%;border-collapse:collapse;background:#0a0d16;border:1px solid #1e2637;border-radius:10px;overflow:hidden;}
+    th{background:#0f1420;padding:.7rem 1rem;text-align:right;font-size:.78rem;color:#8899aa;font-weight:700;border-bottom:1px solid #1e2637;}
+    td{padding:.7rem 1rem;font-size:.82rem;border-bottom:1px solid #0f1420;}
+    tr:last-child td{border-bottom:none;}
+    tr:hover td{background:#0f1420;}
+    .badge{
+      display:inline-block;
+      padding:.15rem .55rem;
+      border-radius:4px;
+      font-size:.7rem;
+      font-weight:700;
+    }
+    .badge-admin{background:rgba(41,98,255,.2);color:#2962ff;}
+    .badge-user{background:rgba(136,153,170,.1);color:#8899aa;}
+    .msg{
+      padding:.5rem .9rem;
+      border-radius:8px;
+      font-size:.82rem;
+      margin-bottom:1rem;
+      display:none;
+    }
+    .msg.ok{background:rgba(38,166,154,.15);border:1px solid #26a69a;color:#26a69a;display:block;}
+    .msg.err{background:rgba(239,83,80,.12);border:1px solid #ef5350;color:#ef5350;display:block;}
+    .server-cfg{
+      background:#0a0d16;
+      border:1px solid #1e2637;
+      border-radius:10px;
+      padding:1rem 1.2rem;
+      margin-bottom:1.5rem;
+      font-size:.82rem;
+    }
+    .server-cfg label{color:#8899aa;font-size:.75rem;display:block;margin-bottom:.3rem;}
+    .server-cfg input{
+      background:#0f1420;border:1px solid #1e2637;border-radius:6px;
+      color:#fff;padding:.4rem .7rem;font-family:Heebo,sans-serif;
+      font-size:.82rem;width:320px;outline:none;
+    }
+    .server-cfg input:focus{border-color:#2962ff;}
+    #loading{text-align:center;padding:2rem;color:#8899aa;}
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">NexTrade Admin</div>
+  <div class="hdr-right">
+    <span id="adminUsername"></span>
+    <button class="btn" onclick="goApp()">⬅ חזרה לאפליקציה</button>
+    <button class="btn btn-danger" onclick="doLogout()">יציאה</button>
+  </div>
+</header>
+
+<div class="container">
+  <h1 style="margin-bottom:1.5rem">⚙️ Back Office — ניהול משתמשים</h1>
+
+  <!-- Server URL config -->
+  <div class="server-cfg">
+    <label>כתובת שרת NexTrade</label>
+    <input id="apiBaseInput" placeholder="http://localhost:3000"/>
+    <button class="btn btn-primary" onclick="saveApiBase()" style="margin-right:.5rem;margin-top:0">שמור וטען</button>
+    <span style="color:#8899aa;font-size:.72rem;margin-right:.5rem">שנה לכתובת השרת שלך לאחר פריסה</span>
+  </div>
+
+  <div id="msg" class="msg"></div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card"><div class="stat-val" id="statCount">—</div><div class="stat-lbl">משתמשים רשומים</div></div>
+    <div class="stat-card"><div class="stat-val" id="statMax">20</div><div class="stat-lbl">מקסימום משתמשים</div></div>
+    <div class="stat-card"><div class="stat-val" id="statAdmins">—</div><div class="stat-lbl">מנהלי מערכת</div></div>
+  </div>
+
+  <div id="loading">טוען נתונים...</div>
+
+  <table id="usersTable" style="display:none">
+    <thead>
+      <tr>
+        <th>שם משתמש</th>
+        <th>אימייל</th>
+        <th>תפקיד</th>
+        <th>נרשם</th>
+        <th>פעולות</th>
+      </tr>
+    </thead>
+    <tbody id="usersBody"></tbody>
+  </table>
+</div>
+
+<script>
+var API_BASE = localStorage.getItem('nt_api_base') || 'http://localhost:3000';
+var token    = localStorage.getItem('nt_token');
+var me       = JSON.parse(localStorage.getItem('nt_user') || '{}');
+
+// Check admin access
+if (!token || me.role !== 'admin') {
+  alert('גישה לאדמין בלבד. יש להיות מחובר כמנהל מערכת.');
+  window.location.href = 'login.html';
+}
+
+document.getElementById('adminUsername').textContent = me.username || '';
+document.getElementById('apiBaseInput').value = API_BASE;
+
+function setMsg(text, type) {
+  var el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = 'msg ' + (type || '');
+  if (!type) el.style.display = 'none';
+}
+
+function saveApiBase() {
+  var val = document.getElementById('apiBaseInput').value.trim().replace(/\/$/, '');
+  if (!val) return;
+  localStorage.setItem('nt_api_base', val);
+  API_BASE = val;
+  loadUsers();
+}
+
+function goApp()    { window.location.href = 'index.html'; }
+function doLogout() {
+  localStorage.removeItem('nt_token');
+  localStorage.removeItem('nt_user');
+  window.location.href = 'login.html';
+}
+
+async function loadUsers() {
+  document.getElementById('loading').style.display = '';
+  document.getElementById('usersTable').style.display = 'none';
+  setMsg('','');
+  try {
+    var r = await fetch(API_BASE + '/api/admin/users', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (r.status === 401 || r.status === 403) {
+      setMsg('אין הרשאה. יש להתחבר כמנהל.', 'err');
+      document.getElementById('loading').style.display = 'none';
+      return;
+    }
+    var data = await r.json();
+    if (!r.ok) { setMsg(data.error || 'שגיאה', 'err'); document.getElementById('loading').style.display = 'none'; return; }
+    renderUsers(data);
+  } catch(e) {
+    setMsg('❌ לא ניתן להתחבר לשרת: ' + e.message + '. בדוק שהשרת פועל.', 'err');
+    document.getElementById('loading').style.display = 'none';
+  }
+}
+
+function renderUsers(data) {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('statCount').textContent  = data.count;
+  document.getElementById('statMax').textContent    = data.max;
+  document.getElementById('statAdmins').textContent = data.users.filter(function(u){return u.role==='admin';}).length;
+
+  var tbody = document.getElementById('usersBody');
+  tbody.innerHTML = data.users.map(function(u) {
+    var badge = u.role === 'admin'
+      ? '<span class="badge badge-admin">מנהל</span>'
+      : '<span class="badge badge-user">משתמש</span>';
+    var date  = u.createdAt ? new Date(u.createdAt).toLocaleDateString('he-IL') : '—';
+    var toggleRole = u.role === 'admin'
+      ? '<button class="btn" onclick="changeRole(' + u.id + ',\'user\')">הורד למשתמש</button>'
+      : '<button class="btn" onclick="changeRole(' + u.id + ',\'admin\')">העלה למנהל</button>';
+    return '<tr>'
+      + '<td style="font-weight:700">' + u.username + '</td>'
+      + '<td style="color:#8899aa">' + u.email + '</td>'
+      + '<td>' + badge + '</td>'
+      + '<td style="color:#8899aa">' + date + '</td>'
+      + '<td><div style="display:flex;gap:.5rem">' + toggleRole
+      + '<button class="btn btn-danger" onclick="deleteUser(' + u.id + ',\'' + u.username + '\')">מחק</button>'
+      + '</div></td>'
+      + '</tr>';
+  }).join('');
+  document.getElementById('usersTable').style.display = '';
+}
+
+async function deleteUser(id, name) {
+  if (!confirm('למחוק את המשתמש "' + name + '"?')) return;
+  try {
+    var r = await fetch(API_BASE + '/api/admin/users/' + id, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    var data = await r.json();
+    if (!r.ok) { setMsg(data.error || 'שגיאה', 'err'); return; }
+    setMsg('✅ המשתמש נמחק', 'ok');
+    loadUsers();
+  } catch(e) { setMsg('❌ ' + e.message, 'err'); }
+}
+
+async function changeRole(id, role) {
+  try {
+    var r = await fetch(API_BASE + '/api/admin/users/' + id, {
+      method: 'PATCH',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: role })
+    });
+    var data = await r.json();
+    if (!r.ok) { setMsg(data.error || 'שגיאה', 'err'); return; }
+    setMsg('✅ תפקיד עודכן', 'ok');
+    loadUsers();
+  } catch(e) { setMsg('❌ ' + e.message, 'err'); }
+}
+
+loadUsers();
+</script>
+</body>
+</html>

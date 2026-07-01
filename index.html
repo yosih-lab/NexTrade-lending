@@ -1738,12 +1738,16 @@ async function ibRunScanner2() {
 function ibRenderAlerts2() {
   var ul = document.getElementById('ibAlertList'); if (!ul) return;
   var ibAlerts2 = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
-  if (!ibAlerts2.length) { ul.innerHTML = '<li style="color:var(--text-muted);padding:.4rem 0">אין התראות</li>'; return; }
+  if (!ibAlerts2.length) { ul.innerHTML = '<li style="color:var(--text-muted);padding:.4rem 0;font-size:.78rem">אין התראות</li>'; return; }
   ul.innerHTML = ibAlerts2.map(function(a, i) {
-    var condText = a.condition === 'above' ? '▲ מעל' : '▼ מתחת';
-    return '<li class="ib-alert-item triggered">'
-      + '<span style="flex:1">' + a.sym.replace('.TA','') + ' ' + condText + ' ' + (typeof formatPrice==='function'? formatPrice(a.price) : a.price) + '</span>'
-      + '<span style="font-size:.68rem;color:var(--text-muted)">' + (a.time || '') + '</span>'
+    var isScanner = a.condition === 'scanner';
+    var sevColor  = a.severity === 'green' ? 'var(--green)' : a.severity === 'red' ? '#ef5350' : '#f5a623';
+    var mainText  = isScanner
+      ? (a.msg || a.sym)
+      : (a.sym ? a.sym.replace('.TA','') + ' ' + (a.condition === 'above' ? '▲ מעל' : '▼ מתחת') + ' ' + (typeof formatPrice==='function'? formatPrice(a.price):a.price) : '');
+    return '<li class="ib-alert-item triggered" style="border-right:3px solid ' + sevColor + ';padding-right:.4rem">'
+      + '<span style="flex:1;font-size:.78rem">' + mainText + '</span>'
+      + '<span style="font-size:.65rem;color:var(--text-muted);white-space:nowrap;margin-right:.3rem">' + (a.time || '') + '</span>'
       + '<button class="ib-task-del" onclick="ibDelAlert2('+i+')">✕</button>'
       + '</li>';
   }).join('');

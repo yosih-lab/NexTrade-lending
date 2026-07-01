@@ -1865,29 +1865,60 @@ function updateAlertOverlays() {
     };
     row.appendChild(trash);
 
-    // Drag to move alert line
+    // Drag to move alert line — smooth, no chart pan, no flickering
     row.onmousedown = function(e) {
       if (e.target === trash) return;
       e.preventDefault();
-      var startY = e.clientY;
-      var startPrice = a.price;
+      e.stopPropagation();
+
+      // Freeze chart scroll/pan for the duration of the drag
+      if (chartInstance) {
+        chartInstance.applyOptions({ handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false } });
+      }
+
       var chartEl = document.getElementById('chart');
       var rect = chartEl.getBoundingClientRect();
+      var capturedRow = row;
+      var capturedPl  = item.priceLine;
+      var capturedIdx = item.idx;
+      var capturedCond = a.condition;
 
       function onMove(ev) {
         var localY = ev.clientY - rect.top;
         var newPrice = series.coordinateToPrice(localY);
         if (newPrice !== null && newPrice > 0) {
-          a.price = Math.round(newPrice * 100) / 100;
-          localStorage.setItem('ml_alerts', JSON.stringify(alerts));
-          drawAlertLines();
-          renderAlerts();
+          var rounded = Math.round(newPrice * 100) / 100;
+          // Move the icon row visually (no DOM rebuild)
+          capturedRow.style.top = (localY - 12) + 'px';
+          // Slide the price line in-place (no remove/create → no flicker)
+          try {
+            capturedPl.applyOptions({
+              price: rounded,
+              title: (capturedCond === 'above' ? '▲' : '▼') + ' ' + rounded.toFixed(2)
+            });
+          } catch(ex) {}
         }
       }
-      function onUp() {
+
+      function onUp(ev) {
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
+        // Restore chart interaction
+        if (chartInstance) {
+          chartInstance.applyOptions({ handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true } });
+        }
+        // Commit final price
+        var localY = ev.clientY - rect.top;
+        var newPrice = series.coordinateToPrice(localY);
+        if (newPrice !== null && newPrice > 0) {
+          alerts[capturedIdx].price = Math.round(newPrice * 100) / 100;
+          localStorage.setItem('ml_alerts', JSON.stringify(alerts));
+        }
+        // Full rebuild only once at the end
+        drawAlertLines();
+        renderAlerts();
       }
+
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onUp);
     };
@@ -1967,6 +1998,7 @@ async function refreshPrices() {
   renderAlerts();
   buildTicker();
   updateTASEBadge();
+  runAutoScanner(); // auto scan after each price refresh
 }
 
 // ============================================
@@ -2049,6 +2081,86 @@ async function init() {
     runScanner();
   } catch(e) {
     console.error('[NexTrade] ❌ init() failed:', e.message || e, e.stack);
+  }
+}
+
+// ============================================
+//   SCANNER RULES — ניתן לערוך / להוסיף כללים
+// ============================================
+// כל כלל: { id, name, check(data) → bool, message(data) → string, severity: 'green'|'red'|'yellow' }
+// data = { sym, price, changePct, change, high, low }
+var SCANNER_RULES = [
+  {
+    id: 'big_up',
+    name: '📈 עלייה חדה',
+    check:   function(d) { return d.changePct >= 3; },
+    message: function(d) { return '📈 ' + d.sym.replace('.TA','') + ' +' + d.changePct.toFixed(1) + '% — עלייה חדה'; },
+    severity: 'green'
+  },
+  {
+    id: 'big_down',
+    name: '📉 ירידה חדה',
+    check:   function(d) { return d.changePct <= -3; },
+    message: function(d) { return '📉 ' + d.sym.replace('.TA','') + ' ' + d.changePct.toFixed(1) + '% — ירידה חדה'; },
+    severity: 'red'
+  },
+  {
+    id: 'moderate_up',
+    name: '↑ עלייה מתונה',
+    check:   function(d) { return d.changePct >= 1.5 && d.changePct < 3; },
+    message: function(d) { return '↑ ' + d.sym.replace('.TA','') + ' +' + d.changePct.toFixed(1) + '% — עלייה מתונה'; },
+    severity: 'green'
+  },
+  {
+    id: 'moderate_down',
+    name: '↓ ירידה מתונה',
+    check:   function(d) { return d.changePct <= -1.5 && d.changePct > -3; },
+    message: function(d) { return '↓ ' + d.sym.replace('.TA','') + ' ' + d.changePct.toFixed(1) + '% — ירידה מתונה'; },
+    severity: 'yellow'
+  }
+  // ← הוסף כאן כללים נוספים לפי הצורך
+];
+
+// Tracks which rules already fired today (per symbol) to avoid spam
+var _scannerFiredKeys = {};
+
+function runAutoScanner() {
+  var syms = Array.from(new Set(SCANNER_SYMS.concat(watchlist)));
+  var fired = false;
+
+  syms.forEach(function(sym) {
+    var d = priceCache[sym];
+    if (!d || !d.price) return;
+    var data = { sym: sym, price: d.price, changePct: d.changePct || 0, change: d.change || 0 };
+
+    SCANNER_RULES.forEach(function(rule) {
+      if (!rule.check(data)) return;
+      // Fire at most once per calendar day per (rule, symbol)
+      var key = rule.id + '_' + sym + '_' + new Date().toDateString();
+      if (_scannerFiredKeys[key]) return;
+      _scannerFiredKeys[key] = true;
+      fired = true;
+
+      var time = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+      var msg  = rule.message(data);
+
+      // Push to bell panel
+      var stored = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
+      stored.unshift({ sym: sym, price: d.price, condition: 'scanner', time: time, key: key, msg: msg, severity: rule.severity });
+      if (stored.length > 50) stored = stored.slice(0, 50);
+      localStorage.setItem('ib_alerts2', JSON.stringify(stored));
+    });
+  });
+
+  if (fired) {
+    // Flash the bell icon
+    var bellBtn = document.getElementById('ib-alerts');
+    if (bellBtn) {
+      bellBtn.style.animation = 'none';
+      bellBtn.offsetHeight; // reflow
+      bellBtn.style.animation = 'bellPulse 0.6s ease 3';
+    }
+    if (typeof ibRenderAlerts2 === 'function') ibRenderAlerts2();
   }
 }
 

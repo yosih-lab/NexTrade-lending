@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>NexTrade — כניסה</title>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;900&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:Heebo,sans-serif;
+      background:#04060c;
+      color:#fff;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      direction:rtl;
+    }
+    .card{
+      background:#0a0d16;
+      border:1px solid #1e2637;
+      border-radius:16px;
+      padding:2.5rem 2rem;
+      width:100%;
+      max-width:400px;
+      box-shadow:0 8px 40px rgba(0,0,0,.6);
+    }
+    .logo{
+      text-align:center;
+      font-size:1.6rem;
+      font-weight:900;
+      color:#2962ff;
+      letter-spacing:2px;
+      margin-bottom:.2rem;
+    }
+    .subtitle{
+      text-align:center;
+      font-size:.78rem;
+      color:#8899aa;
+      margin-bottom:2rem;
+    }
+    .tabs{
+      display:flex;
+      gap:0;
+      border-radius:8px;
+      overflow:hidden;
+      border:1px solid #1e2637;
+      margin-bottom:1.6rem;
+    }
+    .tab{
+      flex:1;
+      padding:.55rem;
+      text-align:center;
+      cursor:pointer;
+      font-size:.85rem;
+      color:#8899aa;
+      background:#0f1420;
+      border:none;
+      transition:all .2s;
+    }
+    .tab.active{background:#2962ff;color:#fff;font-weight:700;}
+    .form-group{margin-bottom:1rem;}
+    label{display:block;font-size:.78rem;color:#8899aa;margin-bottom:.35rem;}
+    input{
+      width:100%;
+      background:#0f1420;
+      border:1px solid #1e2637;
+      border-radius:8px;
+      color:#fff;
+      padding:.65rem .9rem;
+      font-size:.9rem;
+      font-family:Heebo,sans-serif;
+      outline:none;
+      transition:border-color .2s;
+    }
+    input:focus{border-color:#2962ff;}
+    .btn-primary{
+      width:100%;
+      padding:.75rem;
+      background:#2962ff;
+      border:none;
+      border-radius:8px;
+      color:#fff;
+      font-size:1rem;
+      font-weight:700;
+      font-family:Heebo,sans-serif;
+      cursor:pointer;
+      margin-top:.5rem;
+      transition:background .2s;
+    }
+    .btn-primary:hover{background:#1a4fd6;}
+    .msg{
+      margin-top:1rem;
+      padding:.5rem .8rem;
+      border-radius:8px;
+      font-size:.82rem;
+      text-align:center;
+      display:none;
+    }
+    .msg.ok{background:rgba(38,166,154,.15);border:1px solid #26a69a;color:#26a69a;display:block;}
+    .msg.err{background:rgba(239,83,80,.12);border:1px solid #ef5350;color:#ef5350;display:block;}
+    .server-note{
+      margin-top:1.2rem;
+      font-size:.72rem;
+      color:#8899aa;
+      text-align:center;
+      padding:.4rem;
+      background:#0f1420;
+      border-radius:6px;
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">NexTrade</div>
+  <div class="subtitle">פלטפורמת מסחר מקצועית</div>
+
+  <div class="tabs">
+    <button class="tab active" id="tabLogin" onclick="switchTab('login')">כניסה</button>
+    <button class="tab" id="tabReg" onclick="switchTab('register')">הרשמה</button>
+  </div>
+
+  <!-- Login -->
+  <div id="formLogin">
+    <div class="form-group">
+      <label>שם משתמש / אימייל</label>
+      <input id="lUsername" type="text" placeholder="הכנס שם משתמש" autocomplete="username"/>
+    </div>
+    <div class="form-group">
+      <label>סיסמה</label>
+      <input id="lPassword" type="password" placeholder="הכנס סיסמה" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <button class="btn-primary" onclick="doLogin()">כניסה</button>
+  </div>
+
+  <!-- Register -->
+  <div id="formRegister" style="display:none">
+    <div class="form-group">
+      <label>שם משתמש</label>
+      <input id="rUsername" type="text" placeholder="בחר שם משתמש" autocomplete="username"/>
+    </div>
+    <div class="form-group">
+      <label>אימייל</label>
+      <input id="rEmail" type="email" placeholder="כתובת אימייל" autocomplete="email"/>
+    </div>
+    <div class="form-group">
+      <label>סיסמה</label>
+      <input id="rPassword" type="password" placeholder="לפחות 6 תווים" autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()"/>
+    </div>
+    <button class="btn-primary" onclick="doRegister()">הרשמה</button>
+  </div>
+
+  <div id="msg" class="msg"></div>
+
+  <div class="server-note">⚠️ נדרש שרת NexTrade פעיל. הגדר <code>NEXT_API</code> בקוד.</div>
+</div>
+
+<script>
+  // ← כתובת השרת (לשנות לכתובת האמיתית לאחר פריסה)
+  var API_BASE = localStorage.getItem('nt_api_base') || 'http://localhost:3000';
+
+  function switchTab(t) {
+    document.getElementById('formLogin').style.display    = t==='login'    ? '' : 'none';
+    document.getElementById('formRegister').style.display = t==='register' ? '' : 'none';
+    document.getElementById('tabLogin').classList.toggle('active', t==='login');
+    document.getElementById('tabReg').classList.toggle('active', t==='register');
+    setMsg('','');
+  }
+
+  function setMsg(text, type) {
+    var el = document.getElementById('msg');
+    el.textContent = text;
+    el.className = 'msg ' + (type || '');
+    if (!type) el.style.display = 'none';
+  }
+
+  async function doLogin() {
+    var u = document.getElementById('lUsername').value.trim();
+    var p = document.getElementById('lPassword').value;
+    if (!u || !p) { setMsg('נא למלא את כל השדות', 'err'); return; }
+    try {
+      var r = await fetch(API_BASE + '/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, password: p })
+      });
+      var data = await r.json();
+      if (!r.ok) { setMsg(data.error || 'שגיאה', 'err'); return; }
+      localStorage.setItem('nt_token', data.token);
+      localStorage.setItem('nt_user', JSON.stringify({ username: data.username, role: data.role }));
+      setMsg('✅ ברוך הבא ' + data.username + '! מעביר...', 'ok');
+      setTimeout(function() { window.location.href = 'index.html'; }, 1000);
+    } catch(e) {
+      setMsg('❌ לא ניתן להתחבר לשרת: ' + e.message, 'err');
+    }
+  }
+
+  async function doRegister() {
+    var u = document.getElementById('rUsername').value.trim();
+    var e = document.getElementById('rEmail').value.trim().toLowerCase();
+    var p = document.getElementById('rPassword').value;
+    if (!u || !e || !p) { setMsg('נא למלא את כל השדות', 'err'); return; }
+    try {
+      var r = await fetch(API_BASE + '/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, email: e, password: p })
+      });
+      var data = await r.json();
+      if (!r.ok) { setMsg(data.error || 'שגיאה', 'err'); return; }
+      setMsg('✅ ' + (data.message || 'נרשמת בהצלחה! כנס עכשיו.'), 'ok');
+      switchTab('login');
+      document.getElementById('lUsername').value = u;
+    } catch(e2) {
+      setMsg('❌ לא ניתן להתחבר לשרת: ' + e2.message, 'err');
+    }
+  }
+
+  // If already logged in, go straight to app
+  (function() {
+    var token = localStorage.getItem('nt_token');
+    if (token) window.location.href = 'index.html';
+  })();
+</script>
+</body>
+</html>

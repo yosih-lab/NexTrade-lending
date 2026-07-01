@@ -1,5 +1,9 @@
 ﻿const express = require('express');
 const https   = require('https');
+const fs      = require('fs');
+const path    = require('path');
+const bcrypt  = require('bcryptjs');
+const jwt     = require('jsonwebtoken');
 const app     = express();
 
 // ── CONFIG ──────────────────────────────────────────────────────
@@ -7,6 +11,12 @@ const TD_KEY     = process.env.TD_KEY || 'c73725be3168443e88ac257aa9baa547';
 const TD_ORIGIN  = 'https://api.twelvedata.com';
 const PORT       = process.env.PORT || 3000;
 const ALLOWED    = ['https://getnexttrade.com','https://www.getnexttrade.com'];
+const JWT_SECRET = process.env.JWT_SECRET || 'nexttrade_jwt_secret_change_me';
+const MAX_USERS  = 20;
+const USERS_FILE = path.join(__dirname, 'users.json');
+
+// ── BODY PARSER ──────────────────────────────────────────────────
+app.use(express.json());
 
 // ── CORS ─────────────────────────────────────────────────────────
 app.use(function(req, res, next) {
@@ -15,10 +25,106 @@ app.use(function(req, res, next) {
   if (ALLOWED.includes(origin) || dev) {
     res.setHeader('Access-Control-Allow-Origin', origin || '*');
   }
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
+});
+
+// ── USER STORE (JSON file) ────────────────────────────────────────
+function loadUsers() {
+  try { return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8')); }
+  catch(e) { return []; }
+}
+function saveUsers(users) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+}
+
+// ── AUTH MIDDLEWARE ───────────────────────────────────────────────
+function requireAuth(req, res, next) {
+  const header = req.headers.authorization || '';
+  const token  = header.replace('Bearer ', '').trim();
+  if (!token) return res.status(401).json({ error: 'לא מחובר' });
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch(e) {
+    res.status(401).json({ error: 'טוקן לא תקין' });
+  }
+}
+function requireAdmin(req, res, next) {
+  requireAuth(req, res, function() {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'הרשאות אדמין נדרשות' });
+    next();
+  });
+}
+
+// ── AUTH ROUTES ───────────────────────────────────────────────────
+
+// Register
+app.post('/api/register', async (req, res) => {
+  const { username, email, password } = req.body || {};
+  if (!username || !email || !password) return res.status(400).json({ error: 'נא למלא שם משתמש, אימייל וסיסמה' });
+  if (password.length < 6) return res.status(400).json({ error: 'סיסמה חייבת להכיל לפחות 6 תווים' });
+  const users = loadUsers();
+  if (users.length >= MAX_USERS) return res.status(400).json({ error: 'מקסימום ' + MAX_USERS + ' משתמשים הושג' });
+  if (users.find(u => u.username === username)) return res.status(400).json({ error: 'שם המשתמש כבר תפוס' });
+  if (users.find(u => u.email === email))    return res.status(400).json({ error: 'האימייל כבר רשום' });
+  const hash = await bcrypt.hash(password, 10);
+  const role = users.length === 0 ? 'admin' : 'user'; // first user = admin
+  users.push({ id: Date.now(), username, email, hash, role, createdAt: new Date().toISOString() });
+  saveUsers(users);
+  res.json({ ok: true, message: role === 'admin' ? 'נרשמת כמנהל מערכת' : 'נרשמת בהצלחה' });
+});
+
+// Login
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) return res.status(400).json({ error: 'נא למלא שם משתמש וסיסמה' });
+  const users = loadUsers();
+  const user  = users.find(u => u.username === username || u.email === username);
+  if (!user) return res.status(401).json({ error: 'משתמש לא נמצא' });
+  const ok = await bcrypt.compare(password, user.hash);
+  if (!ok) return res.status(401).json({ error: 'סיסמה שגויה' });
+  const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
+  res.json({ token, username: user.username, role: user.role });
+});
+
+// Me
+app.get('/api/me', requireAuth, (req, res) => {
+  res.json({ username: req.user.username, role: req.user.role });
+});
+
+// ── ADMIN ROUTES ──────────────────────────────────────────────────
+
+// List all users
+app.get('/api/admin/users', requireAdmin, (req, res) => {
+  const users = loadUsers().map(u => ({
+    id: u.id, username: u.username, email: u.email,
+    role: u.role, createdAt: u.createdAt
+  }));
+  res.json({ count: users.length, max: MAX_USERS, users });
+});
+
+// Delete user
+app.delete('/api/admin/users/:id', requireAdmin, (req, res) => {
+  let users = loadUsers();
+  const before = users.length;
+  users = users.filter(u => String(u.id) !== String(req.params.id));
+  if (users.length === before) return res.status(404).json({ error: 'משתמש לא נמצא' });
+  saveUsers(users);
+  res.json({ ok: true });
+});
+
+// Change role
+app.patch('/api/admin/users/:id', requireAdmin, (req, res) => {
+  const users = loadUsers();
+  const user  = users.find(u => String(u.id) === String(req.params.id));
+  if (!user) return res.status(404).json({ error: 'משתמש לא נמצא' });
+  if (!['admin','user'].includes(req.body.role)) return res.status(400).json({ error: 'תפקיד לא תקין' });
+  user.role = req.body.role;
+  saveUsers(users);
+  res.json({ ok: true });
 });
 
 // ── SCANNER CACHE ─────────────────────────────────────────────────
