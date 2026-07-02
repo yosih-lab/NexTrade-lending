@@ -165,19 +165,11 @@ function handleLogout() {
 }
 
 (function checkAutoLogin() {
-  // ✓ תיקון: נוודא שיש session, או בואי נכנסה כ-demo
   var session = getSession();
-  console.log('[NexTrade] Auto-login check: session exists?', !!session, 'session:', session);
-  
   if (session && session.name) {
-    console.log('[NexTrade] Logging in existing session:', session.name);
     loginSuccess(session);
-  } else {
-    // ✓ התחברות אוטומטית למשתמש demo בעת ביקור ראשון
-    // Auto login with demo account on first visit
-    console.log('[NexTrade] No session found. Auto-logging demo user...');
-    demoLogin();
   }
+  // אם אין session — האוברליי נשאר פתוח, המשתמש חייב להתחבר או ללחוץ Demo
 })();
 
 // ============================================
