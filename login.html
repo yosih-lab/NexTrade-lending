@@ -75,6 +75,14 @@
       transition:border-color .2s;
     }
     input:focus{border-color:#2962ff;}
+    .pw-wrap{position:relative;}
+    .pw-wrap input{padding-left:2.4rem;}
+    .pw-eye{
+      position:absolute;left:.7rem;top:50%;transform:translateY(-50%);
+      background:none;border:none;color:#8899aa;cursor:pointer;
+      font-size:1rem;padding:0;line-height:1;
+    }
+    .pw-eye:hover{color:#fff;}
     .btn-primary{
       width:100%;
       padding:.75rem;
@@ -129,7 +137,10 @@
     </div>
     <div class="form-group">
       <label>סיסמה</label>
-      <input id="lPassword" type="password" placeholder="הכנס סיסמה" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+      <div class="pw-wrap">
+        <input id="lPassword" type="password" placeholder="הכנס סיסמה" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+        <button type="button" class="pw-eye" onclick="togglePw('lPassword',this)" title="הצג/הסתר סיסמה">👁</button>
+      </div>
     </div>
     <button class="btn-primary" onclick="doLogin()">כניסה</button>
   </div>
@@ -146,7 +157,10 @@
     </div>
     <div class="form-group">
       <label>סיסמה</label>
-      <input id="rPassword" type="password" placeholder="לפחות 6 תווים" autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()"/>
+      <div class="pw-wrap">
+        <input id="rPassword" type="password" placeholder="לפחות 6 תווים" autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()"/>
+        <button type="button" class="pw-eye" onclick="togglePw('rPassword',this)" title="הצג/הסתר סיסמה">👁</button>
+      </div>
     </div>
     <button class="btn-primary" onclick="doRegister()">הרשמה</button>
   </div>
@@ -222,34 +236,55 @@
     }
   }
 
-  // Server connectivity check
+  function togglePw(id, btn) {
+    var inp = document.getElementById(id);
+    if (!inp) return;
+    var show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    btn.textContent = show ? '🙈' : '👁';
+  }
+
+  // Server connectivity check — with 20s timeout (Render wakes up slowly)
   document.getElementById('apiBaseInput').value = API_BASE;
-  (async function checkServer() {
+  var _checkServerTimer = null;
+  async function checkServer() {
     var dot  = document.getElementById('serverDot');
     var note = document.getElementById('serverNoteText');
+    dot.textContent  = '⏳';
+    note.textContent = 'בודק חיבור לשרת... (עד 30 שניות)';
+    note.style.color = '#8899aa';
+    // Render free tier can take 30s to wake up
+    var controller = new AbortController();
+    var timeout = setTimeout(function() { controller.abort(); }, 30000);
     try {
-      var r = await fetch(API_BASE + '/', { cache: 'no-store' });
+      var r = await fetch(API_BASE + '/', { cache: 'no-store', signal: controller.signal });
+      clearTimeout(timeout);
       if (r.ok) {
         dot.textContent  = '🟢';
-        note.textContent = 'שרת מחובר — ' + API_BASE;
+        note.textContent = 'שרת מחובר ✓';
         note.style.color = '#26a69a';
       } else { throw new Error('status ' + r.status); }
     } catch(e) {
-      dot.textContent  = '🔴';
-      note.textContent = 'שרת לא נגיש — הפעל npm start בתיקיית server/';
-      note.style.color = '#ef5350';
+      clearTimeout(timeout);
+      if (e.name === 'AbortError') {
+        dot.textContent  = '🟡';
+        note.textContent = 'השרת מתעורר... נסה שוב בעוד רגע';
+        note.style.color = '#f5a623';
+      } else {
+        dot.textContent  = '🔴';
+        note.textContent = 'שרת לא נגיש — בדוק את הכתובת';
+        note.style.color = '#ef5350';
+      }
     }
-  })();
+  }
+  checkServer();
 
   function saveApiBase() {
     var val = (document.getElementById('apiBaseInput').value || '').trim().replace(/\/$/, '');
     if (!val) return;
     localStorage.setItem('nt_api_base', val);
     API_BASE = val;
-    document.getElementById('serverDot').textContent = '⏳';
-    document.getElementById('serverNoteText').textContent = 'בודק...';
-    document.getElementById('serverNoteText').style.color = '#8899aa';
-    setTimeout(checkServer, 100);
+    checkServer();
   }
 
   // If already logged in, go straight to app
