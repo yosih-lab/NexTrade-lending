@@ -137,8 +137,6 @@ function loginSuccess(user) {
   
   if (authEl) authEl.style.display  = 'none';
   if (appEl) appEl.style.display = 'block';
-  // Wake up ResizeObserver after display:none → display:block transition
-  window.dispatchEvent(new Event('resize'));
   
   var nameEl = document.getElementById('userNameDisplay');
   var avatarEl = document.getElementById('userAvatar');
@@ -774,17 +772,14 @@ function initChart() {
   });
 
   // Force resize after layout settles (fixes 0-height init issue)
-  function forceChartResize() {
-    if (!chartInstance) return;
-    var el = document.getElementById('chart');
-    if (!el) return;
-    var w = el.offsetWidth || el.parentElement.offsetWidth;
-    var h = el.offsetHeight || el.parentElement.offsetHeight || 500;
-    chartInstance.resize(w, h);
-  }
-  setTimeout(forceChartResize, 100);
-  setTimeout(forceChartResize, 400);
-  setTimeout(forceChartResize, 800);
+  setTimeout(function() {
+    if (chartInstance) {
+      var el = document.getElementById('chart');
+      if (el && el.offsetWidth > 0 && el.offsetHeight > 0) {
+        chartInstance.resize(el.offsetWidth, el.offsetHeight);
+      }
+    }
+  }, 120);
 }
 
 // ============================================
@@ -797,20 +792,30 @@ function initPriceAxisScroll() {
   if (!chartEl) return;
   chartEl.addEventListener('wheel', function(e) {
     if (!chartInstance) return;
+    if (e._ntSlow) return; // already slowed down, let LightweightCharts handle it
     var rect = chartEl.getBoundingClientRect();
     var xFromRight = rect.right - e.clientX;
     // Only activate when cursor is over the price axis (rightmost ~65px)
     if (xFromRight > 65) {
-      // Slow down chart horizontal scroll — halve the native delta
+      // Slow down chart horizontal scroll — reduce deltaY by 60%
       e.preventDefault();
       e.stopImmediatePropagation();
-      var reducedDelta = e.deltaX * 0.4 || e.deltaY * 0.4;
-      chartInstance.timeScale().scrollBy(-reducedDelta / 20);
+      var slowEvt = new WheelEvent('wheel', {
+        deltaX: e.deltaX * 0.4, deltaY: e.deltaY * 0.4, deltaZ: e.deltaZ * 0.4,
+        clientX: e.clientX, clientY: e.clientY,
+        screenX: e.screenX, screenY: e.screenY,
+        ctrlKey: e.ctrlKey, shiftKey: e.shiftKey, altKey: e.altKey, metaKey: e.metaKey,
+        bubbles: true, cancelable: true
+      });
+      slowEvt._ntSlow = true;
+      chartEl.dispatchEvent(slowEvt);
       return;
     }
-    // Block LightweightCharts from also handling this event (price axis scroll)
+    // Block LightweightCharts from also handling this event
     e.preventDefault();
     e.stopImmediatePropagation();
+    // Scroll UP (deltaY < 0) = zoom in (prices stretch) = shrink margins
+    // Scroll DOWN (deltaY > 0) = zoom out (prices compress) = grow margins
     var dir = e.deltaY > 0 ? 1 : -1;
     var step = 0.03;
     _priceMarginTop    = Math.max(0.01, Math.min(0.88, _priceMarginTop    + dir * step));
@@ -944,25 +949,6 @@ function initChartContextMenu() {
   chartEl.addEventListener('contextmenu', function(e) {
     e.preventDefault();
     var x = e.clientX, y = e.clientY;
-    // Calculate price at cursor Y position
-    var priceAtCursor = null;
-    try {
-      var rect = chartEl.getBoundingClientRect();
-      var localY = e.clientY - rect.top;
-      if (candleSeries) priceAtCursor = candleSeries.coordinateToPrice(localY);
-      else if (lineSeries) priceAtCursor = lineSeries.coordinateToPrice(localY);
-    } catch(err) {}
-    // Update alert section
-    var priceLabel = document.getElementById('ctxAlertPrice');
-    var priceInput = document.getElementById('ctxAlertPriceInp');
-    if (priceAtCursor != null && isFinite(priceAtCursor)) {
-      var rounded = parseFloat(priceAtCursor.toFixed(2));
-      if (priceLabel) priceLabel.textContent = formatPrice(rounded);
-      if (priceInput) priceInput.value = rounded;
-    } else {
-      if (priceLabel) priceLabel.textContent = '';
-      if (priceInput && priceInput.value === '') priceInput.value = '';
-    }
     // Hide inline form on new open
     var ctxForm = document.getElementById('ctxAlertForm');
     if (ctxForm) ctxForm.style.display = 'none';
@@ -980,16 +966,6 @@ function initChartContextMenu() {
     else                                   menu.style.top  = y + 'px';
     menu.classList.add('open');
   });
-
-  // Alert button in context menu — toggle inline form
-  var ctxAlertBtn = document.getElementById('ctxAlertBtn');
-  if (ctxAlertBtn) {
-    ctxAlertBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      var f = document.getElementById('ctxAlertForm');
-      if (f) f.style.display = f.style.display === 'none' ? '' : 'none';
-    });
-  }
 
   document.addEventListener('click', function() { menu.classList.remove('open'); });
   menu.addEventListener('click', function(e) { e.stopPropagation(); });
@@ -1045,6 +1021,93 @@ function updateLegend(param) {
     if (volLeg) volLeg.textContent = formatVolume(volData.value);
   }
 }
+
+// ============================================
+//   CROSSHAIR ALERT BUTTON (+) on horizontal line
+// ============================================
+var _crosshairAlertPrice = null;
+
+function updateCrosshairAlertBtn(param) {
+  var btn = document.getElementById('crosshairAlertBtn');
+  if (!btn) return;
+  var popup = document.getElementById('crosshairAlertPopup');
+  // If popup is open, keep button visible but don't reposition
+  if (popup && popup.style.display === 'block') return;
+  if (!param || !param.point || param.point.x < 0 || param.point.y < 0) {
+    btn.style.display = 'none';
+    return;
+  }
+  var chartEl = document.getElementById('chart');
+  if (!chartEl) return;
+  var rect = chartEl.getBoundingClientRect();
+  var wrapEl = chartEl.parentElement;
+  if (!wrapEl) return;
+  var wrapRect = wrapEl.getBoundingClientRect();
+  // Get price at crosshair Y
+  var series = candleSeries || lineSeries;
+  if (!series) return;
+  try {
+    _crosshairAlertPrice = series.coordinateToPrice(param.point.y);
+  } catch(e) { return; }
+  if (!_crosshairAlertPrice || !isFinite(_crosshairAlertPrice)) { btn.style.display = 'none'; return; }
+  // Position button on right side of chart area (just left of price axis)
+  var btnY = (rect.top - wrapRect.top) + param.point.y - 11;
+  var btnX = rect.width - 76; // just left of the price axis (~65px wide)
+  btn.style.top  = btnY + 'px';
+  btn.style.left = btnX + 'px';
+  btn.style.display = 'flex';
+}
+
+function openCrosshairAlertPopup() {
+  var popup = document.getElementById('crosshairAlertPopup');
+  var btn   = document.getElementById('crosshairAlertBtn');
+  if (!popup || !btn) return;
+  var priceLabel = document.getElementById('crosshairAlertPriceLabel');
+  var priceInput = document.getElementById('crosshairAlertPriceInp');
+  if (_crosshairAlertPrice && isFinite(_crosshairAlertPrice)) {
+    var rounded = parseFloat(_crosshairAlertPrice.toFixed(2));
+    if (priceLabel) priceLabel.textContent = 'מחיר: ' + formatPrice(rounded);
+    if (priceInput) priceInput.value = rounded;
+  }
+  // Position popup near the button
+  popup.style.top  = (parseInt(btn.style.top) - 20) + 'px';
+  popup.style.left = (parseInt(btn.style.left) - 220) + 'px';
+  popup.style.display = 'block';
+}
+
+function closeCrosshairAlertPopup() {
+  var popup = document.getElementById('crosshairAlertPopup');
+  if (popup) popup.style.display = 'none';
+}
+
+function crosshairAddAlert() {
+  var price = parseFloat(document.getElementById('crosshairAlertPriceInp').value);
+  var cond  = document.getElementById('crosshairAlertCond').value;
+  var email = (document.getElementById('crosshairAlertEmail').value || '').trim().toLowerCase();
+  var sym   = currentSymbol;
+  if (!sym || !price || isNaN(price)) return;
+  alerts.push({ symbol: sym, condition: cond, price: price, email: email || null });
+  localStorage.setItem('ml_alerts', JSON.stringify(alerts));
+  renderAlerts();
+  closeCrosshairAlertPopup();
+  // Confirmation banner
+  var banner = document.createElement('div');
+  banner.textContent = '✅ התראה נוספה: ' + sym + ' ' + (cond === 'above' ? 'מעל' : 'מתחת') + ' ' + formatPrice(price);
+  banner.style.cssText = 'position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#0a3020;border:1px solid #26a69a;color:#26a69a;padding:.4rem 1rem;border-radius:8px;font-size:.78rem;z-index:9999;font-family:Heebo,sans-serif;';
+  document.body.appendChild(banner);
+  setTimeout(function() { banner.remove(); }, 2500);
+}
+
+// Close crosshair popup when clicking outside
+document.addEventListener('click', function(e) {
+  var popup = document.getElementById('crosshairAlertPopup');
+  var btn   = document.getElementById('crosshairAlertBtn');
+  if (popup && popup.style.display === 'block') {
+    if (!popup.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+      closeCrosshairAlertPopup();
+    }
+  }
+});
 
 function syncVolumeCrosshair(param) {
   if (!param || !param.point) return;
@@ -1928,71 +1991,6 @@ function updateAlertOverlays() {
 
     _alertOverlayContainer.appendChild(row);
   });
-}
-
-// ============================================
-//   CROSSHAIR ALERT BUTTON (+)
-// ============================================
-var _crosshairPrice = null;
-
-function updateCrosshairAlertBtn(param) {
-  var btn = document.getElementById('crosshairAlertBtn');
-  if (!btn) return;
-  if (!param || !param.point) { btn.style.display = 'none'; return; }
-  var chartEl = document.getElementById('chart');
-  if (!chartEl) return;
-  var x = param.point.x;
-  var y = param.point.y;
-  var series = candleSeries || lineSeries || barSeries;
-  if (!series) return;
-  var price = series.coordinateToPrice(y);
-  if (!price) { btn.style.display = 'none'; return; }
-  _crosshairPrice = Math.round(price * 100) / 100;
-  // Position button on the right side of the horizontal crosshair line
-  // Use chart width minus price axis (65px) minus button size (22px) minus 4px gap
-  var chartW = chartEl.offsetWidth;
-  var btnX = chartW - 65 - 22 - 6;
-  btn.style.display = 'flex';
-  btn.style.left    = btnX + 'px';
-  btn.style.top     = (y - 11) + 'px';
-}
-
-function openCrosshairAlertPopup() {
-  if (_crosshairPrice === null) return;
-  var popup = document.getElementById('crosshairAlertPopup');
-  var btn   = document.getElementById('crosshairAlertBtn');
-  if (!popup || !btn) return;
-  document.getElementById('crosshairAlertPriceLabel').textContent = currentSymbol + ' @ ' + formatPrice(_crosshairPrice);
-  document.getElementById('crosshairAlertPriceInp').value  = _crosshairPrice;
-  document.getElementById('crosshairAlertEmail').value     = '';
-  // Position popup near the button
-  popup.style.left   = (parseFloat(btn.style.left) - 200 - 8) + 'px';
-  popup.style.top    = (parseFloat(btn.style.top) - 40) + 'px';
-  popup.classList.add('open');
-  btn.style.display = 'none';
-  document.getElementById('crosshairAlertPriceInp').focus();
-}
-
-function closeCrosshairAlertPopup() {
-  var popup = document.getElementById('crosshairAlertPopup');
-  if (popup) popup.classList.remove('open');
-}
-
-function crosshairAddAlert() {
-  var price = parseFloat(document.getElementById('crosshairAlertPriceInp').value);
-  var cond  = document.getElementById('crosshairAlertCond').value;
-  var email = (document.getElementById('crosshairAlertEmail').value || '').trim().toLowerCase();
-  var sym   = currentSymbol;
-  if (!sym || !price || isNaN(price)) return;
-  alerts.push({ symbol: sym, condition: cond, price: price, email: email || null });
-  localStorage.setItem('ml_alerts', JSON.stringify(alerts));
-  renderAlerts();
-  closeCrosshairAlertPopup();
-  var banner = document.createElement('div');
-  banner.textContent = '✅ התראה נוספה: ' + sym + ' ' + (cond === 'above' ? 'מעל' : 'מתחת') + ' ' + formatPrice(price);
-  banner.style.cssText = 'position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#0a3020;border:1px solid #26a69a;color:#26a69a;padding:.4rem 1rem;border-radius:8px;font-size:.78rem;z-index:9999;font-family:Heebo,sans-serif;pointer-events:none;';
-  document.body.appendChild(banner);
-  setTimeout(function() { banner.remove(); }, 2500);
 }
 
 // Re-position overlays on crosshair/scale changes

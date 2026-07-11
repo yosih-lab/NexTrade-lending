@@ -165,23 +165,10 @@
       width:var(--sidebar-w);
       flex:0 0 var(--sidebar-w);
       background:var(--surface); border-left:1px solid var(--border);
-      overflow:hidden; display:flex; flex-direction:column;
+      overflow-y:auto; padding:1rem; display:flex; flex-direction:column; gap:1.5rem;
       min-width:0; z-index:2;
       box-shadow:none;
     }
-    .sidebar-hdr {
-      display:flex; align-items:center; justify-content:space-between;
-      padding:.5rem .75rem; background:var(--surface2); border-bottom:1px solid var(--border);
-      flex-shrink:0; font-size:.8rem; font-weight:700; color:var(--text);
-    }
-    .sidebar-hdr-title { display:flex; align-items:center; gap:.4rem; }
-    .sidebar-body {
-      flex:1; overflow-y:auto; padding:0;
-      display:flex; flex-direction:column;
-    }
-    /* hide all sidebar-view sections by default; show only .sidebar-view.active */
-    .sidebar-view { display:none; flex:1; overflow-y:auto; padding:.65rem .75rem; flex-direction:column; gap:.5rem; }
-    .sidebar-view.active { display:flex; }
     .sidebar::-webkit-scrollbar { width:4px; }
     .sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
     .section-title { font-size:.72rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:.75rem; }
@@ -216,15 +203,12 @@
       align-items:center;
       gap:.4rem;
       padding:.42rem .5rem;
-      border-radius:0;
+      border-radius:8px;
       cursor:pointer;
       transition:background .15s;
       direction:rtl;
-      background:#010204;
-      border-bottom:1px solid rgba(255,255,255,0.10);
     }
-    .watch-item:last-child { border-bottom:none; }
-    .watch-item:hover { background:#0a0d1a; }
+    .watch-item:hover { background:var(--surface2); }
     .watch-main { display:flex; flex-direction:row; align-items:center; gap:.35rem; flex:1; min-width:0; }
     .watch-name {
       font-size:.78rem;
@@ -298,7 +282,7 @@
     .add-row input:focus { outline:none; border-color:var(--accent); }
     .remove-btn { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:.75rem; padding:2px 5px; border-radius:4px; }
     .remove-btn:hover { color:var(--red); background:rgba(239,83,80,.1); }
-    .main-area { background:var(--bg); overflow:hidden; padding:.5rem; display:flex; flex-direction:column; gap:.5rem; position:relative; z-index:4; flex:1 1 0; min-width:0; height:100%; }
+    .main-area { background:var(--bg); overflow:hidden; padding:.5rem; display:flex; flex-direction:column; gap:.5rem; position:relative; z-index:4; height:100%; flex:1 1 0; min-width:0; }
     .cards-row { display:grid; grid-template-columns:repeat(4,1fr); gap:.85rem; }
     .stock-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1rem; cursor:pointer; transition:border-color .2s,transform .15s; min-height:90px; }
     .stock-card:hover { border-color:var(--accent); transform:translateY(-2px); }
@@ -312,7 +296,7 @@
     .card-change.up { color:var(--green); }
     .card-change.down { color:var(--red); }
     /* CHART PANEL */
-    .chart-panel { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; display:flex; flex-direction:column; height:100%; }
+    .chart-panel { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:visible; display:flex; flex-direction:column; height:100%; }
     .chart-header { display:none; }
     /* Stock info overlay — removed duplicate (see below in CHART WRAP section) */
     /* TIMEFRAME TOOLBAR */
@@ -398,7 +382,7 @@
     /* Clock below chart price axis */
     #chartClock {
       position:absolute; bottom:2px; right:4px; z-index:12;
-      font-size:.82rem; font-weight:700; color:#fff;
+      font-size:.68rem; font-weight:700; color:#fff;
       font-family:'Heebo',sans-serif; pointer-events:none;
       background:rgba(4,6,12,.9); padding:1px 5px; border-radius:3px;
     }
@@ -430,13 +414,12 @@
       background:#050810;
       border:1px solid #1e2637;
       border-radius:10px;
-      padding:.55rem .7rem;
-      width:200px;
-      box-shadow:0 8px 24px rgba(0,0,0,.8);
+      padding:.6rem .75rem;
+      box-shadow:0 8px 28px rgba(0,0,0,.9);
+      width:210px;
       font-family:'Heebo',sans-serif;
       direction:rtl;
     }
-    #crosshairAlertPopup.open { display:block; }
     /* ===== CHART CONTEXT MENU ===== */
     #chartCtxMenu { position:fixed; z-index:9999; display:none; background:#050810; border:1px solid #1e2637; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,.95); width:190px; font-family:'Heebo',sans-serif; overflow:hidden; direction:rtl; }
     #chartCtxMenu.open { display:block; }
@@ -1287,98 +1270,26 @@
   </div>
   <div class="layout">
     <aside class="sidebar">
-      <!-- Sidebar header — shows current view title -->
-      <div class="sidebar-hdr">
-        <div class="sidebar-hdr-title" id="sidebarTitle">📋 Watchlist</div>
+      <!-- Watchlist Management Panel -->
+      <div class="wl-mgr">
+        <div class="wl-mgr-title">רשימות מעקב</div>
+        <div class="wl-mgr-filters">
+          <input type="text" id="wlSymFilter" class="wl-filter-inp" placeholder="סנן לפי סמל..." oninput="renderWatchlist()" autocomplete="off" />
+          <select id="wlPctFilter" class="wl-filter-sel" onchange="renderWatchlist()">
+            <option value="">כל השינויים</option>
+            <option value="up">עלייה בלבד &#9650;</option>
+            <option value="down">ירידה בלבד &#9660;</option>
+            <option value="1">+1% ומעלה</option>
+            <option value="-1">&#8722;1% ומטה</option>
+            <option value="3">+3% ומעלה</option>
+            <option value="-3">&#8722;3% ומטה</option>
+            <option value="5">+5% ומעלה</option>
+            <option value="-5">&#8722;5% ומטה</option>
+          </select>
+        </div>
+        <div class="wl-divider"></div>
       </div>
-      <div class="sidebar-body">
-
-        <!-- VIEW: Watchlist (default) -->
-        <div class="sidebar-view active" id="sview-watchlist">
-          <div class="wl-mgr">
-            <div class="wl-mgr-filters">
-              <input type="text" id="wlSymFilter" class="wl-filter-inp" placeholder="סנן לפי סמל..." oninput="renderWatchlist()" autocomplete="off" />
-              <select id="wlPctFilter" class="wl-filter-sel" onchange="renderWatchlist()">
-                <option value="">כל השינויים</option>
-                <option value="up">עלייה בלבד &#9650;</option>
-                <option value="down">ירידה בלבד &#9660;</option>
-                <option value="1">+1% ומעלה</option>
-                <option value="-1">&#8722;1% ומטה</option>
-                <option value="3">+3% ומעלה</option>
-                <option value="-3">&#8722;3% ומטה</option>
-                <option value="5">+5% ומעלה</option>
-                <option value="-5">&#8722;5% ומטה</option>
-              </select>
-            </div>
-            <div class="wl-divider"></div>
-          </div>
-          <ul id="watchlist" style="list-style:none;padding:0;margin:0;"></ul>
-        </div>
-
-        <!-- VIEW: Alerts (bell) -->
-        <div class="sidebar-view" id="sview-alerts">
-          <div style="font-size:.74rem;font-weight:700;color:var(--text);margin-bottom:.4rem">🔍 סורק חכם</div>
-          <div id="scannerList2"><div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:.6rem 0">⌛ טוען...</div></div>
-          <button class="btn btn-sm" style="width:100%;margin:.4rem 0" onclick="runScanner()">🔄 סרוק</button>
-          <div style="height:1px;background:var(--border);margin:.5rem 0"></div>
-          <div style="font-size:.74rem;font-weight:700;color:var(--text);margin-bottom:.4rem">🔔 התראות שהופעלו</div>
-          <ul id="ibAlertList2" style="list-style:none;margin:0;"></ul>
-        </div>
-
-        <!-- VIEW: Scanner -->
-        <div class="sidebar-view" id="sview-scanner">
-          <div style="color:var(--text-muted);font-size:.75rem;text-align:center;padding:.8rem">🔍 סורק...</div>
-          <button class="btn btn-sm" style="width:100%;margin-top:.3rem" onclick="ibRunScanner2()">🔄 סרוק</button>
-          <div id="ibScannerBody2" style="margin-top:.5rem"></div>
-        </div>
-
-        <!-- VIEW: Indicators -->
-        <div class="sidebar-view" id="sview-indicators">
-          <div class="ma-list" id="maList2"></div>
-        </div>
-
-        <!-- VIEW: Insights -->
-        <div class="sidebar-view" id="sview-insights">
-          <div id="insightsBody2"></div>
-        </div>
-
-        <!-- VIEW: Risk -->
-        <div class="sidebar-view" id="sview-risk">
-          <div id="riskBody2"></div>
-        </div>
-
-        <!-- VIEW: Calendar -->
-        <div class="sidebar-view" id="sview-calendar">
-          <div id="calBody2"></div>
-        </div>
-
-        <!-- VIEW: Lab -->
-        <div class="sidebar-view" id="sview-lab">
-          <div id="labBody2"></div>
-        </div>
-
-        <!-- VIEW: Chat -->
-        <div class="sidebar-view" id="sview-chat">
-          <div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:2rem 0">💬 צ'אט בקרוב</div>
-        </div>
-
-        <!-- VIEW: Clock -->
-        <div class="sidebar-view" id="sview-clock">
-          <div id="ibClockBody2"></div>
-        </div>
-
-        <!-- VIEW: Tasks -->
-        <div class="sidebar-view" id="sview-tasks">
-          <div class="ib-panel-add-row"><input id="taskInput2" placeholder="משימה חדשה..." onkeydown="if(event.key==='Enter')ibAddTask2()" /><button class="btn btn-sm" onclick="ibAddTask2()">הוסף</button></div>
-          <ul id="taskList2" style="list-style:none;margin-top:.5rem"></ul>
-        </div>
-
-        <!-- VIEW: News -->
-        <div class="sidebar-view" id="sview-news">
-          <div id="sidebarNewsBody"></div>
-        </div>
-
-      </div>
+      <ul id="watchlist" style="list-style:none;padding:0;margin:0;"></ul>
     </aside>
     <main class="main-area" style="position:relative">
 
@@ -1501,9 +1412,9 @@
     </main>
   </div>
 </div>
-<script src="main.js?v=20260701-2"></script>
-<script src="drawing.js?v=20260701-2"></script>
-<script src="features.js?v=20260701-2"></script>
+<script src="main.js?v=20260712"></script>
+<script src="drawing.js?v=20260712"></script>
+<script src="features.js?v=20260712"></script>
 
 <!-- CHART RIGHT-CLICK CONTEXT MENU -->
 <div id="chartCtxMenu">
@@ -1560,27 +1471,51 @@
     🧪<span class="ib-tip">מעבדה / דמו</span>
   </button>
   <div class="ib-sep"></div>
-  <button class="ib" id="ib-news" onclick="ibToggle('news')" title="">
+  <button class="ib" id="ib-news" onclick="toggleNewsPopup()" title="">
     📰<span class="ib-tip">חדשות שוק</span>
   </button>
 </div>
 
-<!-- Hidden DOM anchors kept for legacy JS compat -->
-<div style="display:none">
-  <div id="ibPanel-tasks"><div class="ib-panel-body"><ul id="taskList"></ul></div></div>
-  <div id="ibPanel-clock"><div class="ib-panel-body" id="ibClockBody"></div></div>
-  <div id="ibPanel-chat"></div>
-  <div id="ibPanel-scanner"><div class="ib-panel-body" id="ibScannerBody"></div></div>
-  <div id="ibPanel-indicators"><div class="ib-panel-body"><div class="ma-list" id="maList"></div></div></div>
-  <div id="ibPanel-insights"><div class="ib-panel-body" id="insightsBody"></div></div>
-  <div id="ibPanel-risk"><div class="ib-panel-body" id="riskBody"></div></div>
-  <div id="ibPanel-calendar"><div class="ib-panel-body" id="calBody"></div></div>
-  <div id="ibPanel-lab"><div class="ib-panel-body" id="labBody"></div></div>
-  <div id="ibPanel-alerts"><div class="ib-panel-body">
-    <div id="scannerList"></div>
-    <ul id="ibAlertList"></ul>
-  </div></div>
-  <div id="newsPopup"><div id="newsPopupList"></div></div>
+<!-- TOOLBAR PANELS -->
+<div id="ibPanel-tasks"   class="ib-panel"><div class="ib-panel-hdr"><span>🗒️ סרגל משימות</span><button class="ib-panel-close" onclick="ibClose('tasks')">&times;</button></div><div class="ib-panel-body"><div class="ib-panel-add-row"><input id="taskInput" placeholder="משימה חדשה..." onkeydown="if(event.key==='Enter')ibAddTask()" /><button class="btn btn-sm" onclick="ibAddTask()">הוסף</button></div><ul id="taskList" style="list-style:none;margin-top:.5rem"></ul></div></div>
+<div id="ibPanel-clock"   class="ib-panel"><div class="ib-panel-hdr"><span>🕐 שעון התראות</span><button class="ib-panel-close" onclick="ibClose('clock')">&times;</button></div><div class="ib-panel-body" id="ibClockBody"></div></div>
+<div id="ibPanel-chat"    class="ib-panel"><div class="ib-panel-hdr"><span>💬 צ'אט</span><button class="ib-panel-close" onclick="ibClose('chat')">&times;</button></div><div class="ib-panel-body"><div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:2rem 0">צ'אט בקרוב</div></div></div>
+<div id="ibPanel-scanner" class="ib-panel"><div class="ib-panel-hdr"><span>🔍 סורק חכם</span><button class="ib-panel-close" onclick="ibClose('scanner')">&times;</button></div><div class="ib-panel-body" id="ibScannerBody"><div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:1rem">לחץ רענן לסריקה</div><button class="btn btn-sm" style="width:100%;margin-top:.3rem" onclick="ibRunScanner2()">🔄 סרוק</button></div></div>
+<div id="ibPanel-indicators" class="ib-panel">
+  <div class="ib-panel-hdr"><span>📊 ממוצעים נעים</span><button class="ib-panel-close" onclick="ibClose('indicators')">&times;</button></div>
+  <div class="ib-panel-body"><div class="ma-list" id="maList"></div></div>
+</div>
+<div id="ibPanel-insights" class="ib-panel ib-panel-wide">
+  <div class="ib-panel-hdr"><span>🧠 תובנות AI</span><button class="ib-panel-close" onclick="ibClose('insights')">&times;</button></div>
+  <div class="ib-panel-body" id="insightsBody"></div>
+</div>
+<div id="ibPanel-risk" class="ib-panel ib-panel-wide">
+  <div class="ib-panel-hdr"><span>⚖️ ניתוח סיכוני תיק</span><button class="ib-panel-close" onclick="ibClose('risk')">&times;</button></div>
+  <div class="ib-panel-body" id="riskBody"></div>
+</div>
+<div id="ibPanel-calendar" class="ib-panel ib-panel-wide">
+  <div class="ib-panel-hdr"><span>📅 לוח אירועים ודיווחים</span><button class="ib-panel-close" onclick="ibClose('calendar')">&times;</button></div>
+  <div class="ib-panel-body" id="calBody"></div>
+</div>
+<div id="ibPanel-lab" class="ib-panel ib-panel-wide">
+  <div class="ib-panel-hdr"><span>🧪 מעבדה — סנטימנט · דוחות · קהל · רעיונות</span><button class="ib-panel-close" onclick="ibClose('lab')">&times;</button></div>
+  <div class="ib-panel-body" id="labBody"></div>
+</div>
+<div id="ibPanel-alerts"  class="ib-panel"><div class="ib-panel-hdr"><span>🔔 התראות וסורק</span><button class="ib-panel-close" onclick="ibClose('alerts')">&times;</button></div><div class="ib-panel-body">
+  <div style="font-size:.74rem;font-weight:700;color:var(--text);margin-bottom:.4rem">🔍 סורק חכם</div>
+  <div id="scannerList"><div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:.6rem 0">⌛ טוען...</div></div>
+  <button class="btn btn-sm" style="width:100%;margin:.4rem 0" onclick="runScanner()">🔄 סרוק</button>
+  <div style="height:1px;background:var(--border);margin:.5rem 0"></div>
+  <div style="font-size:.74rem;font-weight:700;color:var(--text);margin-bottom:.4rem">🔔 התראות מחיר</div>
+  <div class="ib-panel-add-row"><input id="ibAlertSym" placeholder="סמל" style="width:60px" /><input id="ibAlertPrice" placeholder="מחיר" type="number" style="width:70px" /><button class="btn btn-sm" onclick="ibAddAlert()">הוסף</button></div><ul id="ibAlertList" style="list-style:none;margin-top:.5rem"></ul></div></div>
+
+<!-- NEWS POPUP -->
+<div id="newsPopup">
+  <div class="news-popup-header">
+    <span>&#128240; חדשות שוק &nbsp;<span id="newsSymbol" style="color:var(--text-muted);font-weight:400"></span></span>
+    <button class="news-popup-close" onclick="toggleNewsPopup()">&times;</button>
+  </div>
+  <div id="newsPopupList"><div style="padding:1rem;color:var(--text-muted);font-size:.82rem">בחר מניה לחדשות</div></div>
 </div>
 
 <!-- PORTFOLIO POPUP -->
@@ -1664,276 +1599,61 @@
 var ibTasks  = JSON.parse(localStorage.getItem('ib_tasks')  || '[]');
 var ibAlerts2 = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
 
-// ============================================
-//   UNIFIED SIDEBAR — all icons open here
-// ============================================
-var _sidebarViews = {
-  'watchlist':  { title: '📋 Watchlist',         render: null },
-  'alerts':     { title: '🔔 התראות',            render: function(){ sviewRenderAlerts(); } },
-  'scanner':    { title: '🔍 סורק חכם',          render: function(){ sviewRunScanner(); } },
-  'indicators': { title: '📊 אינדיקטורים',       render: function(){ sviewRenderIndicators(); } },
-  'insights':   { title: '🧠 תובנות AI',         render: function(){ sviewRenderInsights(); } },
-  'risk':       { title: '⚖️ סיכוני תיק',        render: function(){ sviewRenderRisk(); } },
-  'calendar':   { title: '📅 לוח אירועים',       render: function(){ sviewRenderCalendar(); } },
-  'lab':        { title: '🧪 מעבדה',             render: function(){ sviewRenderLab(); } },
-  'chat':       { title: '💬 צ\'אט',              render: null },
-  'clock':      { title: '🕐 שעון',              render: function(){ sviewRenderClock(); } },
-  'tasks':      { title: '🗒️ משימות',            render: function(){ sviewRenderTasks(); } },
-  'news':       { title: '📰 חדשות שוק',         render: function(){ sviewRenderNews(); } },
-};
-var _currentSidebarView = 'watchlist';
-
-function sidebarOpen(viewName) {
-  var sidebar = document.querySelector('aside.sidebar');
-  var sideBtn = document.getElementById('ib-sidebar');
-  if (!sidebar) return;
-  // Open sidebar if collapsed
-  sidebar.classList.remove('collapsed');
-  // Update all ib buttons — only the triggering one stays active
-  var allKeys = Object.keys(_sidebarViews);
-  allKeys.forEach(function(k) {
-    var b = document.getElementById('ib-' + k);
-    if (b) b.classList.toggle('active', k === viewName);
-  });
-  if (sideBtn) sideBtn.classList.toggle('active', viewName === 'watchlist');
-  // Switch sidebar view
-  allKeys.forEach(function(k) {
-    var el = document.getElementById('sview-' + k);
-    if (el) el.classList.toggle('active', k === viewName);
-  });
-  // Update title
-  var titleEl = document.getElementById('sidebarTitle');
-  if (titleEl && _sidebarViews[viewName]) titleEl.textContent = _sidebarViews[viewName].title;
-  _currentSidebarView = viewName;
-  // Run render function if any
-  if (_sidebarViews[viewName] && _sidebarViews[viewName].render) {
-    _sidebarViews[viewName].render();
-  }
-}
-
 function ibToggleSidebar() {
   var sidebar = document.querySelector('aside.sidebar');
   var btn = document.getElementById('ib-sidebar');
   if (!sidebar || !btn) return;
   var isOpen = !sidebar.classList.contains('collapsed');
-  if (isOpen) {
-    sidebar.classList.add('collapsed');
-    btn.classList.remove('active');
-  } else {
-    sidebarOpen('watchlist');
+  sidebar.classList.toggle('collapsed', isOpen);
+  btn.classList.toggle('active', !isOpen);
+  // Close all icon panels when opening sidebar
+  if (!isOpen) {
+    ['clock','chat','scanner','alerts','indicators','insights','risk','calendar','lab'].forEach(function(p) {
+      var el  = document.getElementById('ibPanel-' + p);
+      var b2  = document.getElementById('ib-' + p);
+      if (el) el.classList.remove('open');
+      if (b2) b2.classList.remove('active');
+    });
   }
 }
 
 function ibToggle(name) {
+  // Close sidebar when opening any panel
   var sidebar = document.querySelector('aside.sidebar');
-  var isOpen = sidebar && !sidebar.classList.contains('collapsed');
-  if (isOpen && _currentSidebarView === name) {
-    // Same icon clicked again — close sidebar
+  var sideBtn = document.getElementById('ib-sidebar');
+  if (sidebar && !sidebar.classList.contains('collapsed')) {
     sidebar.classList.add('collapsed');
-    var btn = document.getElementById('ib-' + name);
-    if (btn) btn.classList.remove('active');
-    var sideBtn = document.getElementById('ib-sidebar');
     if (sideBtn) sideBtn.classList.remove('active');
-  } else {
-    sidebarOpen(name);
   }
-}
-
-function ibClose(name) {
-  // legacy compat — just close sidebar
-  var sidebar = document.querySelector('aside.sidebar');
-  if (sidebar) sidebar.classList.add('collapsed');
-  var btn = document.getElementById('ib-' + name);
-  if (btn) btn.classList.remove('active');
-}
-
-// ── Sidebar view renderers ──
-function sviewRenderAlerts() {
-  // Re-use existing scannerList and ibAlertList content
-  var sl2 = document.getElementById('scannerList2');
-  if (sl2) {
-    var sl = document.getElementById('scannerList');
-    if (sl) sl2.innerHTML = sl.innerHTML;
-  }
-  var al2 = document.getElementById('ibAlertList2');
-  if (al2) {
-    var al = document.getElementById('ibAlertList');
-    if (al) al2.innerHTML = al.innerHTML;
-    else ibRenderAlerts2direct(al2);
-  }
-}
-function ibRenderAlerts2direct(ul) {
-  var list = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
-  if (!list.length) { ul.innerHTML = '<li style="color:var(--text-muted);padding:.4rem 0;font-size:.78rem">אין התראות</li>'; return; }
-  ul.innerHTML = list.map(function(a, i) {
-    var sevColor = a.severity === 'green' ? 'var(--green)' : a.severity === 'red' ? '#ef5350' : '#f5a623';
-    var isScanner = a.condition === 'scanner';
-    var mainText  = isScanner
-      ? (a.msg || a.sym)
-      : ((a.sym||'').replace('.TA','') + ' ' + (a.condition==='above'?'▲ מעל':'▼ מתחת') + ' ' + (a.price||''));
-    return '<li class="ib-alert-item triggered" style="border-right:3px solid '+sevColor+';padding-right:.4rem;display:flex;align-items:center;gap:.3rem;padding:.3rem .4rem;font-size:.76rem">'
-      + '<span style="flex:1">'+mainText+'</span>'
-      + '<span style="font-size:.65rem;color:var(--text-muted)">'+(a.time||'')+'</span>'
-      + '<button class="ib-task-del" onclick="ibDelAlert2('+i+')">✕</button>'
-      + '</li>';
-  }).join('');
-}
-
-async function sviewRunScanner() {
-  var body = document.getElementById('ibScannerBody2'); if (!body) return;
-  body.innerHTML = '<div style="color:var(--text-muted);font-size:.75rem;text-align:center;padding:.8rem">🔍 סורק...</div>';
-  if (typeof SCANNER_SYMS === 'undefined') return;
-  var results = [];
-  var syms = Array.from(new Set(SCANNER_SYMS.concat(typeof watchlist !== 'undefined' ? watchlist : [])));
-  await Promise.all(syms.map(async function(sym) {
-    try {
-      var bars = await fetchYahooChartDirect(sym, '1D');
-      if (!bars || bars.length < 5) return;
-      var last = bars[bars.length-1], prev = bars[bars.length-2], prev3 = bars[bars.length-4];
-      if (!last||!prev||!prev3) return;
-      var pct = (last.close - prev.close) / prev.close * 100;
-      if (last.close > last.open && last.close > prev3.close && pct > 0.2)
-        results.push({ sym: sym, pct: pct });
-    } catch(e){}
-  }));
-  body.innerHTML = '';
-  if (!results.length) {
-    body.innerHTML = '<div style="color:var(--text-muted);font-size:.75rem;text-align:center;padding:.5rem">אין תוצאות כרגע</div>';
-    return;
-  }
-  results.sort(function(a,b){return b.pct-a.pct;}).slice(0,8).forEach(function(r) {
-    var el = document.createElement('div');
-    el.className = 'ib-tree-node';
-    el.style.cssText = 'display:flex;justify-content:space-between;padding:.35rem .5rem;font-size:.78rem;cursor:pointer';
-    el.innerHTML = '<span style="font-weight:700;color:var(--green)">'+r.sym.replace('.TA','')+'</span>'
-      + '<span style="color:var(--green)">+'+r.pct.toFixed(2)+'%</span>';
-    el.onclick = function(){ ibToggleSidebar(); selectSymbol(r.sym); };
-    body.appendChild(el);
+  ['clock','chat','scanner','alerts','indicators','insights','risk','calendar','lab'].forEach(function(p) {
+    var el  = document.getElementById('ibPanel-' + p);
+    var btn = document.getElementById('ib-' + p);
+    if (p === name) {
+      var isOpen = el && el.classList.contains('open');
+      if (el)  el.classList.toggle('open', !isOpen);
+      if (btn) btn.classList.toggle('active', !isOpen);
+      if (!isOpen) {
+        if (p === 'clock')   ibRenderClock();
+        if (p === 'tasks')   ibRenderTasks();
+        if (p === 'alerts')  ibRenderAlerts2();
+        if (p === 'scanner') ibRunScanner2();
+        if (p === 'indicators' && typeof renderMAPanel === 'function') renderMAPanel();
+        if (p === 'insights' && window.NTFeatures) NTFeatures.renderInsights();
+        if (p === 'risk'     && window.NTFeatures) NTFeatures.renderRisk();
+        if (p === 'calendar' && window.NTFeatures) NTFeatures.renderCalendar();
+        if (p === 'lab'      && window.NTFeatures) NTFeatures.renderLab();
+      }
+    } else {
+      if (el)  el.classList.remove('open');
+      if (btn) btn.classList.remove('active');
+    }
   });
 }
-
-function sviewRenderIndicators() {
-  var dst = document.getElementById('maList2');
-  var src = document.getElementById('maList');
-  if (dst && src) dst.innerHTML = src.innerHTML;
-  else if (dst && typeof renderMAPanel === 'function') renderMAPanel();
-}
-
-function sviewRenderInsights() {
-  var dst = document.getElementById('insightsBody2');
-  var src = document.getElementById('insightsBody');
-  if (dst && src) dst.innerHTML = src.innerHTML;
-  else if (dst && window.NTFeatures) NTFeatures.renderInsights();
-}
-
-function sviewRenderRisk() {
-  var dst = document.getElementById('riskBody2');
-  var src = document.getElementById('riskBody');
-  if (dst && src) dst.innerHTML = src.innerHTML;
-  else if (dst && window.NTFeatures) NTFeatures.renderRisk();
-}
-
-function sviewRenderCalendar() {
-  var dst = document.getElementById('calBody2');
-  var src = document.getElementById('calBody');
-  if (dst && src) dst.innerHTML = src.innerHTML;
-  else if (dst && window.NTFeatures) NTFeatures.renderCalendar();
-}
-
-function sviewRenderLab() {
-  var dst = document.getElementById('labBody2');
-  var src = document.getElementById('labBody');
-  if (dst && src) dst.innerHTML = src.innerHTML;
-  else if (dst && window.NTFeatures) NTFeatures.renderLab();
-}
-
-function sviewRenderClock() {
-  var el = document.getElementById('ibClockBody2'); if (!el) return;
-  function tick2() {
-    var now = new Date();
-    var utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
-    var il = new Date(utcMs + 3 * 3600000);
-    var ny = new Date(utcMs - 4 * 3600000);
-    function fmt(d){ return d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
-    el.innerHTML = '<div style="text-align:center;padding:.6rem 0">'
-      + '<div style="font-size:1.45rem;font-weight:900;color:var(--accent);letter-spacing:2px">'+fmt(il)+'</div>'
-      + '<div style="font-size:.68rem;color:var(--text-muted);margin-bottom:.9rem">שעון ישראל (UTC+3)</div>'
-      + '<div style="font-size:1rem;font-weight:700;color:var(--text)">'+fmt(ny)+'</div>'
-      + '<div style="font-size:.68rem;color:var(--text-muted)">ניו יורק (NYSE)</div></div>';
-  }
-  tick2();
-  clearInterval(window._sviewClockInt);
-  window._sviewClockInt = setInterval(function() {
-    var sv = document.getElementById('sview-clock');
-    if (sv && sv.classList.contains('active')) tick2();
-    else clearInterval(window._sviewClockInt);
-  }, 1000);
-}
-
-function sviewRenderTasks() {
-  var ul = document.getElementById('taskList2'); if (!ul) return;
-  if (!ibTasks.length) { ul.innerHTML = '<li style="color:var(--text-muted);padding:.4rem 0">אין משימות</li>'; return; }
-  ul.innerHTML = ibTasks.map(function(t,i){
-    return '<li class="ib-task-item'+(t.done?' done':'')+'"><input type="checkbox" id="tc2'+i+'"'+(t.done?' checked':'')+' onchange="ibToggleTask('+i+')" /><label for="tc2'+i+'">'+t.text+'</label><button class="ib-task-del" onclick="ibDelTask('+i+')">✕</button></li>';
-  }).join('');
-}
-function ibAddTask2() {
-  var inp = document.getElementById('taskInput2'); if (!inp) return;
-  var txt = inp.value.trim(); if (!txt) return;
-  ibTasks.push({ text: txt, done: false });
-  localStorage.setItem('ib_tasks', JSON.stringify(ibTasks));
-  inp.value = ''; sviewRenderTasks();
-}
-
-async function sviewRenderNews() {
-  var body = document.getElementById('sidebarNewsBody'); if (!body) return;
-  body.innerHTML = '<div style="color:var(--text-muted);font-size:.75rem;text-align:center;padding:1rem">⌛ טוען חדשות...</div>';
-  if (typeof loadNews !== 'function' || !currentSymbol) { body.innerHTML = '<div style="color:var(--text-muted);font-size:.75rem;text-align:center;padding:1rem">בחר מניה תחילה</div>'; return; }
-  // Copy from existing news popup if populated
-  var src = document.getElementById('newsPopupList');
-  if (src && src.innerHTML && !src.innerHTML.includes('בחר מניה')) {
-    body.innerHTML = src.innerHTML;
-  } else {
-    await loadNews(currentSymbol);
-    var src2 = document.getElementById('newsPopupList');
-    body.innerHTML = src2 ? src2.innerHTML : '';
-  }
-}
-
-// Also override ibRenderAlerts2 to refresh sview if active
-function ibRenderAlerts2() {
-  // Old ibAlertList (hidden panel)
-  var ul = document.getElementById('ibAlertList'); if (!ul) return;
-  var ibAlerts2 = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
-  if (!ibAlerts2.length) { ul.innerHTML = '<li style="color:var(--text-muted);padding:.4rem 0;font-size:.78rem">אין התראות</li>'; }
-  else {
-    ul.innerHTML = ibAlerts2.map(function(a, i) {
-      var isScanner = a.condition === 'scanner';
-      var sevColor  = a.severity === 'green' ? 'var(--green)' : a.severity === 'red' ? '#ef5350' : '#f5a623';
-      var mainText  = isScanner
-        ? (a.msg || a.sym)
-        : (a.sym ? a.sym.replace('.TA','') + ' ' + (a.condition === 'above' ? '▲ מעל' : '▼ מתחת') + ' ' + (typeof formatPrice==='function'? formatPrice(a.price):a.price) : '');
-      return '<li class="ib-alert-item triggered" style="border-right:3px solid ' + sevColor + ';padding-right:.4rem">'
-        + '<span style="flex:1;font-size:.78rem">' + mainText + '</span>'
-        + '<span style="font-size:.65rem;color:var(--text-muted);white-space:nowrap;margin-right:.3rem">' + (a.time || '') + '</span>'
-        + '<button class="ib-task-del" onclick="ibDelAlert2('+i+')">✕</button>'
-        + '</li>';
-    }).join('');
-  }
-  // If sview-alerts is active, refresh it too
-  if (_currentSidebarView === 'alerts') sviewRenderAlerts();
-}
-
-function ibDelAlert2(i) {
-  var ibAlerts2 = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
-  ibAlerts2.splice(i, 1);
-  localStorage.setItem('ib_alerts2', JSON.stringify(ibAlerts2));
-  ibRenderAlerts2();
-}
-
-// Override toggleNewsPopup to open in sidebar instead of popup
-function toggleNewsPopup() {
-  ibToggle('news');
+function ibClose(name) {
+  var el  = document.getElementById('ibPanel-' + name);
+  var btn = document.getElementById('ib-' + name);
+  if (el)  el.classList.remove('open');
+  if (btn) btn.classList.remove('active');
 }
 
 // TASKS
@@ -2050,17 +1770,39 @@ async function ibRunScanner2() {
   });
 }
 
-// ALERTS 2 — ibAddAlert (form inside sidebar alerts view)
+// ALERTS 2
+function ibRenderAlerts2() {
+  var ul = document.getElementById('ibAlertList'); if (!ul) return;
+  var ibAlerts2 = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
+  if (!ibAlerts2.length) { ul.innerHTML = '<li style="color:var(--text-muted);padding:.4rem 0;font-size:.78rem">אין התראות</li>'; return; }
+  ul.innerHTML = ibAlerts2.map(function(a, i) {
+    var isScanner = a.condition === 'scanner';
+    var sevColor  = a.severity === 'green' ? 'var(--green)' : a.severity === 'red' ? '#ef5350' : '#f5a623';
+    var mainText  = isScanner
+      ? (a.msg || a.sym)
+      : (a.sym ? a.sym.replace('.TA','') + ' ' + (a.condition === 'above' ? '▲ מעל' : '▼ מתחת') + ' ' + (typeof formatPrice==='function'? formatPrice(a.price):a.price) : '');
+    return '<li class="ib-alert-item triggered" style="border-right:3px solid ' + sevColor + ';padding-right:.4rem">'
+      + '<span style="flex:1;font-size:.78rem">' + mainText + '</span>'
+      + '<span style="font-size:.65rem;color:var(--text-muted);white-space:nowrap;margin-right:.3rem">' + (a.time || '') + '</span>'
+      + '<button class="ib-task-del" onclick="ibDelAlert2('+i+')">✕</button>'
+      + '</li>';
+  }).join('');
+}
 function ibAddAlert() {
   var symEl   = document.getElementById('ibAlertSym');
   var priceEl = document.getElementById('ibAlertPrice');
   var sym     = symEl ? symEl.value.trim().toUpperCase() : '';
   var price   = parseFloat(priceEl ? priceEl.value : 0);
   if (!sym || !price) return;
-  var list = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
-  list.push({ sym: sym, price: price });
-  localStorage.setItem('ib_alerts2', JSON.stringify(list));
+  ibAlerts2.push({ sym: sym, price: price });
+  localStorage.setItem('ib_alerts2', JSON.stringify(ibAlerts2));
   if (symEl) symEl.value = ''; if (priceEl) priceEl.value = '';
+  ibRenderAlerts2();
+}
+function ibDelAlert2(i) {
+  var ibAlerts2 = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
+  ibAlerts2.splice(i, 1);
+  localStorage.setItem('ib_alerts2', JSON.stringify(ibAlerts2));
   ibRenderAlerts2();
 }
 </script>
