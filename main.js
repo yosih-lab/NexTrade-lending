@@ -772,14 +772,15 @@ function initChart() {
   });
 
   // Force resize after layout settles (fixes 0-height init issue)
-  setTimeout(function() {
-    if (chartInstance) {
-      var el = document.getElementById('chart');
-      if (el && el.offsetWidth > 0 && el.offsetHeight > 0) {
-        chartInstance.resize(el.offsetWidth, el.offsetHeight);
-      }
-    }
-  }, 120);
+  function forceChartResize() {
+    if (!chartInstance) return;
+    var el = document.getElementById('chart');
+    if (!el) return;
+    var w = el.offsetWidth, h = el.offsetHeight;
+    if (w > 0 && h > 0) chartInstance.resize(w, h);
+  }
+  setTimeout(forceChartResize, 120);
+  setTimeout(forceChartResize, 400);
 }
 
 // ============================================
