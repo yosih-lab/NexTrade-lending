@@ -720,8 +720,8 @@ function initChart() {
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
     rightPriceScale: { borderColor: '#1e2533', autoScale: true },
     timeScale: { borderColor: '#1e2533', timeVisible: true, secondsVisible: false },
-    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
-    handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: { time: true, price: true } },
+    handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+    handleScale: { mouseWheel: false, pinch: true, axisPressedMouseMove: { time: true, price: true } },
   });
 
   // Restore saved background preference
@@ -783,46 +783,50 @@ function initChart() {
 }
 
 // ============================================
-//   PRICE AXIS VERTICAL SCROLL (wheel on right edge)
+//   CHART WHEEL HANDLER — slow pan + Ctrl zoom
 // ============================================
 var _priceMarginTop = 0.1, _priceMarginBottom = 0.1;
 function initPriceAxisScroll() {
-  // Must use capture:true so we intercept BEFORE LightweightCharts' own handler
   var chartEl = document.getElementById('chart');
   if (!chartEl) return;
   chartEl.addEventListener('wheel', function(e) {
     if (!chartInstance) return;
-    if (e._ntSlow) return; // already slowed down, let LightweightCharts handle it
+    e.preventDefault();
     var rect = chartEl.getBoundingClientRect();
     var xFromRight = rect.right - e.clientX;
-    // Only activate when cursor is over the price axis (rightmost ~65px)
-    if (xFromRight > 65) {
-      // Slow down chart horizontal scroll — reduce deltaY by 60%
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      var slowEvt = new WheelEvent('wheel', {
-        deltaX: e.deltaX * 0.4, deltaY: e.deltaY * 0.4, deltaZ: e.deltaZ * 0.4,
-        clientX: e.clientX, clientY: e.clientY,
-        screenX: e.screenX, screenY: e.screenY,
-        ctrlKey: e.ctrlKey, shiftKey: e.shiftKey, altKey: e.altKey, metaKey: e.metaKey,
-        bubbles: true, cancelable: true
-      });
-      slowEvt._ntSlow = true;
-      chartEl.dispatchEvent(slowEvt);
+
+    // Ctrl + scroll = zoom in/out
+    if (e.ctrlKey) {
+      var ts = chartInstance.timeScale();
+      var range = ts.getVisibleLogicalRange();
+      if (!range) return;
+      var center = (range.from + range.to) / 2;
+      var span = range.to - range.from;
+      var factor = e.deltaY > 0 ? 1.15 : 0.87; // zoom out / zoom in
+      var newSpan = span * factor;
+      ts.setVisibleLogicalRange({ from: center - newSpan / 2, to: center + newSpan / 2 });
       return;
     }
-    // Block LightweightCharts from also handling this event
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    // Scroll UP (deltaY < 0) = zoom in (prices stretch) = shrink margins
-    // Scroll DOWN (deltaY > 0) = zoom out (prices compress) = grow margins
-    var dir = e.deltaY > 0 ? 1 : -1;
-    var step = 0.03;
-    _priceMarginTop    = Math.max(0.01, Math.min(0.88, _priceMarginTop    + dir * step));
-    _priceMarginBottom = Math.max(0.01, Math.min(0.88, _priceMarginBottom + dir * step));
-    chartInstance.applyOptions({
-      rightPriceScale: { scaleMargins: { top: _priceMarginTop, bottom: _priceMarginBottom } }
-    });
+
+    // On price axis (right 65px) — vertical zoom (stretch/compress prices)
+    if (xFromRight <= 65) {
+      var dir = e.deltaY > 0 ? 1 : -1;
+      var step = 0.03;
+      _priceMarginTop    = Math.max(0.01, Math.min(0.88, _priceMarginTop    + dir * step));
+      _priceMarginBottom = Math.max(0.01, Math.min(0.88, _priceMarginBottom + dir * step));
+      chartInstance.applyOptions({
+        rightPriceScale: { scaleMargins: { top: _priceMarginTop, bottom: _priceMarginBottom } }
+      });
+      return;
+    }
+
+    // Normal scroll — slow horizontal pan (0.3x speed)
+    var ts2 = chartInstance.timeScale();
+    var range2 = ts2.getVisibleLogicalRange();
+    if (!range2) return;
+    var span2 = range2.to - range2.from;
+    var shift = (e.deltaY * 0.3) / rect.width * span2;
+    ts2.setVisibleLogicalRange({ from: range2.from + shift, to: range2.to + shift });
   }, { passive: false, capture: true });
 }
 
@@ -1939,7 +1943,7 @@ function updateAlertOverlays() {
 
       // Freeze chart scroll/pan for the duration of the drag
       if (chartInstance) {
-        chartInstance.applyOptions({ handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false } });
+        chartInstance.applyOptions({ handleScroll: { pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false } });
       }
 
       var chartEl = document.getElementById('chart');
@@ -1971,7 +1975,7 @@ function updateAlertOverlays() {
         document.removeEventListener('mouseup', onUp);
         // Restore chart interaction
         if (chartInstance) {
-          chartInstance.applyOptions({ handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true } });
+          chartInstance.applyOptions({ handleScroll: { pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true } });
         }
         // Commit final price
         var localY = ev.clientY - rect.top;
