@@ -137,6 +137,8 @@ function loginSuccess(user) {
   
   if (authEl) authEl.style.display  = 'none';
   if (appEl) appEl.style.display = 'block';
+  // Wake up ResizeObserver after display:none → display:block transition
+  window.dispatchEvent(new Event('resize'));
   
   var nameEl = document.getElementById('userNameDisplay');
   var avatarEl = document.getElementById('userAvatar');
@@ -776,11 +778,13 @@ function initChart() {
     if (!chartInstance) return;
     var el = document.getElementById('chart');
     if (!el) return;
-    var w = el.offsetWidth, h = el.offsetHeight;
-    if (w > 0 && h > 0) chartInstance.resize(w, h);
+    var w = el.offsetWidth || el.parentElement.offsetWidth;
+    var h = el.offsetHeight || el.parentElement.offsetHeight || 500;
+    chartInstance.resize(w, h);
   }
-  setTimeout(forceChartResize, 120);
+  setTimeout(forceChartResize, 100);
   setTimeout(forceChartResize, 400);
+  setTimeout(forceChartResize, 800);
 }
 
 // ============================================

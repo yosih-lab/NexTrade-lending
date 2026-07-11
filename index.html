@@ -298,7 +298,7 @@
     .add-row input:focus { outline:none; border-color:var(--accent); }
     .remove-btn { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:.75rem; padding:2px 5px; border-radius:4px; }
     .remove-btn:hover { color:var(--red); background:rgba(239,83,80,.1); }
-    .main-area { background:var(--bg); overflow:hidden; padding:.5rem; display:flex; flex-direction:column; gap:.5rem; position:relative; z-index:4; flex:1 1 0; min-height:0; min-width:0; }
+    .main-area { background:var(--bg); overflow:hidden; padding:.5rem; display:flex; flex-direction:column; gap:.5rem; position:relative; z-index:4; flex:1 1 0; min-width:0; height:100%; }
     .cards-row { display:grid; grid-template-columns:repeat(4,1fr); gap:.85rem; }
     .stock-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1rem; cursor:pointer; transition:border-color .2s,transform .15s; min-height:90px; }
     .stock-card:hover { border-color:var(--accent); transform:translateY(-2px); }
@@ -312,7 +312,7 @@
     .card-change.up { color:var(--green); }
     .card-change.down { color:var(--red); }
     /* CHART PANEL */
-    .chart-panel { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:visible; display:flex; flex-direction:column; flex:1 1 0; min-height:0; }
+    .chart-panel { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; display:flex; flex-direction:column; height:100%; }
     .chart-header { display:none; }
     /* Stock info overlay — removed duplicate (see below in CHART WRAP section) */
     /* TIMEFRAME TOOLBAR */
