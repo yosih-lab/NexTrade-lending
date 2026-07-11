@@ -820,12 +820,12 @@ function initPriceAxisScroll() {
       return;
     }
 
-    // Normal scroll — slow horizontal pan (0.3x speed)
+    // Normal scroll — slow horizontal pan (reduced speed)
     var ts2 = chartInstance.timeScale();
     var range2 = ts2.getVisibleLogicalRange();
     if (!range2) return;
     var span2 = range2.to - range2.from;
-    var shift = (e.deltaY * 0.3) / rect.width * span2;
+    var shift = (e.deltaY * 0.08) / rect.width * span2;
     ts2.setVisibleLogicalRange({ from: range2.from + shift, to: range2.to + shift });
   }, { passive: false, capture: true });
 }
@@ -1037,6 +1037,8 @@ function updateCrosshairAlertBtn(param) {
   var popup = document.getElementById('crosshairAlertPopup');
   // If popup is open, keep button visible but don't reposition
   if (popup && popup.style.display === 'block') return;
+  // If mouse is hovering on button itself, don't hide it
+  if (btn.matches(':hover')) return;
   if (!param || !param.point || param.point.x < 0 || param.point.y < 0) {
     btn.style.display = 'none';
     return;
@@ -1074,9 +1076,13 @@ function openCrosshairAlertPopup() {
     if (priceInput) priceInput.value = rounded;
   }
   // Position popup near the button
-  popup.style.top  = (parseInt(btn.style.top) - 20) + 'px';
-  popup.style.left = (parseInt(btn.style.left) - 220) + 'px';
+  var btnTop = parseInt(btn.style.top) || 0;
+  var btnLeft = parseInt(btn.style.left) || 0;
+  popup.style.top  = Math.max(5, btnTop - 30) + 'px';
+  popup.style.left = Math.max(5, btnLeft - 225) + 'px';
   popup.style.display = 'block';
+  // Keep button visible while popup is open
+  btn.style.display = 'flex';
 }
 
 function closeCrosshairAlertPopup() {

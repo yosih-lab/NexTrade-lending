@@ -404,7 +404,7 @@
     /* ===== CROSSHAIR ALERT BUTTON ===== */
     #crosshairAlertBtn {
       position:absolute;
-      width:22px; height:22px;
+      width:24px; height:24px;
       border-radius:50%;
       background:#fff;
       border:2px solid #fff;
@@ -417,13 +417,13 @@
       box-shadow:0 2px 8px rgba(0,0,0,.5);
       transition:transform .12s;
     }
-    #crosshairAlertBtn:hover { transform:scale(1.2); background:#e8f0ff; }
+    #crosshairAlertBtn:hover { transform:scale(1.25); background:#e8f0ff; }
     #crosshairAlertBtn svg { display:block; }
     /* Mini alert form popup on crosshair */
     #crosshairAlertPopup {
       position:absolute;
       display:none;
-      z-index:30;
+      z-index:200;
       background:#050810;
       border:1px solid #1e2637;
       border-radius:10px;
@@ -432,6 +432,7 @@
       width:210px;
       font-family:'Heebo',sans-serif;
       direction:rtl;
+      pointer-events:auto;
     }
     /* ===== CHART CONTEXT MENU ===== */
     #chartCtxMenu { position:fixed; z-index:9999; display:none; background:#050810; border:1px solid #1e2637; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,.95); width:190px; font-family:'Heebo',sans-serif; overflow:hidden; direction:rtl; }
@@ -1314,7 +1315,7 @@
         <!-- VIEW: Alerts -->
         <div class="sidebar-view" id="sview-alerts">
           <div style="font-size:.74rem;font-weight:700;color:var(--text);margin-bottom:.4rem">🔍 סורק חכם</div>
-          <div id="scannerList2"><div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:.6rem 0">⌛ טוען...</div></div>
+          <div id="scannerList"><div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:.6rem 0">⌛ טוען...</div></div>
           <button class="btn btn-sm" style="width:100%;margin:.4rem 0" onclick="runScanner()">🔄 סרוק</button>
           <div style="height:1px;background:var(--border);margin:.5rem 0"></div>
           <div style="font-size:.74rem;font-weight:700;color:var(--text);margin-bottom:.4rem">🔔 התראות מחיר</div>
@@ -1326,32 +1327,32 @@
         <div class="sidebar-view" id="sview-scanner">
           <div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:1rem">לחץ רענן לסריקה</div>
           <button class="btn btn-sm" style="width:100%;margin-top:.3rem" onclick="runScanner()">🔄 סרוק</button>
-          <div id="ibScannerBody2"></div>
+          <div id="ibScannerBody"></div>
         </div>
 
         <!-- VIEW: Indicators -->
         <div class="sidebar-view" id="sview-indicators">
-          <div class="ma-list" id="maList2"></div>
+          <div class="ma-list" id="maList"></div>
         </div>
 
         <!-- VIEW: Insights -->
         <div class="sidebar-view" id="sview-insights">
-          <div id="insightsBody2"></div>
+          <div id="insightsBody"></div>
         </div>
 
         <!-- VIEW: Risk -->
         <div class="sidebar-view" id="sview-risk">
-          <div id="riskBody2"></div>
+          <div id="riskBody"></div>
         </div>
 
         <!-- VIEW: Calendar -->
         <div class="sidebar-view" id="sview-calendar">
-          <div id="calBody2"></div>
+          <div id="calBody"></div>
         </div>
 
         <!-- VIEW: Lab -->
         <div class="sidebar-view" id="sview-lab">
-          <div id="labBody2"></div>
+          <div id="labBody"></div>
         </div>
 
         <!-- VIEW: Chat -->
@@ -1470,7 +1471,7 @@
           <!-- Clock below price axis -->
           <div id="chartClock"></div>
           <!-- Crosshair alert button -->
-          <button id="crosshairAlertBtn" title="הגדר התראה" onclick="openCrosshairAlertPopup()">
+          <button id="crosshairAlertBtn" title="הגדר התראה" onclick="event.stopPropagation(); openCrosshairAlertPopup()">
             <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="#1a1a2e" stroke-width="2.2" stroke-linecap="round">
               <line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/>
             </svg>
@@ -1562,38 +1563,21 @@
   </button>
 </div>
 
-<!-- TOOLBAR PANELS -->
-<div id="ibPanel-tasks"   class="ib-panel"><div class="ib-panel-hdr"><span>🗒️ סרגל משימות</span><button class="ib-panel-close" onclick="ibClose('tasks')">&times;</button></div><div class="ib-panel-body"><div class="ib-panel-add-row"><input id="taskInput" placeholder="משימה חדשה..." onkeydown="if(event.key==='Enter')ibAddTask()" /><button class="btn btn-sm" onclick="ibAddTask()">הוסף</button></div><ul id="taskList" style="list-style:none;margin-top:.5rem"></ul></div></div>
-<div id="ibPanel-clock"   class="ib-panel"><div class="ib-panel-hdr"><span>🕐 שעון התראות</span><button class="ib-panel-close" onclick="ibClose('clock')">&times;</button></div><div class="ib-panel-body" id="ibClockBody"></div></div>
-<div id="ibPanel-chat"    class="ib-panel"><div class="ib-panel-hdr"><span>💬 צ'אט</span><button class="ib-panel-close" onclick="ibClose('chat')">&times;</button></div><div class="ib-panel-body"><div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:2rem 0">צ'אט בקרוב</div></div></div>
-<div id="ibPanel-scanner" class="ib-panel"><div class="ib-panel-hdr"><span>🔍 סורק חכם</span><button class="ib-panel-close" onclick="ibClose('scanner')">&times;</button></div><div class="ib-panel-body" id="ibScannerBody"><div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:1rem">לחץ רענן לסריקה</div><button class="btn btn-sm" style="width:100%;margin-top:.3rem" onclick="ibRunScanner2()">🔄 סרוק</button></div></div>
-<div id="ibPanel-indicators" class="ib-panel">
-  <div class="ib-panel-hdr"><span>📊 ממוצעים נעים</span><button class="ib-panel-close" onclick="ibClose('indicators')">&times;</button></div>
-  <div class="ib-panel-body"><div class="ma-list" id="maList"></div></div>
-</div>
-<div id="ibPanel-insights" class="ib-panel ib-panel-wide">
-  <div class="ib-panel-hdr"><span>🧠 תובנות AI</span><button class="ib-panel-close" onclick="ibClose('insights')">&times;</button></div>
-  <div class="ib-panel-body" id="insightsBody"></div>
-</div>
-<div id="ibPanel-risk" class="ib-panel ib-panel-wide">
-  <div class="ib-panel-hdr"><span>⚖️ ניתוח סיכוני תיק</span><button class="ib-panel-close" onclick="ibClose('risk')">&times;</button></div>
-  <div class="ib-panel-body" id="riskBody"></div>
-</div>
-<div id="ibPanel-calendar" class="ib-panel ib-panel-wide">
-  <div class="ib-panel-hdr"><span>📅 לוח אירועים ודיווחים</span><button class="ib-panel-close" onclick="ibClose('calendar')">&times;</button></div>
-  <div class="ib-panel-body" id="calBody"></div>
-</div>
-<div id="ibPanel-lab" class="ib-panel ib-panel-wide">
-  <div class="ib-panel-hdr"><span>🧪 מעבדה — סנטימנט · דוחות · קהל · רעיונות</span><button class="ib-panel-close" onclick="ibClose('lab')">&times;</button></div>
-  <div class="ib-panel-body" id="labBody"></div>
-</div>
-<div id="ibPanel-alerts"  class="ib-panel"><div class="ib-panel-hdr"><span>🔔 התראות וסורק</span><button class="ib-panel-close" onclick="ibClose('alerts')">&times;</button></div><div class="ib-panel-body">
-  <div style="font-size:.74rem;font-weight:700;color:var(--text);margin-bottom:.4rem">🔍 סורק חכם</div>
-  <div id="scannerList"><div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:.6rem 0">⌛ טוען...</div></div>
-  <button class="btn btn-sm" style="width:100%;margin:.4rem 0" onclick="runScanner()">🔄 סרוק</button>
-  <div style="height:1px;background:var(--border);margin:.5rem 0"></div>
-  <div style="font-size:.74rem;font-weight:700;color:var(--text);margin-bottom:.4rem">🔔 התראות מחיר</div>
+<!-- TOOLBAR PANELS (hidden — content moved to sidebar) -->
+<div style="display:none">
+<div id="ibPanel-tasks"   class="ib-panel"><div class="ib-panel-hdr"><span>🗒️ סרגל משימות</span></div><div class="ib-panel-body"><div class="ib-panel-add-row"><input id="taskInput" placeholder="משימה חדשה..." onkeydown="if(event.key==='Enter')ibAddTask()" /><button class="btn btn-sm" onclick="ibAddTask()">הוסף</button></div><ul id="taskList" style="list-style:none;margin-top:.5rem"></ul></div></div>
+<div id="ibPanel-clock"   class="ib-panel"><div class="ib-panel-hdr"><span>🕐 שעון התראות</span></div><div class="ib-panel-body" id="ibClockBody"></div></div>
+<div id="ibPanel-chat"    class="ib-panel"></div>
+<div id="ibPanel-scanner" class="ib-panel"><div class="ib-panel-body" id="_ibScannerBody_old"></div></div>
+<div id="ibPanel-indicators" class="ib-panel"><div class="ib-panel-body"><div class="ma-list" id="_maList_old"></div></div></div>
+<div id="ibPanel-insights" class="ib-panel"><div class="ib-panel-body" id="_insightsBody_old"></div></div>
+<div id="ibPanel-risk" class="ib-panel"><div class="ib-panel-body" id="_riskBody_old"></div></div>
+<div id="ibPanel-calendar" class="ib-panel"><div class="ib-panel-body" id="_calBody_old"></div></div>
+<div id="ibPanel-lab" class="ib-panel"><div class="ib-panel-body" id="_labBody_old"></div></div>
+<div id="ibPanel-alerts"  class="ib-panel"><div class="ib-panel-body">
+  <div id="_scannerList_old"></div>
   <div class="ib-panel-add-row"><input id="ibAlertSym" placeholder="סמל" style="width:60px" /><input id="ibAlertPrice" placeholder="מחיר" type="number" style="width:70px" /><button class="btn btn-sm" onclick="ibAddAlert()">הוסף</button></div><ul id="ibAlertList" style="list-style:none;margin-top:.5rem"></ul></div></div>
+</div>
 
 <!-- NEWS POPUP -->
 <div id="newsPopup">
@@ -1689,13 +1673,13 @@ var ibAlerts2 = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
 
 var _sidebarViews = {
   watchlist:   { title: '📋 Watchlist' },
-  alerts:      { title: '🔔 התראות', render: function(){ renderAlerts(); } },
+  alerts:      { title: '🔔 התראות', render: function(){ if(typeof renderAlerts==='function') renderAlerts(); } },
   scanner:     { title: '🔍 סורק חכם', render: function(){ if(typeof runScanner==='function') runScanner(); } },
   indicators:  { title: '📊 אינדיקטורים', render: function(){ if(typeof renderMAPanel==='function') renderMAPanel(); } },
-  insights:    { title: '🧠 תובנות AI', render: function(){ if(window.NTFeatures) NTFeatures.renderInsights('insightsBody2'); } },
-  risk:        { title: '⚖️ סיכוני תיק', render: function(){ if(window.NTFeatures) NTFeatures.renderRisk('riskBody2'); } },
-  calendar:    { title: '📅 לוח אירועים', render: function(){ if(window.NTFeatures) NTFeatures.renderCalendar('calBody2'); } },
-  lab:         { title: '🧪 מעבדה', render: function(){ if(window.NTFeatures) NTFeatures.renderLab('labBody2'); } },
+  insights:    { title: '🧠 תובנות AI', render: function(){ if(window.NTFeatures) NTFeatures.renderInsights(); } },
+  risk:        { title: '⚖️ סיכוני תיק', render: function(){ if(window.NTFeatures) NTFeatures.renderRisk(); } },
+  calendar:    { title: '📅 לוח אירועים', render: function(){ if(window.NTFeatures) NTFeatures.renderCalendar(); } },
+  lab:         { title: '🧪 מעבדה', render: function(){ if(window.NTFeatures) NTFeatures.renderLab(); } },
   chat:        { title: '💬 צ\'אט' },
   clock:       { title: '🕐 שעון', render: function(){ ibRenderClock2(); } },
   tasks:       { title: '🗒️ משימות', render: function(){ ibRenderTasks2(); } },
