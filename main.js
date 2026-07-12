@@ -1100,6 +1100,7 @@ function crosshairAddAlert() {
   localStorage.setItem('ml_alerts', JSON.stringify(alerts));
   renderAlerts();
   closeCrosshairAlertPopup();
+  if (typeof incrementAlertBadge === 'function') incrementAlertBadge();
   // Confirmation banner
   var banner = document.createElement('div');
   banner.textContent = '✅ התראה נוספה: ' + sym + ' ' + (cond === 'above' ? 'מעל' : 'מתחת') + ' ' + formatPrice(price);
@@ -1803,6 +1804,7 @@ function addAlert() {
   document.getElementById('alertPrice').value  = '';
   document.getElementById('alertEmail').value  = '';
   renderAlerts();
+  if (typeof incrementAlertBadge === 'function') incrementAlertBadge();
 }
 
 function removeAlert(i) {

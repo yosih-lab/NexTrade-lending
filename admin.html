@@ -206,15 +206,15 @@ function renderUsers(data) {
       : '<span class="badge badge-user">משתמש</span>';
     var date  = u.createdAt ? new Date(u.createdAt).toLocaleDateString('he-IL') : '—';
     var toggleRole = u.role === 'admin'
-      ? '<button class="btn" onclick="changeRole(' + u.id + ',\'user\')">הורד למשתמש</button>'
-      : '<button class="btn" onclick="changeRole(' + u.id + ',\'admin\')">העלה למנהל</button>';
+      ? '<button class="btn" onclick="changeRole(\'' + u.id + '\',\'user\')">הורד למשתמש</button>'
+      : '<button class="btn" onclick="changeRole(\'' + u.id + '\',\'admin\')">העלה למנהל</button>';
     return '<tr>'
       + '<td style="font-weight:700">' + u.username + '</td>'
       + '<td style="color:#8899aa">' + u.email + '</td>'
       + '<td>' + badge + '</td>'
       + '<td style="color:#8899aa">' + date + '</td>'
       + '<td><div style="display:flex;gap:.5rem">' + toggleRole
-      + '<button class="btn btn-danger" onclick="deleteUser(' + u.id + ',\'' + u.username + '\')">מחק</button>'
+      + '<button class="btn btn-danger" onclick="deleteUser(\'' + u.id + '\',\'' + u.username + '\')">מחק</button>'
       + '</div></td>'
       + '</tr>';
   }).join('');

@@ -177,6 +177,7 @@
     .sidebar-hdr-title { display:flex; align-items:center; gap:.4rem; }
     .sidebar-body {
       flex:1; overflow-y:auto; padding:0;
+      padding-top:50px;
       display:flex; flex-direction:column;
     }
     .sidebar-view { display:none; flex:1; overflow-y:auto; padding:.65rem .75rem; flex-direction:column; gap:.5rem; }
@@ -404,10 +405,10 @@
     /* ===== CROSSHAIR ALERT BUTTON ===== */
     #crosshairAlertBtn {
       position:absolute;
-      width:24px; height:24px;
+      width:20px; height:20px;
       border-radius:50%;
-      background:#fff;
-      border:2px solid #fff;
+      background:#888;
+      border:2px solid #888;
       display:none;
       align-items:center;
       justify-content:center;
@@ -417,7 +418,7 @@
       box-shadow:0 2px 8px rgba(0,0,0,.5);
       transition:transform .12s;
     }
-    #crosshairAlertBtn:hover { transform:scale(1.25); background:#e8f0ff; }
+    #crosshairAlertBtn:hover { transform:scale(1.25); background:#aaa; border-color:#aaa; }
     #crosshairAlertBtn svg { display:block; }
     /* Mini alert form popup on crosshair */
     #crosshairAlertPopup {
@@ -552,6 +553,16 @@
     /* sidebar hidden state */
     .sidebar.collapsed{display:none!important}
     .ib-sep{width:22px;height:1px;background:var(--border);margin:2px 0;pointer-events:none}
+    /* Alert badge on bell icon */
+    .alert-badge {
+      position:absolute; top:2px; right:2px;
+      min-width:14px; height:14px;
+      background:#ef5350; color:#fff;
+      font-size:.58rem; font-weight:900;
+      border-radius:8px; padding:0 3px;
+      display:flex; align-items:center; justify-content:center;
+      line-height:1; pointer-events:none;
+    }
     .ib-tip{
       position:absolute;
       right:44px;
@@ -1323,13 +1334,6 @@
           <ul id="alertsList" style="list-style:none;margin-top:.5rem"></ul>
         </div>
 
-        <!-- VIEW: Scanner -->
-        <div class="sidebar-view" id="sview-scanner">
-          <div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:1rem">לחץ רענן לסריקה</div>
-          <button class="btn btn-sm" style="width:100%;margin-top:.3rem" onclick="runScanner()">🔄 סרוק</button>
-          <div id="ibScannerBody"></div>
-        </div>
-
         <!-- VIEW: Indicators -->
         <div class="sidebar-view" id="sview-indicators">
           <div class="ma-list" id="maList"></div>
@@ -1472,7 +1476,7 @@
           <div id="chartClock"></div>
           <!-- Crosshair alert button -->
           <button id="crosshairAlertBtn" title="הגדר התראה" onclick="event.stopPropagation(); openCrosshairAlertPopup()">
-            <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="#1a1a2e" stroke-width="2.2" stroke-linecap="round">
+            <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round">
               <line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/>
             </svg>
           </button>
@@ -1524,21 +1528,14 @@
 
 <!-- VERTICAL ICON TOOLBAR -->
 <div class="icon-toolbar" id="iconToolbar">
-  <button class="ib-hamburger active" id="ib-sidebar" onclick="ibToggleSidebar()" title="">
-    <span></span><span></span><span></span>
-    <span class="ib-tip">Watchlist</span>
-  </button>
   <!-- clock removed from toolbar, shown below chart -->
-  <div class="ib-sep"></div>
   <button class="ib" id="ib-chat"    onclick="ibToggle('chat')"    title="">
     💬<span class="ib-tip">צ'אטים</span>
   </button>
   <div class="ib-sep"></div>
-  <button class="ib" id="ib-scanner" onclick="ibToggle('scanner')" title="">
-    🔍<span class="ib-tip">סורק חכם</span>
-  </button>
-  <button class="ib" id="ib-alerts"  onclick="ibToggle('alerts')"  title="">
-    🔔<span class="ib-tip">התראות</span>
+  <button class="ib" id="ib-alerts" onclick="ibToggle('alerts')" title="" style="position:relative">
+    🔔<span class="ib-tip">התראות וסורק</span>
+    <span id="alertBadge" class="alert-badge" style="display:none">0</span>
   </button>
   <div class="ib-sep"></div>
   <button class="ib" id="ib-indicators" onclick="ibToggle('indicators')" title="">
@@ -1673,8 +1670,7 @@ var ibAlerts2 = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
 
 var _sidebarViews = {
   watchlist:   { title: '📋 Watchlist' },
-  alerts:      { title: '🔔 התראות', render: function(){ if(typeof renderAlerts==='function') renderAlerts(); } },
-  scanner:     { title: '🔍 סורק חכם', render: function(){ if(typeof runScanner==='function') runScanner(); } },
+  alerts:      { title: '🔔 התראות וסורק', render: function(){ if(typeof renderAlerts==='function') renderAlerts(); if(typeof runScanner==='function') runScanner(); clearAlertBadge(); } },
   indicators:  { title: '📊 אינדיקטורים', render: function(){ if(typeof renderMAPanel==='function') renderMAPanel(); } },
   insights:    { title: '🧠 תובנות AI', render: function(){ if(window.NTFeatures) NTFeatures.renderInsights(); } },
   risk:        { title: '⚖️ סיכוני תיק', render: function(){ if(window.NTFeatures) NTFeatures.renderRisk(); } },
@@ -1685,6 +1681,28 @@ var _sidebarViews = {
   tasks:       { title: '🗒️ משימות', render: function(){ ibRenderTasks2(); } },
   news:        { title: '📰 חדשות', render: function(){ if(typeof loadNews==='function') loadNews(typeof currentSymbol!=='undefined'?currentSymbol:''); } }
 };
+
+// Alert badge counter
+var _alertBadgeCount = 0;
+function updateAlertBadge(count) {
+  _alertBadgeCount = count;
+  var badge = document.getElementById('alertBadge');
+  if (!badge) return;
+  if (count > 0) {
+    badge.textContent = count;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+function incrementAlertBadge() {
+  // Don't increment if alerts view is currently open
+  if (_currentSidebarView === 'alerts') return;
+  updateAlertBadge(_alertBadgeCount + 1);
+}
+function clearAlertBadge() {
+  updateAlertBadge(0);
+}
 var _currentSidebarView = 'watchlist';
 
 function sidebarOpen(viewName) {
@@ -1704,7 +1722,7 @@ function sidebarOpen(viewName) {
   if (titleEl && _sidebarViews[viewName]) titleEl.textContent = _sidebarViews[viewName].title;
   _currentSidebarView = viewName;
   // Activate icon button highlight
-  ['chat','scanner','alerts','indicators','insights','risk','calendar','lab','news'].forEach(function(p) {
+  ['chat','alerts','indicators','insights','risk','calendar','lab','news'].forEach(function(p) {
     var b = document.getElementById('ib-' + p);
     if (b) b.classList.toggle('active', p === viewName);
   });
@@ -1737,7 +1755,7 @@ function ibToggle(name) {
     // Same icon clicked again → collapse sidebar
     sidebar.classList.add('collapsed');
     document.getElementById('ib-sidebar').classList.remove('active');
-    ['chat','scanner','alerts','indicators','insights','risk','calendar','lab','news'].forEach(function(p) {
+    ['chat','alerts','indicators','insights','risk','calendar','lab','news'].forEach(function(p) {
       var b = document.getElementById('ib-' + p);
       if (b) b.classList.remove('active');
     });
@@ -1761,6 +1779,7 @@ function sidebarAddAlert() {
     alerts.push({ symbol: sym.indexOf('.') === -1 ? sym + '.TA' : sym, condition: 'above', price: price, email: null });
     localStorage.setItem('ml_alerts', JSON.stringify(alerts));
     if (typeof renderAlerts === 'function') renderAlerts();
+    incrementAlertBadge();
   }
   if (symEl) symEl.value = ''; if (priceEl) priceEl.value = '';
 }
