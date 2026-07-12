@@ -177,7 +177,7 @@
     .sidebar-hdr-title { display:flex; align-items:center; gap:.4rem; }
     .sidebar-body {
       flex:1; overflow-y:auto; padding:0;
-      padding-top:50px;
+      padding-top:130px;
       display:flex; flex-direction:column;
     }
     .sidebar-view { display:none; flex:1; overflow-y:auto; padding:.65rem .75rem; flex-direction:column; gap:.5rem; }
@@ -1295,10 +1295,7 @@
   </div>
   <div class="layout">
     <aside class="sidebar">
-      <!-- Sidebar header — shows current view title -->
-      <div class="sidebar-hdr">
-        <div class="sidebar-hdr-title" id="sidebarTitle">📋 Watchlist</div>
-      </div>
+      <div id="sidebarTitle" style="display:none"></div>
       <div class="sidebar-body">
         <!-- VIEW: Watchlist (default) -->
         <div class="sidebar-view active" id="sview-watchlist">
@@ -1528,7 +1525,12 @@
 
 <!-- VERTICAL ICON TOOLBAR -->
 <div class="icon-toolbar" id="iconToolbar">
+  <button class="ib-hamburger active" id="ib-sidebar" onclick="ibToggleSidebar()" title="">
+    <span></span><span></span><span></span>
+    <span class="ib-tip">Watchlist</span>
+  </button>
   <!-- clock removed from toolbar, shown below chart -->
+  <div class="ib-sep"></div>
   <button class="ib" id="ib-chat"    onclick="ibToggle('chat')"    title="">
     💬<span class="ib-tip">צ'אטים</span>
   </button>
