@@ -5,6 +5,7 @@ console.log('[NexTrade] Loading main.js...');
 
 var USERS_KEY   = 'nt_users';
 var SESSION_KEY = 'nt_session';
+var API_BASE    = localStorage.getItem('nt_api_base') || 'https://nextrade-lending.onrender.com';
 
 function getUsers()     { return JSON.parse(localStorage.getItem(USERS_KEY)   || '[]'); }
 function getSession()   { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); }
@@ -71,10 +72,32 @@ function handleLogin(e) {
   var errEl    = document.getElementById('loginError');
   errEl.classList.remove('show');
   if (!email || !password) { errEl.textContent = 'נא למלא אימייל וסיסמה'; errEl.classList.add('show'); return; }
-  var users = getUsers();
-  var user  = users.find(function(u) { return u.email === email && u.password === password; });
-  if (!user) { errEl.textContent = 'אימייל או סיסמה שגויים'; errEl.classList.add('show'); document.getElementById('loginPassword').value = ''; return; }
-  loginSuccess(user);
+
+  // Try server login first
+  fetch(API_BASE + '/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: email, password: password })
+  }).then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+  .then(function(result) {
+    if (result.ok) {
+      localStorage.setItem('nt_token', result.data.token);
+      localStorage.setItem('nt_user', JSON.stringify({ username: result.data.username, role: result.data.role }));
+      loginSuccess({ name: result.data.username, email: email, role: result.data.role });
+    } else {
+      // Fallback to localStorage auth
+      var users = getUsers();
+      var user  = users.find(function(u) { return u.email === email && u.password === password; });
+      if (!user) { errEl.textContent = result.data.error || 'אימייל או סיסמה שגויים'; errEl.classList.add('show'); return; }
+      loginSuccess(user);
+    }
+  }).catch(function() {
+    // Server unreachable — fallback to localStorage
+    var users = getUsers();
+    var user  = users.find(function(u) { return u.email === email && u.password === password; });
+    if (!user) { errEl.textContent = 'אימייל או סיסמה שגויים'; errEl.classList.add('show'); return; }
+    loginSuccess(user);
+  });
 }
 
 function handleSignup(e) {
@@ -90,24 +113,56 @@ function handleSignup(e) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errEl.textContent = 'כתובת אימייל לא תקינה'; errEl.classList.add('show'); return; }
   if (password.length < 6) { errEl.textContent = 'הסיסמה חייבת להכיל לפחות 6 תווים'; errEl.classList.add('show'); return; }
   if (password !== confirm) { errEl.textContent = 'הסיסמאות אינן תואמות'; errEl.classList.add('show'); return; }
-  var users = getUsers();
-  if (users.find(function(u) { return u.email === email; })) { errEl.textContent = 'אימייל זה כבר רשום במערכת'; errEl.classList.add('show'); return; }
-  users.push({ name: name, email: email, password: password });
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  sucEl.textContent = 'ההרשמה הצליחה! ברוך הבא ' + name + '  מועבר לכניסה...';
-  sucEl.classList.add('show');
-  setTimeout(function() {
-    document.getElementById('signupName').value = '';
-    document.getElementById('signupEmail').value = '';
-    document.getElementById('signupPassword').value = '';
-    document.getElementById('signupConfirm').value = '';
-    var fill = document.getElementById('strengthFill');
-    var txt  = document.getElementById('strengthText');
-    if (fill) fill.style.width = '0%';
-    if (txt)  txt.textContent  = '';
-    switchTab('login');
-    document.getElementById('loginEmail').value = email;
-  }, 2000);
+
+  // Register on server + localStorage
+  fetch(API_BASE + '/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: name, email: email, password: password })
+  }).then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+  .then(function(result) {
+    if (!result.ok) {
+      errEl.textContent = result.data.error || 'שגיאה בהרשמה';
+      errEl.classList.add('show');
+      return;
+    }
+    // Also save locally as fallback
+    var users = getUsers();
+    if (!users.find(function(u) { return u.email === email; })) {
+      users.push({ name: name, email: email, password: password });
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    }
+    sucEl.textContent = 'ההרשמה הצליחה! ברוך הבא ' + name + '  מועבר לכניסה...';
+    sucEl.classList.add('show');
+    setTimeout(function() {
+      document.getElementById('signupName').value = '';
+      document.getElementById('signupEmail').value = '';
+      document.getElementById('signupPassword').value = '';
+      document.getElementById('signupConfirm').value = '';
+      var fill = document.getElementById('strengthFill');
+      var txt  = document.getElementById('strengthText');
+      if (fill) fill.style.width = '0%';
+      if (txt)  txt.textContent  = '';
+      switchTab('login');
+      document.getElementById('loginEmail').value = email;
+    }, 2000);
+  }).catch(function(err) {
+    // Server unreachable — register locally only
+    var users = getUsers();
+    if (users.find(function(u) { return u.email === email; })) { errEl.textContent = 'אימייל זה כבר רשום במערכת'; errEl.classList.add('show'); return; }
+    users.push({ name: name, email: email, password: password });
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    sucEl.textContent = 'ההרשמה הצליחה! ברוך הבא ' + name + '  מועבר לכניסה...';
+    sucEl.classList.add('show');
+    setTimeout(function() {
+      document.getElementById('signupName').value = '';
+      document.getElementById('signupEmail').value = '';
+      document.getElementById('signupPassword').value = '';
+      document.getElementById('signupConfirm').value = '';
+      switchTab('login');
+      document.getElementById('loginEmail').value = email;
+    }, 2000);
+  });
 }
 
 function handleForgot(e) {
@@ -154,6 +209,8 @@ function loginSuccess(user) {
 
 function handleLogout() {
   localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem('nt_token');
+  localStorage.removeItem('nt_user');
   document.getElementById('appContainer').style.display = 'none';
   document.getElementById('authOverlay').style.display  = 'flex';
   document.getElementById('loginEmail').value    = '';
@@ -165,6 +222,16 @@ function handleLogout() {
 }
 
 (function checkAutoLogin() {
+  // Check server-based auth first (from login.html)
+  var serverToken = localStorage.getItem('nt_token');
+  var serverUser  = null;
+  try { serverUser = JSON.parse(localStorage.getItem('nt_user') || 'null'); } catch(e) {}
+  if (serverToken && serverUser && serverUser.username) {
+    console.log('[NexTrade] Found server token for:', serverUser.username);
+    loginSuccess({ name: serverUser.username, email: '', role: serverUser.role });
+    return;
+  }
+  // Fallback to old localStorage session
   var session = getSession();
   if (session && session.name) {
     loginSuccess(session);
