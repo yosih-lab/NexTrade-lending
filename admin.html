@@ -117,6 +117,7 @@
     <div class="stat-card"><div class="stat-val" id="statCount">—</div><div class="stat-lbl">משתמשים רשומים</div></div>
     <div class="stat-card"><div class="stat-val" id="statMax">20</div><div class="stat-lbl">מקסימום משתמשים</div></div>
     <div class="stat-card"><div class="stat-val" id="statAdmins">—</div><div class="stat-lbl">מנהלי מערכת</div></div>
+    <div class="stat-card" style="cursor:pointer;border-color:#2962ff" onclick="loadUsers()"><div class="stat-val" style="font-size:1.2rem">🔄</div><div class="stat-lbl">רענן רשימה</div></div>
   </div>
 
   <div id="loading">טוען נתונים...</div>
@@ -250,6 +251,8 @@ async function changeRole(id, role) {
 }
 
 loadUsers();
+// Auto-refresh every 10 seconds
+setInterval(loadUsers, 10000);
 </script>
 </body>
 </html>
