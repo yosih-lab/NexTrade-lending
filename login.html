@@ -287,10 +287,21 @@
     checkServer();
   }
 
-  // If already logged in, go straight to app
-  (function() {
+  // If already logged in AND token is still valid, go straight to app
+  (async function() {
     var token = localStorage.getItem('nt_token');
-    if (token) window.location.href = 'index.html';
+    if (!token) return;
+    try {
+      var r = await fetch(API_BASE + '/api/me', { headers: { 'Authorization': 'Bearer ' + token } });
+      if (r.ok) { window.location.href = 'index.html'; }
+      else {
+        // Token expired or invalid — clear it so user can login again
+        localStorage.removeItem('nt_token');
+        localStorage.removeItem('nt_user');
+      }
+    } catch(e) {
+      // Server unreachable — keep token, don't redirect
+    }
   })();
 </script>
 </body>
