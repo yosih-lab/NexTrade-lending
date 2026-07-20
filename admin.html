@@ -175,7 +175,7 @@ function doLogout() {
 async function loadUsers() {
   document.getElementById('loading').style.display = '';
   document.getElementById('usersTable').style.display = 'none';
-  setMsg('','');
+  // Don't clear messages during auto-refresh
   try {
     var r = await fetch(API_BASE + '/api/admin/users', {
       headers: { 'Authorization': 'Bearer ' + token }
@@ -200,29 +200,33 @@ function renderUsers(data) {
   document.getElementById('statMax').textContent    = data.max;
   document.getElementById('statAdmins').textContent = data.users.filter(function(u){return u.role==='admin';}).length;
 
+  // Store users data for button references
+  window._adminUsers = data.users;
+
   var tbody = document.getElementById('usersBody');
-  tbody.innerHTML = data.users.map(function(u) {
+  tbody.innerHTML = data.users.map(function(u, idx) {
     var badge = u.role === 'admin'
       ? '<span class="badge badge-admin">מנהל</span>'
       : '<span class="badge badge-user">משתמש</span>';
     var date  = u.createdAt ? new Date(u.createdAt).toLocaleDateString('he-IL') : '—';
     var toggleRole = u.role === 'admin'
-      ? '<button class="btn" onclick="changeRole(\'' + u.id + '\',\'user\')">הורד למשתמש</button>'
-      : '<button class="btn" onclick="changeRole(\'' + u.id + '\',\'admin\')">העלה למנהל</button>';
+      ? '<button class="btn" onclick="changeRole(' + u.id + ',\'user\')">הורד למשתמש</button>'
+      : '<button class="btn" onclick="changeRole(' + u.id + ',\'admin\')">העלה למנהל</button>';
     return '<tr>'
       + '<td style="font-weight:700">' + u.username + '</td>'
       + '<td style="color:#8899aa">' + u.email + '</td>'
       + '<td>' + badge + '</td>'
       + '<td style="color:#8899aa">' + date + '</td>'
       + '<td><div style="display:flex;gap:.5rem">' + toggleRole
-      + '<button class="btn btn-danger" onclick="deleteUser(\'' + u.id + '\',\'' + u.username + '\')">מחק</button>'
+      + '<button class="btn btn-danger" onclick="deleteUser(' + u.id + ',' + idx + ')">מחק</button>'
       + '</div></td>'
       + '</tr>';
   }).join('');
   document.getElementById('usersTable').style.display = '';
 }
 
-async function deleteUser(id, name) {
+async function deleteUser(id, idx) {
+  var name = (window._adminUsers && window._adminUsers[idx]) ? window._adminUsers[idx].username : id;
   if (!confirm('למחוק את המשתמש "' + name + '"?')) return;
   try {
     var r = await fetch(API_BASE + '/api/admin/users/' + id, {
@@ -230,10 +234,10 @@ async function deleteUser(id, name) {
       headers: { 'Authorization': 'Bearer ' + token }
     });
     var data = await r.json();
-    if (!r.ok) { setMsg(data.error || 'שגיאה', 'err'); return; }
+    if (!r.ok) { alert('שגיאה: ' + (data.error || 'לא ידוע')); setMsg(data.error || 'שגיאה', 'err'); return; }
     setMsg('✅ המשתמש נמחק', 'ok');
     loadUsers();
-  } catch(e) { setMsg('❌ ' + e.message, 'err'); }
+  } catch(e) { alert('שגיאה: ' + e.message); setMsg('❌ ' + e.message, 'err'); }
 }
 
 async function changeRole(id, role) {
@@ -244,10 +248,10 @@ async function changeRole(id, role) {
       body: JSON.stringify({ role: role })
     });
     var data = await r.json();
-    if (!r.ok) { setMsg(data.error || 'שגיאה', 'err'); return; }
+    if (!r.ok) { alert('שגיאה: ' + (data.error || 'לא ידוע')); setMsg(data.error || 'שגיאה', 'err'); return; }
     setMsg('✅ תפקיד עודכן', 'ok');
     loadUsers();
-  } catch(e) { setMsg('❌ ' + e.message, 'err'); }
+  } catch(e) { alert('שגיאה: ' + e.message); setMsg('❌ ' + e.message, 'err'); }
 }
 
 loadUsers();
