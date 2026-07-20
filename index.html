@@ -270,6 +270,17 @@
     .port-back-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);border-radius:7px;padding:.28rem .7rem;font-size:.78rem;font-family:'Heebo',sans-serif;cursor:pointer;transition:all .15s}
     .port-back-btn:hover{border-color:var(--accent);color:var(--accent)}
     .port-page-body{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.9rem}
+    .port-table-wrap{overflow-x:auto;flex:1}
+    .port-table{width:100%;border-collapse:collapse;font-size:.78rem;direction:ltr;text-align:center}
+    .port-table th{background:var(--surface);color:var(--text-muted);font-weight:700;padding:.5rem .4rem;border-bottom:1px solid var(--border);white-space:nowrap;cursor:grab;user-select:none}
+    .port-table th.dragging{opacity:.5;background:rgba(41,98,255,.15)}
+    .port-table th.drag-over{border-left:2px solid var(--accent)}
+    .port-table td{padding:.45rem .4rem;border-bottom:1px solid rgba(255,255,255,.04);white-space:nowrap}
+    .port-table tr:hover td{background:rgba(41,98,255,.04)}
+    .port-table .long{color:var(--green);font-weight:700}
+    .port-table .short{color:var(--red);font-weight:700}
+    .port-table .pnl-up{color:var(--green);font-weight:700}
+    .port-table .pnl-down{color:var(--red);font-weight:700}
     .port-total-card{background:var(--surface2);border:1px solid var(--border);border-top:3px solid var(--accent);border-radius:10px;padding:.8rem 1rem}
     .port-total-label{font-size:.68rem;color:var(--text-muted);margin-bottom:.2rem}
     .port-total-val{font-size:1.4rem;font-weight:900;color:var(--accent)}
@@ -1390,11 +1401,34 @@
           </div>
           <div class="port-add-row">
             <input class="port-add-inp sym-inp" id="portSymInput" placeholder="סמל (AAPL / TEVA)" autocomplete="off" />
+            <select class="port-add-inp" id="portDirInput" style="flex:.8"><option value="long">Long</option><option value="short">Short</option></select>
             <input class="port-add-inp num-inp" id="portSharesInput" placeholder="כמות" type="number" min="0" step="any" />
-            <input class="port-add-inp num-inp" id="portPriceInput" placeholder="מחיר קנייה" type="number" min="0" step="any" />
+            <input class="port-add-inp num-inp" id="portPriceInput" placeholder="מחיר כניסה" type="number" min="0" step="any" />
+            <input class="port-add-inp num-inp" id="portTPInput" placeholder="TP" type="number" min="0" step="any" />
+            <input class="port-add-inp num-inp" id="portSLInput" placeholder="SL" type="number" min="0" step="any" />
+            <input class="port-add-inp num-inp" id="portFeeInput" placeholder="עמלה" type="number" min="0" step="any" />
             <button class="btn btn-sm" onclick="portAddStock()" style="white-space:nowrap">+ הוסף</button>
           </div>
-          <ul class="port-stock-list" id="portStockList"></ul>
+          <div class="port-table-wrap">
+            <table class="port-table" id="portTable">
+              <thead id="portTableHead">
+                <tr>
+                  <th data-col="num">#</th>
+                  <th data-col="sym">סמל</th>
+                  <th data-col="dir">כיוון</th>
+                  <th data-col="qty">כמות</th>
+                  <th data-col="entry">מחיר כניסה</th>
+                  <th data-col="tp">TP</th>
+                  <th data-col="sl">SL</th>
+                  <th data-col="pnl">רווח</th>
+                  <th data-col="fee">עמלה</th>
+                  <th data-col="net">Net P/L</th>
+                  <th data-col="actions">פעולות</th>
+                </tr>
+              </thead>
+              <tbody id="portTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
       <div class="chart-panel">

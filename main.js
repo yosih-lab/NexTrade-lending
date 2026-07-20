@@ -892,7 +892,7 @@ function initPriceAxisScroll() {
     var range2 = ts2.getVisibleLogicalRange();
     if (!range2) return;
     var span2 = range2.to - range2.from;
-    var shift = (e.deltaY * 0.064) / rect.width * span2;
+    var shift = (e.deltaY * 0.038) / rect.width * span2;
     ts2.setVisibleLogicalRange({ from: range2.from + shift, to: range2.to + shift });
   }, { passive: false, capture: true });
 }
@@ -2638,6 +2638,7 @@ document.addEventListener('DOMContentLoaded', function() {
 //   PORTFOLIO PAGE
 // ============================================
 var portHoldings = JSON.parse(localStorage.getItem('nxt_portfolio') || '[]');
+var portColOrder = JSON.parse(localStorage.getItem('nxt_port_cols') || 'null') || ['num','sym','dir','qty','entry','tp','sl','pnl','fee','net','actions'];
 
 function savePortfolio() {
   localStorage.setItem('nxt_portfolio', JSON.stringify(portHoldings));
@@ -2646,7 +2647,6 @@ function savePortfolio() {
 function openPortPage() {
   document.getElementById('portPage').classList.add('open');
   renderPortPage();
-  // fetch live prices for all holdings
   portHoldings.forEach(function(h) {
     fetchQuote(h.sym).then(function(d) {
       if (d) { priceCache[h.sym] = d; renderPortPage(); }
@@ -2660,119 +2660,142 @@ function closePortPage() {
 
 function portAddStock() {
   var symEl    = document.getElementById('portSymInput');
+  var dirEl    = document.getElementById('portDirInput');
   var sharesEl = document.getElementById('portSharesInput');
   var priceEl  = document.getElementById('portPriceInput');
+  var tpEl     = document.getElementById('portTPInput');
+  var slEl     = document.getElementById('portSLInput');
+  var feeEl    = document.getElementById('portFeeInput');
   var rawSym   = (symEl.value || '').trim().toUpperCase();
+  var dir      = dirEl.value || 'long';
   var shares   = parseFloat(sharesEl.value) || 0;
-  var buyPrice = parseFloat(priceEl.value)  || 0;
+  var entry    = parseFloat(priceEl.value)  || 0;
+  var tp       = parseFloat(tpEl.value)     || 0;
+  var sl       = parseFloat(slEl.value)     || 0;
+  var fee      = parseFloat(feeEl.value)    || 0;
   if (!rawSym || shares <= 0) return;
 
-  // Auto-append .TA for Israeli stocks if typed without dot
   var sym = rawSym;
-
-  var existing = portHoldings.find(function(h) { return h.sym === sym; });
-  if (existing) {
-    // weighted average buy price
-    var totalShares = existing.shares + shares;
-    existing.buyPrice = ((existing.buyPrice * existing.shares) + (buyPrice * shares)) / totalShares;
-    existing.shares   = totalShares;
-  } else {
-    portHoldings.push({ sym: sym, shares: shares, buyPrice: buyPrice });
-  }
+  var tradeNum = portHoldings.length > 0 ? Math.max.apply(null, portHoldings.map(function(h){return h.num||0})) + 1 : 1;
+  portHoldings.push({ num: tradeNum, sym: sym, dir: dir, shares: shares, entry: entry, tp: tp, sl: sl, fee: fee });
   savePortfolio();
-  symEl.value = ''; sharesEl.value = ''; priceEl.value = '';
+  symEl.value = ''; sharesEl.value = ''; priceEl.value = ''; tpEl.value = ''; slEl.value = ''; feeEl.value = '';
   renderPortPage();
   fetchQuote(sym).then(function(d) {
     if (d) { priceCache[sym] = d; renderPortPage(); }
   });
 }
 
-function portDeleteStock(sym) {
-  portHoldings = portHoldings.filter(function(h) { return h.sym !== sym; });
+function portDeleteStock(idx) {
+  portHoldings.splice(idx, 1);
   savePortfolio();
   renderPortPage();
 }
 
-function portEditShares(sym) {
-  var h = portHoldings.find(function(x) { return x.sym === sym; });
+function portEditField(idx, field) {
+  var h = portHoldings[idx];
   if (!h) return;
-  var v = prompt('עדכן כמות מניות עבור ' + sym + ':', h.shares);
+  var labels = {shares:'כמות',entry:'מחיר כניסה',tp:'Take Profit',sl:'Stop Loss',fee:'עמלה'};
+  var v = prompt('עדכן ' + (labels[field]||field) + ' עבור ' + h.sym + ':', h[field] || 0);
   if (v === null) return;
   var n = parseFloat(v);
-  if (!isNaN(n) && n > 0) { h.shares = n; savePortfolio(); renderPortPage(); }
-}
-
-function portEditPrice(sym) {
-  var h = portHoldings.find(function(x) { return x.sym === sym; });
-  if (!h) return;
-  var v = prompt('עדכן מחיר קנייה עבור ' + sym + ':', h.buyPrice || 0);
-  if (v === null) return;
-  var n = parseFloat(v);
-  if (!isNaN(n) && n >= 0) { h.buyPrice = n; savePortfolio(); renderPortPage(); }
+  if (!isNaN(n) && n >= 0) { h[field] = n; savePortfolio(); renderPortPage(); }
 }
 
 function renderPortPage() {
-  var ul      = document.getElementById('portStockList');
+  var tbody   = document.getElementById('portTableBody');
   var totalEl = document.getElementById('portTotalVal');
-  if (!ul || !totalEl) return;
+  if (!tbody || !totalEl) return;
+
+  // Render header in correct column order
+  var headTr = document.querySelector('#portTableHead tr');
+  if (headTr) {
+    var colLabels = {num:'#',sym:'סמל',dir:'כיוון',qty:'כמות',entry:'מחיר כניסה',tp:'TP',sl:'SL',pnl:'רווח',fee:'עמלה',net:'Net P/L',actions:'פעולות'};
+    headTr.innerHTML = portColOrder.map(function(col){
+      return '<th data-col="' + col + '" draggable="true">' + colLabels[col] + '</th>';
+    }).join('');
+    initPortColDrag();
+  }
 
   if (!portHoldings.length) {
-    ul.innerHTML = '<li class="port-empty">אין ניירות בתיק — הוסף מניה למעלה</li>';
+    tbody.innerHTML = '<tr><td colspan="' + portColOrder.length + '" style="text-align:center;color:var(--text-muted);padding:1.5rem">אין עסקאות — הוסף מניה למעלה</td></tr>';
     totalEl.textContent = '$0.00';
     return;
   }
 
-  var grandTotal = 0;
-  ul.innerHTML = portHoldings.map(function(h) {
+  var grandNetPL = 0;
+  tbody.innerHTML = portHoldings.map(function(h, idx) {
     var d         = priceCache[h.sym];
     var livePrice = d ? d.price : null;
-    var value     = livePrice ? livePrice * h.shares : (h.buyPrice ? h.buyPrice * h.shares : null);
-    if (value) grandTotal += value;
+    var isTASE    = h.sym.endsWith('.TA');
+    var curr      = isTASE ? '₪' : '$';
 
-    var isTASE   = h.sym.endsWith('.TA');
-    var curr     = isTASE ? '\u20AA' : '$';
-    var shortSym = h.sym.replace('.TA', '');
-
-    var valueStr = value
-      ? curr + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      : '—';
-
-    var livePriceStr = livePrice
-      ? curr + (livePrice >= 100 ? livePrice.toFixed(2) : livePrice.toFixed(3))
-      : '—';
-
-    var chgStr = ''; var chgCls = '';
-    if (d && d.changePct !== undefined) {
-      chgStr = (d.changePct >= 0 ? '+' : '') + d.changePct.toFixed(2) + '%';
-      chgCls = d.changePct >= 0 ? 'up' : 'down';
+    // Calculate P/L
+    var pnl = 0;
+    if (livePrice && h.entry) {
+      if (h.dir === 'long') pnl = (livePrice - h.entry) * h.shares;
+      else pnl = (h.entry - livePrice) * h.shares;
     }
+    var fee = h.fee || 0;
+    var netPL = pnl - fee;
+    grandNetPL += netPL;
 
-    var pnlStr = ''; var pnlCls = '';
-    if (livePrice && h.buyPrice) {
-      var pnl    = (livePrice - h.buyPrice) * h.shares;
-      var pnlPct = ((livePrice - h.buyPrice) / h.buyPrice) * 100;
-      pnlCls = pnl >= 0 ? 'up' : 'down';
-      pnlStr = (pnl >= 0 ? '+' : '') + curr + Math.abs(pnl).toFixed(2)
-        + ' (' + (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%)';
-    }
+    var pnlCls = pnl >= 0 ? 'pnl-up' : 'pnl-down';
+    var netCls = netPL >= 0 ? 'pnl-up' : 'pnl-down';
+    var dirCls = h.dir === 'long' ? 'long' : 'short';
 
-    return '<li class="port-stock-item">'
-      + '<div class="port-stock-top">'
-      + '<span class="port-stock-sym" onclick="(function(){closePortPage();selectSymbol(\'' + h.sym + '\');})()" title="\u05e4\u05ea\u05d7 \u05d2\u05e8\u05e3">' + shortSym + '</span>'
-      + '<span class="port-stock-value">' + valueStr + '</span>'
-      + '</div>'
-      + '<div class="port-stock-meta">'
-      + '<span>' + h.shares + ' \u05de\u05e0\u05d9\u05d5\u05ea</span>'
-      + '<span>\u05de\u05d7\u05d9\u05e8 \u05e2\u05db\u05e9\u05d5\u05d5: ' + livePriceStr + '</span>'
-      + (chgStr ? '<span class="port-chg ' + chgCls + '">' + chgStr + '</span>' : '')
-      + (pnlStr ? '<span class="port-chg ' + pnlCls + '">\u05e8\u05d5\u05d5\u05d7: ' + pnlStr + '</span>' : '')
-      + '<span style="flex:1"></span>'
-      + '<button class="port-act" onclick="portEditShares(\'' + h.sym + '\')">\u05e2\u05e8\u05d5\u05da \u05db\u05de\u05d5\u05ea</button>'
-      + '<button class="port-act" onclick="portEditPrice(\'' + h.sym + '\')">\u05e2\u05e8\u05d5\u05da \u05de\u05d7\u05d9\u05e8</button>'
-      + '<button class="port-act del" onclick="portDeleteStock(\'' + h.sym + '\')">\u05de\u05d7\u05e7</button>'
-      + '</div>'
-      + '</li>';
+    var cells = {
+      num: '<td>' + (h.num || idx+1) + '</td>',
+      sym: '<td style="font-weight:800;cursor:pointer" onclick="(function(){closePortPage();selectSymbol(\'' + h.sym + '\');})()">' + h.sym.replace('.TA','') + '</td>',
+      dir: '<td class="' + dirCls + '">' + (h.dir === 'long' ? 'Long' : 'Short') + '</td>',
+      qty: '<td ondblclick="portEditField(' + idx + ',\'shares\')">' + h.shares + '</td>',
+      entry: '<td ondblclick="portEditField(' + idx + ',\'entry\')">' + (h.entry ? curr + h.entry.toFixed(2) : '—') + '</td>',
+      tp: '<td ondblclick="portEditField(' + idx + ',\'tp\')">' + (h.tp ? curr + h.tp.toFixed(2) : '—') + '</td>',
+      sl: '<td ondblclick="portEditField(' + idx + ',\'sl\')">' + (h.sl ? curr + h.sl.toFixed(2) : '—') + '</td>',
+      pnl: '<td class="' + pnlCls + '">' + (livePrice ? (pnl>=0?'+':'') + curr + Math.abs(pnl).toFixed(2) : '—') + '</td>',
+      fee: '<td ondblclick="portEditField(' + idx + ',\'fee\')">' + (fee ? curr + fee.toFixed(2) : '—') + '</td>',
+      net: '<td class="' + netCls + '" style="font-weight:800">' + (livePrice ? (netPL>=0?'+':'') + curr + Math.abs(netPL).toFixed(2) : '—') + '</td>',
+      actions: '<td><button class="port-act del" onclick="portDeleteStock(' + idx + ')">מחק</button></td>'
+    };
+
+    return '<tr>' + portColOrder.map(function(col){ return cells[col] || '<td></td>'; }).join('') + '</tr>';
   }).join('');
 
-  totalEl.textContent = '$' + grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var curr2 = '$';
+  totalEl.textContent = (grandNetPL >= 0 ? '+' : '-') + curr2 + Math.abs(grandNetPL).toFixed(2);
+  totalEl.style.color = grandNetPL >= 0 ? 'var(--green)' : 'var(--red)';
+}
+
+// Column drag-and-drop reorder
+function initPortColDrag() {
+  var ths = document.querySelectorAll('#portTableHead th');
+  var dragIdx = null;
+  ths.forEach(function(th, i) {
+    th.addEventListener('dragstart', function(e) {
+      dragIdx = i;
+      th.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    th.addEventListener('dragend', function() {
+      th.classList.remove('dragging');
+      ths.forEach(function(t){ t.classList.remove('drag-over'); });
+    });
+    th.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      th.classList.add('drag-over');
+    });
+    th.addEventListener('dragleave', function() {
+      th.classList.remove('drag-over');
+    });
+    th.addEventListener('drop', function(e) {
+      e.preventDefault();
+      th.classList.remove('drag-over');
+      if (dragIdx === null || dragIdx === i) return;
+      var moved = portColOrder.splice(dragIdx, 1)[0];
+      portColOrder.splice(i, 0, moved);
+      localStorage.setItem('nxt_port_cols', JSON.stringify(portColOrder));
+      renderPortPage();
+    });
+  });
 }
