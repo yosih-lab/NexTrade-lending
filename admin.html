@@ -117,7 +117,6 @@
     <div class="stat-card"><div class="stat-val" id="statCount">—</div><div class="stat-lbl">משתמשים רשומים</div></div>
     <div class="stat-card"><div class="stat-val" id="statMax">20</div><div class="stat-lbl">מקסימום משתמשים</div></div>
     <div class="stat-card"><div class="stat-val" id="statAdmins">—</div><div class="stat-lbl">מנהלי מערכת</div></div>
-    <div class="stat-card" style="cursor:pointer;border-color:#2962ff" onclick="loadUsers()"><div class="stat-val" style="font-size:1.2rem">🔄</div><div class="stat-lbl">רענן רשימה</div></div>
   </div>
 
   <div id="loading">טוען נתונים...</div>
@@ -175,7 +174,7 @@ function doLogout() {
 async function loadUsers() {
   document.getElementById('loading').style.display = '';
   document.getElementById('usersTable').style.display = 'none';
-  // Don't clear messages during auto-refresh
+  setMsg('','');
   try {
     var r = await fetch(API_BASE + '/api/admin/users', {
       headers: { 'Authorization': 'Bearer ' + token }
@@ -200,8 +199,8 @@ function renderUsers(data) {
   document.getElementById('statMax').textContent    = data.max;
   document.getElementById('statAdmins').textContent = data.users.filter(function(u){return u.role==='admin';}).length;
 
-  // Store users data for button references
-  window._adminUsers = data.users;
+  // Store users for safe reference from buttons
+  window._adminUsersList = data.users;
 
   var tbody = document.getElementById('usersBody');
   tbody.innerHTML = data.users.map(function(u, idx) {
@@ -210,15 +209,15 @@ function renderUsers(data) {
       : '<span class="badge badge-user">משתמש</span>';
     var date  = u.createdAt ? new Date(u.createdAt).toLocaleDateString('he-IL') : '—';
     var toggleRole = u.role === 'admin'
-      ? '<button class="btn" onclick="changeRole(' + u.id + ',\'user\')">הורד למשתמש</button>'
-      : '<button class="btn" onclick="changeRole(' + u.id + ',\'admin\')">העלה למנהל</button>';
+      ? '<button class="btn" onclick="changeRole(' + Number(u.id) + ',\'user\')">הורד למשתמש</button>'
+      : '<button class="btn" onclick="changeRole(' + Number(u.id) + ',\'admin\')">העלה למנהל</button>';
     return '<tr>'
       + '<td style="font-weight:700">' + u.username + '</td>'
       + '<td style="color:#8899aa">' + u.email + '</td>'
       + '<td>' + badge + '</td>'
       + '<td style="color:#8899aa">' + date + '</td>'
       + '<td><div style="display:flex;gap:.5rem">' + toggleRole
-      + '<button class="btn btn-danger" onclick="deleteUser(' + u.id + ',' + idx + ')">מחק</button>'
+      + '<button class="btn btn-danger" onclick="deleteUser(' + Number(u.id) + ',' + idx + ')">מחק</button>'
       + '</div></td>'
       + '</tr>';
   }).join('');
@@ -226,7 +225,7 @@ function renderUsers(data) {
 }
 
 async function deleteUser(id, idx) {
-  var name = (window._adminUsers && window._adminUsers[idx]) ? window._adminUsers[idx].username : id;
+  var name = (window._adminUsersList && window._adminUsersList[idx]) ? window._adminUsersList[idx].username : 'ID ' + id;
   if (!confirm('למחוק את המשתמש "' + name + '"?')) return;
   try {
     var r = await fetch(API_BASE + '/api/admin/users/' + id, {
@@ -255,8 +254,6 @@ async function changeRole(id, role) {
 }
 
 loadUsers();
-// Auto-refresh every 10 seconds
-setInterval(loadUsers, 10000);
 </script>
 </body>
 </html>

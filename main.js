@@ -542,7 +542,7 @@ var TF_CONFIG = {
   '1D': { label:'1D', tdInterval:'1day',   outputsize:500 },
   '1W': { label:'1W', tdInterval:'1week',  outputsize:260 },
   '1M': { label:'1M', tdInterval:'1month', outputsize:120 },
-  '1Q': { label:'1Q', tdInterval:'1month', outputsize:120, aggregate:'quarter' },
+  '3M': { label:'3M', tdInterval:'1month', outputsize:120, aggregate:'quarter' },
   '6M': { label:'6M', tdInterval:'1month', outputsize:120, aggregate:'halfyear' },
 };
 
@@ -723,8 +723,8 @@ async function fetchYahooChartDirect(symbol, tf) {
   if (candleCache[cacheKey] && candleCache[cacheKey].ts > Date.now() - ttl) {
     return candleCache[cacheKey].data;
   }
-  var yfInterval = { '1H':'1h','4H':'1h','8H':'1h','1D':'1d','1W':'1wk','1M':'1mo','1Q':'1mo','6M':'1mo' }[tf];
-  var yfRange    = { '1H':'5d','4H':'60d','8H':'60d','1D':'2y','1W':'5y','1M':'10y','1Q':'10y','6M':'10y' }[tf];
+  var yfInterval = { '1H':'1h','4H':'1h','8H':'1h','1D':'1d','1W':'1wk','1M':'1mo','3M':'1mo','6M':'1mo' }[tf];
+  var yfRange    = { '1H':'5d','4H':'60d','8H':'60d','1D':'2y','1W':'5y','1M':'10y','3M':'10y','6M':'10y' }[tf];
   try {
     var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' +
               encodeURIComponent(symbol) + '?interval=' + yfInterval + '&range=' + yfRange;
@@ -1215,7 +1215,7 @@ function saveBars(symbol, tf, bars) {
 }
 
 function buildDemoBars(tf, basePrice) {
-  var countMap = { '1H': 120, '4H': 120, '8H': 120, '1D': 160, '1W': 160, '1M': 120, '1Q': 80, '6M': 80 };
+  var countMap = { '1H': 120, '4H': 120, '8H': 120, '1D': 160, '1W': 160, '1M': 120, '3M': 80, '6M': 80 };
   var count = countMap[tf] || 120;
   var intraday = (tf === '1H' || tf === '4H' || tf === '8H');
   var ts = Math.floor(Date.now() / 1000);
@@ -1464,7 +1464,7 @@ function toggleVolume() {
 // ============================================
 document.addEventListener('keydown', function(e) {
   if (e.altKey) {
-    var tfMap = { '1':'1H', '2':'4H', '3':'8H', '4':'1D', '5':'1W', '6':'1M', '7':'1Q', '8':'6M' };
+    var tfMap = { '1':'1H', '2':'4H', '3':'1W', '4':'1M', '5':'3M', '6':'6M' };
     if (tfMap[e.key]) { e.preventDefault(); setTimeframe(tfMap[e.key], null); return; }
   }
   if (e.key === 'Enter' && document.activeElement.id === 'searchInput')    searchStock();
