@@ -1232,9 +1232,7 @@
       <!-- CHART TYPE + TIMEFRAME TOOLBAR -->
       <div class="chart-type-wrap">
         <button class="chart-type-btn" id="chartTypeBtn" onclick="toggleChartTypeMenu()">
-          <span class="chart-icon-gold">&triangledown;</span>
           <span>סוגי גרף</span>
-          <span id="chartTypeCurrent" class="chart-icon-gold">&#128329;</span>
         </button>
         <div class="chart-type-menu" id="chartTypeMenu">
           <button class="chart-type-opt" id="optLine" onclick="setChartType('line')">
@@ -1251,14 +1249,15 @@
       <div class="tf-sep"></div>
       <button class="tf-btn"        id="tf-1H" onclick="setTimeframe('1H',this)" title="Alt+1">1h</button>
       <button class="tf-btn"        id="tf-4H" onclick="setTimeframe('4H',this)" title="Alt+2">4h</button>
+      <button class="tf-btn"        id="tf-1D" onclick="setTimeframe('1D',this)" title="Alt+3">D</button>
       <div class="tf-sep"></div>
-      <button class="tf-btn active" id="tf-1W" onclick="setTimeframe('1W',this)" title="Alt+3">W</button>
-      <button class="tf-btn"        id="tf-1M" onclick="setTimeframe('1M',this)" title="Alt+4">M</button>
+      <button class="tf-btn active" id="tf-1W" onclick="setTimeframe('1W',this)" title="Alt+4">W</button>
+      <button class="tf-btn"        id="tf-1M" onclick="setTimeframe('1M',this)" title="Alt+5">M</button>
       <div class="tf-sep"></div>
-      <button class="tf-btn"        id="tf-3M" onclick="setTimeframe('3M',this)" title="Alt+5">3M</button>
-      <button class="tf-btn"        id="tf-6M" onclick="setTimeframe('6M',this)" title="Alt+6">6M</button>
+      <button class="tf-btn"        id="tf-3M" onclick="setTimeframe('3M',this)" title="Alt+6">3M</button>
+      <button class="tf-btn"        id="tf-6M" onclick="setTimeframe('6M',this)" title="Alt+7">6M</button>
       <div class="tf-sep"></div>
-      <button class="tf-btn" id="tf-trade" onclick="openPortPage()" style="background:rgba(41,98,255,.12);color:var(--accent);border-color:rgba(41,98,255,.4);font-weight:800">TRADE</button>
+      <button class="tf-btn" id="tf-trade" onclick="openPortPage()" style="background:rgba(41,98,255,.12);color:var(--accent);border-color:rgba(41,98,255,.4);font-weight:800">Trade</button>
       <div class="tf-sep"></div>
       <span id="taseBadge" class="tase-dot" title="מצב שוק"></span>
       <!-- SPACER -->

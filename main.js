@@ -1464,7 +1464,7 @@ function toggleVolume() {
 // ============================================
 document.addEventListener('keydown', function(e) {
   if (e.altKey) {
-    var tfMap = { '1':'1H', '2':'4H', '3':'1W', '4':'1M', '5':'3M', '6':'6M' };
+    var tfMap = { '1':'1H', '2':'4H', '3':'1D', '4':'1W', '5':'1M', '6':'3M', '7':'6M' };
     if (tfMap[e.key]) { e.preventDefault(); setTimeframe(tfMap[e.key], null); return; }
   }
   if (e.key === 'Enter' && document.activeElement.id === 'searchInput')    searchStock();
