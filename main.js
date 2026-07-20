@@ -825,7 +825,7 @@ function initPriceAxisScroll() {
     var range2 = ts2.getVisibleLogicalRange();
     if (!range2) return;
     var span2 = range2.to - range2.from;
-    var shift = (e.deltaY * 0.08) / rect.width * span2;
+    var shift = (e.deltaY * 0.064) / rect.width * span2;
     ts2.setVisibleLogicalRange({ from: range2.from + shift, to: range2.to + shift });
   }, { passive: false, capture: true });
 }

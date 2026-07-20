@@ -40,6 +40,21 @@ function saveUsers(users) {
   fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
 }
 
+// ── SEED ADMIN on startup (Render ephemeral disk fix) ────────────
+// Set env vars ADMIN_USER, ADMIN_EMAIL, ADMIN_PASS on Render to guarantee admin exists after sleep
+(async function seedAdmin() {
+  const adminUser = process.env.ADMIN_USER;
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPass = process.env.ADMIN_PASS;
+  if (!adminUser || !adminEmail || !adminPass) return;
+  let users = loadUsers();
+  if (users.find(u => u.username === adminUser)) return; // already exists
+  const hash = await bcrypt.hash(adminPass, 10);
+  users.push({ id: 1, username: adminUser, email: adminEmail, hash, role: 'admin', createdAt: new Date().toISOString() });
+  saveUsers(users);
+  console.log('[NexTrade] Seeded admin user:', adminUser);
+})();
+
 // ── AUTH MIDDLEWARE ───────────────────────────────────────────────
 function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
@@ -72,8 +87,10 @@ app.post('/api/register', async (req, res) => {
   if (users.find(u => u.email === email))    return res.status(400).json({ error: 'האימייל כבר רשום' });
   const hash = await bcrypt.hash(password, 10);
   const role = users.length === 0 ? 'admin' : 'user'; // first user = admin
-  users.push({ id: Date.now(), username, email, hash, role, createdAt: new Date().toISOString() });
+  const maxId = users.reduce((m, u) => Math.max(m, Number(u.id) || 0), 0);
+  users.push({ id: maxId + 1, username, email, hash, role, createdAt: new Date().toISOString() });
   saveUsers(users);
+  console.log('[NexTrade] User registered:', username, '| Total users:', users.length);
   res.json({ ok: true, message: role === 'admin' ? 'נרשמת כמנהל מערכת' : 'נרשמת בהצלחה' });
 });
 
@@ -178,7 +195,10 @@ async function runScan(symbols) {
 // ── ROUTES ────────────────────────────────────────────────────────
 
 // Health check
-app.get('/', (req, res) => res.json({ status: 'ok', service: 'NexTrade API Proxy' }));
+app.get('/', (req, res) => {
+  const users = loadUsers();
+  res.json({ status: 'ok', service: 'NexTrade API Proxy', users: users.length });
+});
 
 // Scanner endpoint — shared cache for all users
 // GET /scan?symbols=TEVA.TA,ELBIT.TA,...
