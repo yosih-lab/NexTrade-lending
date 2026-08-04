@@ -2224,6 +2224,7 @@ async function init() {
     
     console.log('[NexTrade] ✅ init() completed successfully!');
     runScanner();
+    runUptrendScanner();
   } catch(e) {
     console.error('[NexTrade] ❌ init() failed:', e.message || e, e.stack);
   }
@@ -2321,6 +2322,110 @@ var SCANNER_SYMS = [
 var SCANNER_SIGNAL_NAMES = [
   'פריצת התנגדות','מומנטום חיובי','נר בולי חזק','RSI עולה','נפח גבוה מהרגיל','מגמת עלייה'
 ];
+
+// ============================================
+//   UPTREND SCANNER — 16 weekly candles higher highs & higher lows
+// ============================================
+var _uptrendFiredToday = {};
+
+async function runUptrendScanner() {
+  var syms = Array.from(new Set(SCANNER_SYMS.concat(watchlist)));
+  var results = [];
+  var today = new Date().toDateString();
+
+  await Promise.all(syms.map(async function(sym) {
+    try {
+      var bars = await fetchYahooChartDirect(sym, '1W');
+      if (!bars || bars.length < 16) return;
+
+      // Take last 16 weekly candles
+      var last16 = bars.slice(-16);
+
+      // Check uptrend: each candle's high >= prev high AND each candle's low >= prev low
+      // Allow up to 2 violations (tolerance for minor pullbacks)
+      var violations = 0;
+      for (var i = 1; i < last16.length; i++) {
+        var currHigh = last16[i].high;
+        var prevHigh = last16[i - 1].high;
+        var currLow  = last16[i].low;
+        var prevLow  = last16[i - 1].low;
+        if (currHigh < prevHigh || currLow < prevLow) {
+          violations++;
+        }
+      }
+
+      // Uptrend if no more than 2 violations out of 15 comparisons
+      if (violations <= 2) {
+        var firstPrice = last16[0].close;
+        var lastPrice  = last16[last16.length - 1].close;
+        var gain = ((lastPrice - firstPrice) / firstPrice * 100).toFixed(1);
+        results.push({
+          sym: sym,
+          name: NAMES[sym] || sym.replace('.TA', ''),
+          price: lastPrice,
+          gain: gain,
+          violations: violations,
+          weeks: last16.length
+        });
+      }
+    } catch (e) {}
+  }));
+
+  if (!results.length) return;
+
+  // Sort by gain descending
+  results.sort(function(a, b) { return parseFloat(b.gain) - parseFloat(a.gain); });
+
+  // Show popup for each result (max 8) — only once per day per symbol
+  results.slice(0, 8).forEach(function(r) {
+    var fireKey = 'uptrend_' + r.sym + '_' + today;
+    if (_uptrendFiredToday[fireKey]) return;
+    _uptrendFiredToday[fireKey] = true;
+
+    // Push to bell panel
+    var time = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    var msg = '📈 ' + r.sym.replace('.TA', '') + ' במגמת עלייה — +' + r.gain + '% ב-' + r.weeks + ' שבועות';
+    var stored = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
+    stored.unshift({ sym: r.sym, price: r.price, condition: 'uptrend', time: time, key: fireKey, msg: msg, severity: 'green' });
+    if (stored.length > 50) stored = stored.slice(0, 50);
+    localStorage.setItem('ib_alerts2', JSON.stringify(stored));
+
+    // Show popup notification
+    showUptrendPopup(r);
+  });
+
+  // Flash bell
+  if (results.length) {
+    var bellBtn = document.getElementById('ib-alerts');
+    if (bellBtn) {
+      bellBtn.style.animation = 'none';
+      bellBtn.offsetHeight;
+      bellBtn.style.animation = 'bellPulse 0.6s ease 3';
+    }
+    if (typeof ibRenderAlerts2 === 'function') ibRenderAlerts2();
+  }
+
+  // Log results to console for verification
+  console.log('[NexTrade] Uptrend Scanner Results:', results);
+}
+
+function showUptrendPopup(r) {
+  var isTASE = r.sym.endsWith('.TA');
+  var curr   = isTASE ? '₪' : '$';
+  var popup = document.createElement('div');
+  popup.className = 'uptrend-popup';
+  popup.innerHTML = '<div class="uptrend-popup-header">📈 מגמת עלייה</div>'
+    + '<div class="uptrend-popup-body">'
+    + '<span class="uptrend-sym" onclick="(function(){selectSymbol(\'' + r.sym + '\');})()">' + r.sym.replace('.TA', '') + '</span>'
+    + '<span class="uptrend-name">' + r.name + '</span>'
+    + '<span class="uptrend-price">' + curr + (r.price >= 100 ? r.price.toFixed(2) : r.price.toFixed(3)) + '</span>'
+    + '<span class="uptrend-gain">+' + r.gain + '% ב-16 שבועות</span>'
+    + '</div>'
+    + '<button class="uptrend-close" onclick="this.parentElement.remove()">✕</button>';
+  document.body.appendChild(popup);
+  // Auto-remove after 8 seconds
+  setTimeout(function() { if (popup.parentElement) popup.remove(); }, 8000);
+}
 
 async function runScanner() {
   var el = document.getElementById('scannerList');
