@@ -257,6 +257,13 @@ app.get('/api/debug/users', (req, res) => {
   res.json({ count: users.length, users });
 });
 
+// Debug endpoint — reset all users (for development only)
+app.delete('/api/debug/reset', (req, res) => {
+  saveUsers([]);
+  console.log('[NexTrade] ⚠ All users deleted via debug reset');
+  res.json({ ok: true, message: 'All users deleted' });
+});
+
 // Scanner endpoint — shared cache for all users
 // GET /scan?symbols=TEVA.TA,ELBIT.TA,...
 app.get('/scan', async (req, res) => {

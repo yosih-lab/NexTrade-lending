@@ -564,13 +564,20 @@
     /* sidebar hidden state */
     .sidebar.collapsed{display:none!important}
     .ib-sep{width:22px;height:1px;background:var(--border);margin:2px 0;pointer-events:none}
+    /* Topbar bell button */
+    .topbar-bell {
+      background:transparent; border:none; font-size:1.2rem; cursor:pointer; position:relative;
+      display:flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:50%;
+      transition:background .15s;
+    }
+    .topbar-bell:hover { background:var(--surface2); }
     /* Alert badge on bell icon */
     .alert-badge {
-      position:absolute; top:2px; right:2px;
-      min-width:14px; height:14px;
+      position:absolute; top:0px; right:0px;
+      min-width:16px; height:16px;
       background:#ef5350; color:#fff;
-      font-size:.58rem; font-weight:900;
-      border-radius:8px; padding:0 3px;
+      font-size:.62rem; font-weight:900;
+      border-radius:50%; padding:0 4px;
       display:flex; align-items:center; justify-content:center;
       line-height:1; pointer-events:none;
     }
@@ -1295,6 +1302,10 @@
       <!-- SPACER -->
       <div style="flex:1"></div>
       <!-- SEARCH + USER -->
+      <button class="topbar-bell" id="ib-alerts" onclick="ibToggle('alerts')" title="התראות וסורק" style="position:relative">
+        🔔
+        <span id="alertBadge" class="alert-badge" style="display:none">0</span>
+      </button>
       <div class="search-box">
         <input id="searchInput" placeholder="חפש מניה..." autocomplete="off" readonly onclick="openSearchModal()" />
       </div>
@@ -1586,10 +1597,6 @@
     💬<span class="ib-tip">צ'אטים</span>
   </button>
   <div class="ib-sep"></div>
-  <button class="ib" id="ib-alerts" onclick="ibToggle('alerts')" title="" style="position:relative">
-    🔔<span class="ib-tip">התראות וסורק</span>
-    <span id="alertBadge" class="alert-badge" style="display:none">0</span>
-  </button>
   <div class="ib-sep"></div>
   <button class="ib" id="ib-indicators" onclick="ibToggle('indicators')" title="">
     📊<span class="ib-tip">אינדיקטורים</span>
