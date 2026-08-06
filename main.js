@@ -2223,179 +2223,177 @@ async function init() {
     }, 60000);
     
     console.log('[NexTrade] ✅ init() completed successfully!');
-    runScanner();
-    runUptrendScanner();
+    startBackgroundScanner();
   } catch(e) {
     console.error('[NexTrade] ❌ init() failed:', e.message || e, e.stack);
   }
 }
 
 // ============================================
-//   SCANNER RULES — ניתן לערוך / להוסיף כללים
+//   BACKGROUND SCANNER — Buy Signal: Uptrend + Pullback to Support
+//   Runs silently every 5 minutes, scans all TASE stocks
 // ============================================
-// כל כלל: { id, name, check(data) → bool, message(data) → string, severity: 'green'|'red'|'yellow' }
-// data = { sym, price, changePct, change, high, low }
-var SCANNER_RULES = [
-  {
-    id: 'big_up',
-    name: '📈 עלייה חדה',
-    check:   function(d) { return d.changePct >= 3; },
-    message: function(d) { return '📈 ' + d.sym.replace('.TA','') + ' +' + d.changePct.toFixed(1) + '% — עלייה חדה'; },
-    severity: 'green'
-  },
-  {
-    id: 'big_down',
-    name: '📉 ירידה חדה',
-    check:   function(d) { return d.changePct <= -3; },
-    message: function(d) { return '📉 ' + d.sym.replace('.TA','') + ' ' + d.changePct.toFixed(1) + '% — ירידה חדה'; },
-    severity: 'red'
-  },
-  {
-    id: 'moderate_up',
-    name: '↑ עלייה מתונה',
-    check:   function(d) { return d.changePct >= 1.5 && d.changePct < 3; },
-    message: function(d) { return '↑ ' + d.sym.replace('.TA','') + ' +' + d.changePct.toFixed(1) + '% — עלייה מתונה'; },
-    severity: 'green'
-  },
-  {
-    id: 'moderate_down',
-    name: '↓ ירידה מתונה',
-    check:   function(d) { return d.changePct <= -1.5 && d.changePct > -3; },
-    message: function(d) { return '↓ ' + d.sym.replace('.TA','') + ' ' + d.changePct.toFixed(1) + '% — ירידה מתונה'; },
-    severity: 'yellow'
-  }
-  // ← הוסף כאן כללים נוספים לפי הצורך
+
+// ~480 TASE symbols (Yahoo Finance format)
+var TASE_SYMBOLS = [
+  'TEVA.TA','NICE.TA','CHKP.TA','ELBIT.TA','ICL.TA','BEZQ.TA','POLI.TA','LUMI.TA','AZRG.TA',
+  'BOB.TA','TASE.TA','MGDL.TA','HAP.TA','ENLT.TA','KDST.TA','ONE.TA','SPEN.TA','FIBI.TA',
+  'DSCT.TA','MZTF.TA','AMOT.TA','ALHE.TA','ARPT.TA','ARKO.TA','ASHG.TA','AURA.TA',
+  'BCOM.TA','BIMCM.TA','BIOM.TA','BLRN.TA','BNRG.TA','BRAN.TA','BRND.TA','BRMG.TA',
+  'BYSD.TA','CANF.TA','CDEV.TA','CEL.TA','CGEN.TA','CKPT.TA','CMCTP.TA','CMCT.TA',
+  'CMER.TA','CNMD.TA','CNZN.TA','CPTP.TA','CRIS.TA','DANEL.TA','DANE.TA','DARK.TA',
+  'DELT.TA','DIMRI.TA','DLEKG.TA','DLRL.TA','DNAL.TA','DNYA.TA','DRAL.TA','EFNC.TA',
+  'ELAL.TA','ELCO.TA','ELCR.TA','ELTR.TA','EMITF.TA','ENRG.TA','ESLT.TA','EVGN.TA',
+  'EXPO.TA','FGAS.TA','FNTS.TA','FRSX.TA','GAIL.TA','GAST.TA','GAZE.TA','GIBUI.TA',
+  'GILT.TA','GIND.TA','GIVRN.TA','GLRS.TA','GLTC.TA','GNRS.TA','GOSS.TA','GRPH.TA',
+  'GFC.TA','HADR.TA','HAMAT.TA','HNMR.TA','HLAN.TA','HLMS.TA','HMAM.TA','HOLM.TA',
+  'IBI.TA','IBITEC.TA','ICCM.TA','IDB.TA','IGLD.TA','ILCO.TA','IMCO.TA','INFR.TA',
+  'INRM.TA','INTR.TA','ISCD.TA','ISOP.TA','ISRA.TA','ISRS.TA','ISTA.TA','ITRN.TA',
+  'IVTG.TA','KCBT.TA','KMNK.TA','KRDI.TA','KRNT.TA','KTOV.TA','LAHAV.TA','LAPD.TA',
+  'LCTX.TA','LHIS.TA','LPSN.TA','LSCC.TA','LUDN.TA','LUMI5.TA','LVPR.TA','MACT.TA',
+  'MAMA.TA','MANO.TA','MAXO.TA','MDGS.TA','MDPR.TA','MDTR.TA','MDVI.TA','MEGA.TA',
+  'MFND.TA','MGIC.TA','MGOR.TA','MISH.TA','MLTM.TA','MNGN.TA','MNIN.TA','MNRT.TA',
+  'MSBI.TA','MSHK.TA','MTDS.TA','MTRN.TA','MTRX.TA','MVNE.TA','MXTC.TA','MYSZ.TA',
+  'NAWI.TA','NEOF.TA','NHRG.TA','NICE.TA','NISA.TA','NKBL.TA','NNDM.TA','NOGA.TA',
+  'NOVC.TA','NOVT.TA','NTML.TA','NURI.TA','NVPT.TA','OHD.TA','OPAL.TA','OPCE.TA',
+  'ORBI.TA','ORCL.TA','ORIN.TA','ORTC.TA','OSEM.TA','OVRS.TA','PCBT.TA','PERI.TA',
+  'PFLT.TA','PHOE.TA','PHTM.TA','PLRM.TA','PLSN.TA','PMCN.TA','PNAX.TA','PNRG.TA',
+  'POLY.TA','PPBT.TA','PRGO.TA','PRTC.TA','PTCH.TA','PTBL.TA','PVOL.TA','QLTU.TA',
+  'RAMI.TA','RAVD.TA','RDHL.TA','REKA.TA','RLCO.TA','RMLI.TA','RNMI.TA','ROBO.TA',
+  'ROTS.TA','RVLV.TA','SANO.TA','SAPNS.TA','SARE.TA','SHFG.TA','SHGR.TA','SHLG.TA',
+  'SKBN.TA','SLGN.TA','SMFL.TA','SMTO.TA','SNFL.TA','SPGE.TA','SPRG.TA','STCM.TA',
+  'STRS.TA','SUGR.TA','SVAS.TA','SVRL.TA','SYMB.TA','TALD.TA','TARO.TA','TATT.TA',
+  'TDRN.TA','TIGBR.TA','TKUN.TA','TLRD.TA','TMRP.TA','TNUVA.TA','TOPS.TA','TREN.TA',
+  'TSEM.TA','TUZA.TA','TWIN.TA','TZMI.TA','UNIT.TA','UNVO.TA','URHM.TA','VILR.TA',
+  'VISN.TA','VNTZ.TA','VRNT.TA','VTNA.TA','WDSL.TA','WILC.TA','WKME.TA','XENA.TA',
+  'YAAC.TA','YBOX.TA','YHNF.TA','YNGN.TA','ZNKL.TA','ZORE.TA','ZRFT.TA','ZVHIL.TA',
+  'ALMD.TA','AUGN.TA','BBYL.TA','BSEN.TA','CLAL.TA','CNTL.TA','CRNT.TA','CYBR.TA',
+  'DCMA.TA','DEDR.TA','DLTA.TA','ELWS.TA','EMTC.TA','ENDY.TA','FRDN.TA','GAIA.TA',
+  'GLTK.TA','GPGB.TA','GSFI.TA','HGYN.TA','HMRM.TA','INCR.TA','INMD.TA','IRDN.TA',
+  'ISHI.TA','KARE.TA','KMDA.TA','LBTL.TA','LHAV.TA','LKOD.TA','LUZN.TA','MAFN.TA',
+  'MGDL5.TA','MLTL.TA','MRIS.TA','MTMY.TA','NFTA.TA','NGSP.TA','NTGR.TA','OPK.TA',
+  'ORMP.TA','PCAR.TA','PLRG.TA','PTNR.TA','RDWR.TA','RLMN.TA','SHRA.TA','SHVA.TA',
+  'SMKR.TA','SMNIN.TA','SPRCY.TA','TGLG.TA','TL.TA','TRMG.TA','UNTC.TA','USVN.TA',
+  'VLNS.TA','WLFD.TA','XTRA.TA','AILR.TA','AMAN.TA','APLY.TA','ASGR.TA','AVER.TA',
+  'BIGI.TA','BLSR.TA','BRZE.TA','BTGL.TA','BWAY.TA','CAMT.TA','CAZY.TA','CLBV.TA',
+  'CMDR.TA','CRPR.TA','CTPL.TA','DERM.TA','DORI.TA','DRSL.TA','DUNI.TA','EDRN.TA',
+  'EMDV.TA','EMQU.TA','EPAZ.TA','FNEC.TA','FTAL.TA','GFTA.TA','GLCL.TA','GNGR.TA',
+  'GRMN.TA','GVAI.TA','HAYL.TA','HDST.TA','HIHO.TA','HSDR.TA','HTRG.TA','HWGN.TA',
+  'IBIO.TA','IDIN.TA','IGDN.TA','IKRS.TA','INTL.TA','IRMC.TA','ISCN.TA','JBNK.TA',
+  'KFIR.TA','KITZ.TA','KLBN.TA','KRNV.TA','KRON.TA','LEOF.TA','LFND.TA','LNGG.TA',
+  'LQRT.TA','LSCO.TA','LWRN.TA','MAGA.TA','MCRE.TA','MDLA.TA','MGRT.TA','MHTV.TA',
+  'MIRS.TA','MKRS.TA','MLAN.TA','MLSR.TA','MMHD.TA','MNHM.TA','MNTV.TA','MORG.TA',
+  'MRHL.TA','MSKA.TA','MTLK.TA','MTSL.TA','NAML.TA','NCMI.TA','NGHT.TA','NKTA.TA',
+  'NLPN.TA','NMRK.TA','NRFX.TA','NSPR.TA','NTRS.TA','NVMI.TA','NXTG.TA','NXTM.TA',
+  'OFEK.TA','OLDR.TA','ONVO.TA','ORBI.TA','PLTF.TA','PLTR.TA','PRFL.TA','PZOL.TA',
+  'RBOT.TA','RLKR.TA','RMGN.TA','RNWN.TA','RPAY.TA','RSEL.TA','RVOL.TA','SCPL.TA',
+  'SFET.TA','SFTC.TA','SHOO.TA','SHRP.TA','SIEL.TA','SKLN.TA','SLRA.TA','SMNX.TA',
+  'SNPT.TA','SPCL.TA','SPNS.TA','SSRM.TA','STRN.TA','TASK.TA','TBIO.TA','TDBK.TA',
+  'TEDE.TA','TELS.TA','TGTR.TA','TKFT.TA','TNPV.TA','TRBO.TA','TRVL.TA','TTNP.TA',
+  'UCPT.TA','ULTR.TA','UNFR.TA','UNON.TA','UTRN.TA','VBLT.TA','VCNX.TA','VINS.TA',
+  'VLAR.TA','VNRX.TA','VORR.TA','VRGL.TA','WLKR.TA','XTLB.TA','YFTC.TA','YMNT.TA',
+  'YOSH.TA','ZION.TA','ZMRN.TA','ZVLG.TA'
 ];
 
-// Tracks which rules already fired today (per symbol) to avoid spam
-var _scannerFiredKeys = {};
+// Scanner state
+var _scannerFiredToday = {};
+var _scannerRunning = false;
+var _scannerInterval = null;
 
-function runAutoScanner() {
-  var syms = Array.from(new Set(SCANNER_SYMS.concat(watchlist)));
-  var fired = false;
+// ── MAIN SCANNER: Uptrend + Pullback to last support ──────────────
+// Logic:
+// 1. Get 20 weekly candles
+// 2. Check last 16 have rising highs+lows (allow ≤3 violations)
+// 3. Current price is near last weekly low (within 3%) = pullback to support
+// → BUY SIGNAL
 
-  syms.forEach(function(sym) {
-    var d = priceCache[sym];
-    if (!d || !d.price) return;
-    var data = { sym: sym, price: d.price, changePct: d.changePct || 0, change: d.change || 0 };
-
-    SCANNER_RULES.forEach(function(rule) {
-      if (!rule.check(data)) return;
-      // Fire at most once per calendar day per (rule, symbol)
-      var key = rule.id + '_' + sym + '_' + new Date().toDateString();
-      if (_scannerFiredKeys[key]) return;
-      _scannerFiredKeys[key] = true;
-      fired = true;
-
-      var time = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-      var msg  = rule.message(data);
-
-      // Push to bell panel
-      var stored = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
-      stored.unshift({ sym: sym, price: d.price, condition: 'scanner', time: time, key: key, msg: msg, severity: rule.severity });
-      if (stored.length > 50) stored = stored.slice(0, 50);
-      localStorage.setItem('ib_alerts2', JSON.stringify(stored));
-    });
-  });
-
-  if (fired) {
-    // Flash the bell icon
-    var bellBtn = document.getElementById('ib-alerts');
-    if (bellBtn) {
-      bellBtn.style.animation = 'none';
-      bellBtn.offsetHeight; // reflow
-      bellBtn.style.animation = 'bellPulse 0.6s ease 3';
-    }
-    if (typeof ibRenderAlerts2 === 'function') ibRenderAlerts2();
-  }
-}
-
-// ============================================
-//   SMART SCANNER — התראות מהסורק החכם
-// ============================================
-var SCANNER_SYMS = [
-  'TEVA.TA','ELBIT.TA','BEZQ.TA','POLI.TA','LUMI.TA','AZRG.TA',
-  'BOB.TA','TASE.TA','MGDL.TA','HAP.TA','NICE','CHKP',
-  'ENLT.TA','KDST.TA','ONE.TA','SPEN.TA','ICL.TA','FIBI.TA'
-];
-
-var SCANNER_SIGNAL_NAMES = [
-  'פריצת התנגדות','מומנטום חיובי','נר בולי חזק','RSI עולה','נפח גבוה מהרגיל','מגמת עלייה'
-];
-
-// ============================================
-//   UPTREND SCANNER — 16 weekly candles higher highs & higher lows
-// ============================================
-var _uptrendFiredToday = {};
-
-async function runUptrendScanner() {
-  var syms = Array.from(new Set(SCANNER_SYMS.concat(watchlist)));
-  var results = [];
+async function runBackgroundScanner() {
+  if (_scannerRunning) return;
+  _scannerRunning = true;
   var today = new Date().toDateString();
+  var results = [];
+  var scanned = 0;
+  var errors = 0;
 
-  await Promise.all(syms.map(async function(sym) {
-    try {
-      var bars = await fetchYahooChartDirect(sym, '1W');
-      if (!bars || bars.length < 16) return;
+  console.log('[Scanner] Starting background scan of', TASE_SYMBOLS.length, 'TASE symbols...');
 
-      // Take last 16 weekly candles
-      var last16 = bars.slice(-16);
+  // Process in batches of 10 to avoid overwhelming the proxy
+  for (var batch = 0; batch < TASE_SYMBOLS.length; batch += 10) {
+    var batchSyms = TASE_SYMBOLS.slice(batch, batch + 10);
+    await Promise.all(batchSyms.map(async function(sym) {
+      try {
+        var bars = await fetchYahooChartDirect(sym, '1W');
+        scanned++;
+        if (!bars || bars.length < 20) { errors++; return; }
 
-      // Check uptrend: each candle's high >= prev high AND each candle's low >= prev low
-      // Allow up to 2 violations (tolerance for minor pullbacks)
-      var violations = 0;
-      for (var i = 1; i < last16.length; i++) {
-        var currHigh = last16[i].high;
-        var prevHigh = last16[i - 1].high;
-        var currLow  = last16[i].low;
-        var prevLow  = last16[i - 1].low;
-        if (currHigh < prevHigh || currLow < prevLow) {
-          violations++;
+        // Take last 16 weekly candles for trend check
+        var last16 = bars.slice(-16);
+
+        // Check uptrend: higher highs and higher lows
+        var violations = 0;
+        for (var i = 1; i < last16.length; i++) {
+          if (last16[i].high < last16[i-1].high || last16[i].low < last16[i-1].low) {
+            violations++;
+          }
         }
-      }
 
-      // Uptrend if no more than 2 violations out of 15 comparisons
-      if (violations <= 2) {
-        var firstPrice = last16[0].close;
-        var lastPrice  = last16[last16.length - 1].close;
-        var gain = ((lastPrice - firstPrice) / firstPrice * 100).toFixed(1);
+        // Need uptrend (≤3 violations out of 15)
+        if (violations > 3) return;
+
+        // Find last support level = lowest low in last 4 weeks
+        var recentBars = bars.slice(-4);
+        var lastSupport = Math.min.apply(null, recentBars.map(function(b) { return b.low; }));
+
+        // Current price (last candle close)
+        var currentPrice = bars[bars.length - 1].close;
+
+        // Check pullback: price is within 3% of last support
+        var distFromSupport = (currentPrice - lastSupport) / lastSupport;
+        if (distFromSupport > 0.03 || distFromSupport < -0.01) return;
+
+        // Calculate gain over 16 weeks
+        var gain = ((currentPrice - last16[0].close) / last16[0].close * 100).toFixed(1);
+
         results.push({
           sym: sym,
           name: NAMES[sym] || sym.replace('.TA', ''),
-          price: lastPrice,
+          price: currentPrice,
+          support: lastSupport,
           gain: gain,
           violations: violations,
-          weeks: last16.length
+          distPct: (distFromSupport * 100).toFixed(1)
         });
-      }
-    } catch (e) {}
-  }));
+      } catch(e) { errors++; }
+    }));
+  }
 
-  if (!results.length) return;
+  console.log('[Scanner] Done. Scanned:', scanned, '| Errors:', errors, '| Signals:', results.length);
 
-  // Sort by gain descending
-  results.sort(function(a, b) { return parseFloat(b.gain) - parseFloat(a.gain); });
-
-  // Show popup for each result (max 8) — only once per day per symbol
-  results.slice(0, 8).forEach(function(r) {
-    var fireKey = 'uptrend_' + r.sym + '_' + today;
-    if (_uptrendFiredToday[fireKey]) return;
-    _uptrendFiredToday[fireKey] = true;
-
-    // Push to bell panel
-    var time = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-    var msg = '📈 ' + r.sym.replace('.TA', '') + ' במגמת עלייה — +' + r.gain + '% ב-' + r.weeks + ' שבועות';
-    var stored = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
-    stored.unshift({ sym: r.sym, price: r.price, condition: 'uptrend', time: time, key: fireKey, msg: msg, severity: 'green' });
-    if (stored.length > 50) stored = stored.slice(0, 50);
-    localStorage.setItem('ib_alerts2', JSON.stringify(stored));
-
-    // Show popup notification
-    showUptrendPopup(r);
-  });
-
-  // Flash bell
+  // Fire buy signals
   if (results.length) {
+    results.sort(function(a, b) { return parseFloat(b.gain) - parseFloat(a.gain); });
+
+    results.forEach(function(r) {
+      var fireKey = 'buy_' + r.sym + '_' + today;
+      if (_scannerFiredToday[fireKey]) return;
+      _scannerFiredToday[fireKey] = true;
+
+      // Push to bell panel
+      var time = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+      var msg = '🟢 קנייה: ' + r.sym.replace('.TA', '') + ' — חזרה לתמיכה ₪' + r.support.toFixed(2) + ' (מגמת עלייה +' + r.gain + '%)';
+      var stored = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
+      stored.unshift({ sym: r.sym, price: r.price, condition: 'buy_signal', time: time, key: fireKey, msg: msg, severity: 'green' });
+      if (stored.length > 100) stored = stored.slice(0, 100);
+      localStorage.setItem('ib_alerts2', JSON.stringify(stored));
+
+      // Show popup
+      showBuySignalPopup(r);
+
+      // Increment bell badge
+      if (typeof incrementAlertBadge === 'function') incrementAlertBadge();
+    });
+
+    // Flash bell
     var bellBtn = document.getElementById('ib-alerts');
     if (bellBtn) {
       bellBtn.style.animation = 'none';
@@ -2405,138 +2403,57 @@ async function runUptrendScanner() {
     if (typeof ibRenderAlerts2 === 'function') ibRenderAlerts2();
   }
 
-  // Log results to console for verification
-  console.log('[NexTrade] Uptrend Scanner Results:', results);
-  console.log('[NexTrade] Scanned', syms.length, 'symbols, found', results.length, 'in uptrend');
+  console.log('[Scanner] Results:', results);
+  _scannerRunning = false;
+  return results;
 }
 
-// TEST function — run in Console: testUptrendScanner()
-// This ignores the daily fire limit and shows an alert with results
-async function testUptrendScanner() {
-  console.log('[NexTrade] === TESTING UPTREND SCANNER ===');
-  var syms = Array.from(new Set(SCANNER_SYMS.concat(watchlist)));
-  console.log('[NexTrade] Scanning', syms.length, 'symbols:', syms.join(', '));
-  var results = [];
-  var errors = 0;
+function showBuySignalPopup(r) {
+  var curr = '₪';
+  var popup = document.createElement('div');
+  popup.className = 'uptrend-popup';
+  popup.innerHTML = '<div class="uptrend-popup-header">🟢 איתות קנייה</div>'
+    + '<div class="uptrend-popup-body">'
+    + '<span class="uptrend-sym" onclick="(function(){selectSymbol(\'' + r.sym + '\');})()">' + r.sym.replace('.TA', '') + '</span>'
+    + '<span class="uptrend-name">' + r.name + '</span>'
+    + '<span class="uptrend-price">מחיר: ' + curr + r.price.toFixed(2) + '</span>'
+    + '<span class="uptrend-gain">תמיכה: ' + curr + r.support.toFixed(2) + ' | מגמה: +' + r.gain + '%</span>'
+    + '</div>'
+    + '<button class="uptrend-close" onclick="this.parentElement.remove()">✕</button>';
+  document.body.appendChild(popup);
+  setTimeout(function() { if (popup.parentElement) popup.remove(); }, 12000);
+}
 
-  for (var s = 0; s < syms.length; s++) {
-    var sym = syms[s];
-    try {
-      console.log('[NexTrade]   Fetching weekly bars for:', sym);
-      var bars = await fetchYahooChartDirect(sym, '1W');
-      if (!bars || bars.length < 16) {
-        console.log('[NexTrade]   ⚠', sym, '— only', (bars ? bars.length : 0), 'bars (need 16)');
-        errors++;
-        continue;
-      }
-      var last16 = bars.slice(-16);
-      var violations = 0;
-      for (var i = 1; i < last16.length; i++) {
-        if (last16[i].high < last16[i-1].high || last16[i].low < last16[i-1].low) violations++;
-      }
-      var firstPrice = last16[0].close;
-      var lastPrice  = last16[last16.length - 1].close;
-      var gain = ((lastPrice - firstPrice) / firstPrice * 100).toFixed(1);
-      var status = violations <= 2 ? '✅ UPTREND' : '❌ no (' + violations + ' violations)';
-      console.log('[NexTrade]  ', status, sym, '— gain:', gain + '%', 'violations:', violations + '/15');
-      if (violations <= 2) {
-        results.push({ sym: sym, gain: gain, violations: violations });
-        showUptrendPopup({ sym: sym, name: NAMES[sym] || sym.replace('.TA',''), price: lastPrice, gain: gain });
-      }
-    } catch(e) {
-      console.log('[NexTrade]   ❌', sym, 'ERROR:', e.message);
-      errors++;
-    }
-  }
+// Start scanner on init + every 5 minutes
+function startBackgroundScanner() {
+  // Run first scan after 10 seconds (let chart load first)
+  setTimeout(function() { runBackgroundScanner(); }, 10000);
+  // Then every 5 minutes
+  _scannerInterval = setInterval(function() { runBackgroundScanner(); }, 5 * 60 * 1000);
+}
 
-  var summary = '\n=== UPTREND SCANNER RESULTS ===\n'
-    + 'Scanned: ' + syms.length + ' symbols\n'
-    + 'Errors/No data: ' + errors + '\n'
-    + 'In uptrend: ' + results.length + '\n'
-    + (results.length ? results.map(function(r) { return '  📈 ' + r.sym + ' +' + r.gain + '%'; }).join('\n') : '  (none found)');
+// Test function for manual verification
+async function testScanner() {
+  console.log('[Scanner] === MANUAL TEST ===');
+  _scannerFiredToday = {}; // reset daily limit
+  var results = await runBackgroundScanner();
+  var summary = '\n=== SCANNER RESULTS ===\n'
+    + 'Total TASE symbols: ' + TASE_SYMBOLS.length + '\n'
+    + 'Buy signals found: ' + (results ? results.length : 0) + '\n'
+    + (results && results.length ? results.map(function(r) {
+        return '  🟢 ' + r.sym.replace('.TA','') + ' — ₪' + r.price.toFixed(2) + ' (support: ₪' + r.support.toFixed(2) + ', trend: +' + r.gain + '%)';
+      }).join('\n') : '  (no signals)');
   console.log(summary);
   alert(summary);
   return results;
 }
 
-function showUptrendPopup(r) {
-  var isTASE = r.sym.endsWith('.TA');
-  var curr   = isTASE ? '₪' : '$';
-  var popup = document.createElement('div');
-  popup.className = 'uptrend-popup';
-  popup.innerHTML = '<div class="uptrend-popup-header">📈 מגמת עלייה</div>'
-    + '<div class="uptrend-popup-body">'
-    + '<span class="uptrend-sym" onclick="(function(){selectSymbol(\'' + r.sym + '\');})()">' + r.sym.replace('.TA', '') + '</span>'
-    + '<span class="uptrend-name">' + r.name + '</span>'
-    + '<span class="uptrend-price">' + curr + (r.price >= 100 ? r.price.toFixed(2) : r.price.toFixed(3)) + '</span>'
-    + '<span class="uptrend-gain">+' + r.gain + '% ב-16 שבועות</span>'
-    + '</div>'
-    + '<button class="uptrend-close" onclick="this.parentElement.remove()">✕</button>';
-  document.body.appendChild(popup);
-  // Auto-remove after 8 seconds
-  setTimeout(function() { if (popup.parentElement) popup.remove(); }, 8000);
-}
-
-async function runScanner() {
-  var el = document.getElementById('scannerList');
-  if (!el) return;
-  el.innerHTML = '<div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:1.2rem 0">&#128270; סורק מניות...</div>';
-
-  var results = [];
-  var syms = Array.from(new Set(SCANNER_SYMS.concat(watchlist)));
-
-  await Promise.all(syms.map(async function(sym) {
-    try {
-      var bars = await fetchYahooChartDirect(sym, '1D');
-      if (!bars || bars.length < 5) return;
-      var last  = bars[bars.length - 1];
-      var prev  = bars[bars.length - 2];
-      var prev3 = bars[bars.length - 4];
-      if (!last || !prev || !prev3) return;
-
-      var isBullishCandle = last.close > last.open;
-      var hasMomentum     = last.close > prev3.close;
-      var aboveOpen       = last.close > prev.close;
-      var bodyPct         = Math.abs(last.close - last.open) / last.open * 100;
-      var changePct       = (last.close - prev.close) / prev.close * 100;
-
-      // קריטריון: נר ירוק + מומנטום חיובי + שינוי > 0.2%
-      if (isBullishCandle && hasMomentum && aboveOpen && bodyPct > 0.2) {
-        var signalIdx = (sym.charCodeAt(0) + sym.charCodeAt(1)) % SCANNER_SIGNAL_NAMES.length;
-        results.push({
-          sym:      sym,
-          name:     NAMES[sym] || sym.replace('.TA',''),
-          price:    last.close,
-          pct:      changePct,
-          signal:   SCANNER_SIGNAL_NAMES[signalIdx],
-          strength: bodyPct + (hasMomentum ? 1 : 0)
-        });
-      }
-    } catch(e) {}
-  }));
-
-  var el2 = document.getElementById('scannerList');
-  if (!el2) return;
-
-  if (!results.length) {
-    el2.innerHTML = '<div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:1.2rem 0">אין התראות פעילות כרגע</div>';
-    return;
-  }
-
-  results.sort(function(a, b) { return b.strength - a.strength; });
-
-  el2.innerHTML = results.slice(0, 8).map(function(r) {
-    var isTASE = r.sym.endsWith('.TA');
-    var curr   = isTASE ? '\u20AA' : '$';
-    var pctStr = (r.pct >= 0 ? '+' : '') + r.pct.toFixed(2) + '%';
-    var shortSym = r.sym.replace('.TA','');
-    return '<div class="index-item" onclick="loadChart(\'' + r.sym + '\')" style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:.4rem;padding:.42rem .6rem;cursor:pointer;">'
-      + '<span style="font-size:.8rem;font-weight:700;color:var(--green);min-width:40px">' + shortSym + '</span>'
-      + '<span style="font-size:.7rem;color:var(--text-muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + r.name + '</span>'
-      + '<span class="badge up" style="flex-shrink:0">' + pctStr + '</span>'
-      + '</div>';
-  }).join('');
-}
+// Keep old function names for compatibility
+function runScanner() { /* silent — no UI */ }
+function runAutoScanner() { /* replaced by background scanner */ }
+function runUptrendScanner() { runBackgroundScanner(); }
+function testUptrendScanner() { return testScanner(); }
+var SCANNER_SYMS = TASE_SYMBOLS;
 
 // ============================================
 //   SEARCH AUTOCOMPLETE
