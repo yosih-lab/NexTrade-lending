@@ -2448,6 +2448,139 @@ async function testScanner() {
   return results;
 }
 
+// ===== TEST WITH DUMMY CANDLES =====
+function testScannerDummy() {
+  console.log('[Scanner] === DUMMY DATA TEST ===');
+
+  // --- Scenario A: Perfect uptrend + pullback to support => SHOULD trigger ---
+  var barsA = [];
+  for (var i = 0; i < 20; i++) {
+    barsA.push({
+      open: 100 + i * 2,
+      close: 101 + i * 2,
+      high: 103 + i * 2,  // higher high each week
+      low: 99 + i * 2     // higher low each week
+    });
+  }
+  // Now simulate pullback: last candle drops to near last support
+  var lastSupport = Math.min(barsA[16].low, barsA[17].low, barsA[18].low, barsA[19].low);
+  barsA[19].close = lastSupport * 1.01; // 1% above support
+
+  // --- Scenario B: Uptrend but NO pullback (price too high) => SHOULD NOT trigger ---
+  var barsB = [];
+  for (var i = 0; i < 20; i++) {
+    barsB.push({
+      open: 100 + i * 2,
+      close: 101 + i * 2,
+      high: 103 + i * 2,
+      low: 99 + i * 2
+    });
+  }
+  // Last price is far above support (10%)
+  barsB[19].close = lastSupport * 1.10;
+
+  // --- Scenario C: Pullback exists but NO uptrend (choppy) => SHOULD NOT trigger ---
+  var barsC = [];
+  for (var i = 0; i < 20; i++) {
+    barsC.push({
+      open: 100 + (i % 2 === 0 ? 5 : -5),
+      close: 100 + (i % 2 === 0 ? 3 : -3),
+      high: 108 - (i % 3),  // chaotic highs
+      low: 92 + (i % 3)     // chaotic lows
+    });
+  }
+
+  function analyzeCandles(bars, label) {
+    var last16 = bars.slice(-16);
+    var violations = 0;
+    var details = [];
+    for (var i = 1; i < last16.length; i++) {
+      var hhOk = last16[i].high >= last16[i-1].high;
+      var hlOk = last16[i].low >= last16[i-1].low;
+      if (!hhOk || !hlOk) {
+        violations++;
+        details.push('  Week ' + i + ': ' + (!hhOk ? 'HIGH↓ ' : '') + (!hlOk ? 'LOW↓' : ''));
+      }
+    }
+    var uptrendOk = violations <= 3;
+
+    var recentBars = bars.slice(-4);
+    var support = Math.min.apply(null, recentBars.map(function(b) { return b.low; }));
+    var currentPrice = bars[bars.length - 1].close;
+    var distPct = ((currentPrice - support) / support * 100).toFixed(2);
+    var pullbackOk = (currentPrice - support) / support <= 0.03 && (currentPrice - support) / support >= -0.01;
+
+    var pass = uptrendOk && pullbackOk;
+    console.log('\n--- ' + label + ' ---');
+    console.log('  Violations: ' + violations + '/15 (max 3) => ' + (uptrendOk ? '✅ UPTREND' : '❌ NO UPTREND'));
+    if (details.length) console.log(details.join('\n'));
+    console.log('  Current price: ' + currentPrice.toFixed(2));
+    console.log('  Support (last 4w low): ' + support.toFixed(2));
+    console.log('  Distance from support: ' + distPct + '% (need -1% to +3%) => ' + (pullbackOk ? '✅ PULLBACK' : '❌ NO PULLBACK'));
+    console.log('  ==> ' + (pass ? '🟢 BUY SIGNAL' : '⚪ NO SIGNAL'));
+    return pass;
+  }
+
+  var resultA = analyzeCandles(barsA, 'Scenario A: Uptrend + Pullback');
+  var resultB = analyzeCandles(barsB, 'Scenario B: Uptrend + NO Pullback');
+  var resultC = analyzeCandles(barsC, 'Scenario C: NO Uptrend + Pullback');
+
+  var summary = '\n====== DUMMY TEST SUMMARY ======\n'
+    + 'A) Uptrend + Pullback => ' + (resultA ? '🟢 PASS (signal fired)' : '❌ FAIL') + '\n'
+    + 'B) Uptrend + NO Pullback => ' + (!resultB ? '🟢 PASS (no signal)' : '❌ FAIL — false positive!') + '\n'
+    + 'C) NO Uptrend + Pullback => ' + (!resultC ? '🟢 PASS (no signal)' : '❌ FAIL — false positive!') + '\n';
+  console.log(summary);
+  alert(summary);
+}
+
+// ===== DIAGNOSE REAL DATA =====
+async function diagnoseScannerData(howMany) {
+  howMany = howMany || 10;
+  console.log('[Scanner] Diagnosing first ' + howMany + ' symbols with real data...');
+  var results = [];
+  var syms = TASE_SYMBOLS.slice(0, howMany);
+
+  for (var s = 0; s < syms.length; s++) {
+    var sym = syms[s];
+    try {
+      var bars = await fetchYahooChartDirect(sym, '1W');
+      if (!bars || bars.length < 20) {
+        results.push({ sym: sym, status: 'NO DATA (' + (bars ? bars.length : 0) + ' bars)' });
+        continue;
+      }
+      var last16 = bars.slice(-16);
+      var violations = 0;
+      for (var i = 1; i < last16.length; i++) {
+        if (last16[i].high < last16[i-1].high || last16[i].low < last16[i-1].low) violations++;
+      }
+      var recentBars = bars.slice(-4);
+      var support = Math.min.apply(null, recentBars.map(function(b) { return b.low; }));
+      var price = bars[bars.length - 1].close;
+      var dist = ((price - support) / support * 100).toFixed(1);
+      results.push({
+        sym: sym,
+        status: 'OK',
+        bars: bars.length,
+        violations: violations + '/15',
+        uptrendOk: violations <= 3 ? '✅' : '❌',
+        price: price.toFixed(2),
+        support: support.toFixed(2),
+        distPct: dist + '%',
+        pullbackOk: (price - support) / support <= 0.03 && (price - support) / support >= -0.01 ? '✅' : '❌'
+      });
+    } catch (e) {
+      results.push({ sym: sym, status: 'ERROR: ' + e.message });
+    }
+  }
+
+  console.table(results);
+  console.log('\n[Scanner] Legend:');
+  console.log('  violations: how many weeks broke the higher-high/higher-low pattern (max 3 allowed)');
+  console.log('  distPct: how far current price is from support (need -1% to +3% for signal)');
+  console.log('  Both uptrendOk ✅ AND pullbackOk ✅ = buy signal');
+  return results;
+}
+
 // Keep old function names for compatibility
 function runScanner() { /* silent — no UI */ }
 function runAutoScanner() { /* replaced by background scanner */ }
