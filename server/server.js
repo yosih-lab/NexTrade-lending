@@ -12,7 +12,7 @@ const TD_ORIGIN  = 'https://api.twelvedata.com';
 const PORT       = process.env.PORT || 3000;
 const ALLOWED    = ['https://getnexttrade.com','https://www.getnexttrade.com'];
 const JWT_SECRET = process.env.JWT_SECRET || 'nexttrade_jwt_secret_change_me';
-const MAX_USERS  = 20;
+const MAX_USERS  = 100;
 const USERS_FILE = path.join(__dirname, 'users.json');
 
 // ── BODY PARSER ──────────────────────────────────────────────────

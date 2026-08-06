@@ -2407,6 +2407,56 @@ async function runUptrendScanner() {
 
   // Log results to console for verification
   console.log('[NexTrade] Uptrend Scanner Results:', results);
+  console.log('[NexTrade] Scanned', syms.length, 'symbols, found', results.length, 'in uptrend');
+}
+
+// TEST function — run in Console: testUptrendScanner()
+// This ignores the daily fire limit and shows an alert with results
+async function testUptrendScanner() {
+  console.log('[NexTrade] === TESTING UPTREND SCANNER ===');
+  var syms = Array.from(new Set(SCANNER_SYMS.concat(watchlist)));
+  console.log('[NexTrade] Scanning', syms.length, 'symbols:', syms.join(', '));
+  var results = [];
+  var errors = 0;
+
+  for (var s = 0; s < syms.length; s++) {
+    var sym = syms[s];
+    try {
+      console.log('[NexTrade]   Fetching weekly bars for:', sym);
+      var bars = await fetchYahooChartDirect(sym, '1W');
+      if (!bars || bars.length < 16) {
+        console.log('[NexTrade]   ⚠', sym, '— only', (bars ? bars.length : 0), 'bars (need 16)');
+        errors++;
+        continue;
+      }
+      var last16 = bars.slice(-16);
+      var violations = 0;
+      for (var i = 1; i < last16.length; i++) {
+        if (last16[i].high < last16[i-1].high || last16[i].low < last16[i-1].low) violations++;
+      }
+      var firstPrice = last16[0].close;
+      var lastPrice  = last16[last16.length - 1].close;
+      var gain = ((lastPrice - firstPrice) / firstPrice * 100).toFixed(1);
+      var status = violations <= 2 ? '✅ UPTREND' : '❌ no (' + violations + ' violations)';
+      console.log('[NexTrade]  ', status, sym, '— gain:', gain + '%', 'violations:', violations + '/15');
+      if (violations <= 2) {
+        results.push({ sym: sym, gain: gain, violations: violations });
+        showUptrendPopup({ sym: sym, name: NAMES[sym] || sym.replace('.TA',''), price: lastPrice, gain: gain });
+      }
+    } catch(e) {
+      console.log('[NexTrade]   ❌', sym, 'ERROR:', e.message);
+      errors++;
+    }
+  }
+
+  var summary = '\n=== UPTREND SCANNER RESULTS ===\n'
+    + 'Scanned: ' + syms.length + ' symbols\n'
+    + 'Errors/No data: ' + errors + '\n'
+    + 'In uptrend: ' + results.length + '\n'
+    + (results.length ? results.map(function(r) { return '  📈 ' + r.sym + ' +' + r.gain + '%'; }).join('\n') : '  (none found)');
+  console.log(summary);
+  alert(summary);
+  return results;
 }
 
 function showUptrendPopup(r) {
