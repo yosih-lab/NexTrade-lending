@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>NexTrade — שאלון הכרות</title>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;900&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:Heebo,sans-serif;
+      background:#04060c;
+      color:#fff;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      direction:rtl;
+      padding:1rem;
+    }
+    .chat-container{
+      width:100%;
+      max-width:480px;
+      height:85vh;
+      background:#0a0d16;
+      border:1px solid #1e2637;
+      border-radius:16px;
+      box-shadow:0 8px 40px rgba(0,0,0,.6);
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+    }
+    .chat-header{
+      padding:.8rem 1.2rem;
+      background:#0f1420;
+      border-bottom:1px solid #1e2637;
+      display:flex;
+      align-items:center;
+      gap:.6rem;
+    }
+    .chat-header-avatar{
+      width:38px;height:38px;border-radius:50%;
+      background:linear-gradient(135deg,#2962ff,#1a4fd6);
+      display:flex;align-items:center;justify-content:center;
+      font-size:1.1rem;font-weight:900;color:#fff;
+    }
+    .chat-header-info{flex:1}
+    .chat-header-name{font-size:.9rem;font-weight:700;color:#fff}
+    .chat-header-status{font-size:.7rem;color:#26a69a}
+    .chat-messages{
+      flex:1;
+      overflow-y:auto;
+      padding:1rem;
+      display:flex;
+      flex-direction:column;
+      gap:.6rem;
+    }
+    .msg-bubble{
+      max-width:82%;
+      padding:.6rem .9rem;
+      border-radius:12px;
+      font-size:.84rem;
+      line-height:1.5;
+      animation:fadeIn .3s ease;
+      white-space:pre-line;
+    }
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .msg-bot{
+      align-self:flex-start;
+      background:#1a1f2e;
+      border:1px solid #2a3040;
+      color:#e0e4ec;
+      border-bottom-right-radius:4px;
+    }
+    .msg-user{
+      align-self:flex-end;
+      background:#2962ff;
+      color:#fff;
+      border-bottom-left-radius:4px;
+    }
+    .msg-time{
+      font-size:.62rem;
+      color:#6a7a8a;
+      margin-top:.2rem;
+    }
+    .msg-bot .msg-time{text-align:right}
+    .msg-user .msg-time{text-align:left}
+    .chat-options{
+      display:flex;
+      flex-wrap:wrap;
+      gap:.4rem;
+      padding:.3rem 0;
+    }
+    .chat-option-btn{
+      background:#0f1420;
+      border:1px solid #2962ff;
+      color:#2962ff;
+      border-radius:20px;
+      padding:.4rem .9rem;
+      font-size:.78rem;
+      font-family:Heebo,sans-serif;
+      cursor:pointer;
+      transition:all .15s;
+    }
+    .chat-option-btn:hover{
+      background:#2962ff;
+      color:#fff;
+    }
+    .chat-option-btn.selected{
+      background:#2962ff;
+      color:#fff;
+      pointer-events:none;
+    }
+    .chat-input-area{
+      padding:.7rem 1rem;
+      border-top:1px solid #1e2637;
+      background:#0f1420;
+      display:none;
+      gap:.5rem;
+      align-items:center;
+    }
+    .chat-input-area.active{display:flex}
+    .chat-input{
+      flex:1;
+      background:#04060c;
+      border:1px solid #1e2637;
+      border-radius:20px;
+      color:#fff;
+      padding:.5rem .9rem;
+      font-size:.84rem;
+      font-family:Heebo,sans-serif;
+      outline:none;
+    }
+    .chat-input:focus{border-color:#2962ff}
+    .chat-send{
+      width:36px;height:36px;
+      border-radius:50%;
+      background:#2962ff;
+      border:none;
+      color:#fff;
+      font-size:1rem;
+      cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
+      transition:background .15s;
+    }
+    .chat-send:hover{background:#1a4fd6}
+    .typing-indicator{
+      align-self:flex-start;
+      padding:.5rem .8rem;
+      background:#1a1f2e;
+      border:1px solid #2a3040;
+      border-radius:12px;
+      display:flex;gap:4px;
+      animation:fadeIn .3s ease;
+    }
+    .typing-dot{
+      width:7px;height:7px;border-radius:50%;
+      background:#6a7a8a;
+      animation:typingBounce 1.2s infinite;
+    }
+    .typing-dot:nth-child(2){animation-delay:.2s}
+    .typing-dot:nth-child(3){animation-delay:.4s}
+    @keyframes typingBounce{
+      0%,80%,100%{transform:translateY(0)}
+      40%{transform:translateY(-5px)}
+    }
+    .chat-complete{
+      text-align:center;
+      padding:1.5rem;
+      animation:fadeIn .5s ease;
+    }
+    .chat-complete h2{color:#26a69a;font-size:1.1rem;margin-bottom:.5rem}
+    .chat-complete p{color:#8899aa;font-size:.82rem;margin-bottom:1rem}
+    .chat-complete .btn-enter{
+      background:#2962ff;color:#fff;border:none;
+      border-radius:8px;padding:.7rem 2rem;
+      font-size:.95rem;font-weight:700;
+      font-family:Heebo,sans-serif;
+      cursor:pointer;transition:background .2s;
+    }
+    .chat-complete .btn-enter:hover{background:#1a4fd6}
+  </style>
+</head>
+<body>
+<div class="chat-container">
+  <div class="chat-header">
+    <div class="chat-header-avatar">N</div>
+    <div class="chat-header-info">
+      <div class="chat-header-name">NexTrade</div>
+      <div class="chat-header-status">מקוון</div>
+    </div>
+  </div>
+  <div class="chat-messages" id="chatMessages"></div>
+  <div class="chat-input-area" id="chatInputArea">
+    <input class="chat-input" id="chatInput" placeholder="הקלד תשובה..." onkeydown="if(event.key==='Enter')sendFreeText()"/>
+    <button class="chat-send" onclick="sendFreeText()">➤</button>
+  </div>
+</div>
+
+<script>
+// ── Onboarding Questionnaire Flow ──
+var ONBOARDING_STEPS = [
+  {
+    bot: "אנו שמחים שבחרת להצטרף לשירות איתותים שלנו\nמחובתינו לבצע איתך תהליך מקוון של תיאום ציפיות ובירור צרכים\nאל דאגה, התהליך לא ארוך, מטרתו להכיר ולבדוק את רמת הידע וההבנה שלך בשוק ההון, שכן זהו תנאי הכרחי להרשמה ולשירות שלנו",
+    options: ["בואו נתחיל!"],
+    key: "welcome"
+  },
+  {
+    bot: "מצוין! נתחיל 😊\nהאם יש לך ניסיון קודם במסחר בשוק ההון?",
+    options: ["כן, יש לי ניסיון", "קצת, מתחיל", "לא, חדש בתחום"],
+    key: "experience"
+  },
+  {
+    bot: "כמה זמן אתה פעיל בשוק ההון?",
+    options: ["פחות משנה", "1-3 שנים", "3-5 שנים", "מעל 5 שנים"],
+    key: "years"
+  },
+  {
+    bot: "באיזה סגנון מסחר אתה מעדיף?",
+    options: ["מסחר יומי (Day Trading)", "סווינג (מספר ימים)", "השקעה לטווח בינוני", "השקעה לטווח ארוך"],
+    key: "style"
+  },
+  {
+    bot: "מה גובה ההון שאתה מתכנן להקצות למסחר?",
+    options: ["עד ₪10,000", "₪10,000 - ₪50,000", "₪50,000 - ₪200,000", "מעל ₪200,000"],
+    key: "capital"
+  },
+  {
+    bot: "האם אתה מבין מה זה סטופ לוס (Stop Loss) ולמה הוא חשוב?",
+    options: ["כן, אני משתמש בזה תמיד", "שמעתי על זה אבל לא תמיד מיישם", "לא בטוח מה זה"],
+    key: "stoploss"
+  },
+  {
+    bot: "מה רמת הסיכון שאתה מוכן לקחת בעסקה בודדת?",
+    options: ["עד 1% מהתיק", "1-2% מהתיק", "2-5% מהתיק", "לא הגדרתי"],
+    key: "risk"
+  },
+  {
+    bot: "האם אתה מכיר את המושגים: ממוצע נע, תמיכה/התנגדות, RSI?",
+    options: ["כן, אני משתמש בהם", "מכיר חלקית", "לא מכיר"],
+    key: "technical"
+  },
+  {
+    bot: "מה הציפייה שלך מהשירות שלנו?",
+    options: ["איתותי קנייה/מכירה", "ללמוד לזהות בעצמי", "ניהול תיק מלא", "שילוב של הכל"],
+    key: "expectation"
+  },
+  {
+    bot: "שאלה אחרונה — האם אתה מבין שמסחר בשוק ההון כרוך בסיכון, ושאין ערבות לרווחים?",
+    options: ["כן, אני מבין ומקבל את הסיכון", "אני מבין אבל רוצה ללמוד יותר"],
+    key: "disclaimer"
+  }
+];
+
+var currentStep = 0;
+var answers = {};
+var messagesEl = document.getElementById('chatMessages');
+
+function getTime() {
+  return new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+}
+
+function addBotMessage(text) {
+  var div = document.createElement('div');
+  div.className = 'msg-bubble msg-bot';
+  div.innerHTML = text + '<div class="msg-time">' + getTime() + '</div>';
+  messagesEl.appendChild(div);
+  scrollToBottom();
+}
+
+function addUserMessage(text) {
+  var div = document.createElement('div');
+  div.className = 'msg-bubble msg-user';
+  div.innerHTML = text + '<div class="msg-time">' + getTime() + '</div>';
+  messagesEl.appendChild(div);
+  scrollToBottom();
+}
+
+function addOptions(options) {
+  var div = document.createElement('div');
+  div.className = 'chat-options';
+  options.forEach(function(opt) {
+    var btn = document.createElement('button');
+    btn.className = 'chat-option-btn';
+    btn.textContent = opt;
+    btn.onclick = function() {
+      // Mark selected
+      div.querySelectorAll('.chat-option-btn').forEach(function(b) { b.classList.remove('selected'); b.style.pointerEvents = 'none'; b.style.opacity = '0.5'; });
+      btn.classList.add('selected');
+      btn.style.opacity = '1';
+      selectOption(opt);
+    };
+    div.appendChild(btn);
+  });
+  messagesEl.appendChild(div);
+  scrollToBottom();
+}
+
+function showTyping() {
+  var div = document.createElement('div');
+  div.className = 'typing-indicator';
+  div.id = 'typingIndicator';
+  div.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+  messagesEl.appendChild(div);
+  scrollToBottom();
+}
+
+function removeTyping() {
+  var el = document.getElementById('typingIndicator');
+  if (el) el.remove();
+}
+
+function scrollToBottom() {
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function selectOption(text) {
+  addUserMessage(text);
+  var step = ONBOARDING_STEPS[currentStep];
+  if (step) answers[step.key] = text;
+  currentStep++;
+  
+  setTimeout(function() {
+    showTyping();
+    setTimeout(function() {
+      removeTyping();
+      if (currentStep < ONBOARDING_STEPS.length) {
+        var nextStep = ONBOARDING_STEPS[currentStep];
+        addBotMessage(nextStep.bot);
+        if (nextStep.options) {
+          addOptions(nextStep.options);
+        } else if (nextStep.freeText) {
+          document.getElementById('chatInputArea').classList.add('active');
+        }
+      } else {
+        completeOnboarding();
+      }
+    }, 800 + Math.random() * 600);
+  }, 400);
+}
+
+function sendFreeText() {
+  var inp = document.getElementById('chatInput');
+  var text = (inp.value || '').trim();
+  if (!text) return;
+  inp.value = '';
+  document.getElementById('chatInputArea').classList.remove('active');
+  addUserMessage(text);
+  var step = ONBOARDING_STEPS[currentStep];
+  if (step) answers[step.key] = text;
+  currentStep++;
+  
+  setTimeout(function() {
+    showTyping();
+    setTimeout(function() {
+      removeTyping();
+      if (currentStep < ONBOARDING_STEPS.length) {
+        var nextStep = ONBOARDING_STEPS[currentStep];
+        addBotMessage(nextStep.bot);
+        if (nextStep.options) addOptions(nextStep.options);
+        else if (nextStep.freeText) document.getElementById('chatInputArea').classList.add('active');
+      } else {
+        completeOnboarding();
+      }
+    }, 800 + Math.random() * 600);
+  }, 400);
+}
+
+function completeOnboarding() {
+  // Save answers
+  localStorage.setItem('nt_onboarding', JSON.stringify(answers));
+  localStorage.setItem('nt_onboarding_done', 'true');
+  
+  addBotMessage("תודה רבה! 🎉\nסיימנו את תהליך ההכרות.\nעל סמך התשובות שלך, נתאים את השירות בצורה הטובה ביותר.");
+  
+  setTimeout(function() {
+    var div = document.createElement('div');
+    div.className = 'chat-complete';
+    div.innerHTML = '<h2>✅ התהליך הושלם בהצלחה</h2>'
+      + '<p>אתה מוכן להתחיל לסחור עם NexTrade</p>'
+      + '<button class="btn-enter" onclick="enterApp()">כניסה לפלטפורמה ➤</button>';
+    messagesEl.appendChild(div);
+    scrollToBottom();
+  }, 1200);
+}
+
+function enterApp() {
+  window.location.href = 'index.html';
+}
+
+// ── Start the flow ──
+(function() {
+  // Check if user is authenticated
+  var token = localStorage.getItem('nt_token');
+  if (!token) {
+    window.location.href = 'login.html';
+    return;
+  }
+  // If already completed onboarding, skip
+  if (localStorage.getItem('nt_onboarding_done') === 'true') {
+    window.location.href = 'index.html';
+    return;
+  }
+  // Start first message after short delay
+  setTimeout(function() {
+    var step = ONBOARDING_STEPS[0];
+    addBotMessage(step.bot);
+    addOptions(step.options);
+  }, 600);
+})();
+</script>
+</body>
+</html>

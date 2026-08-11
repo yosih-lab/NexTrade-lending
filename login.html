@@ -228,9 +228,24 @@
       });
       var data = await r.json();
       if (!r.ok) { setMsg(data.error || 'שגיאה', 'err'); return; }
-      setMsg('✅ ' + (data.message || 'נרשמת בהצלחה! כנס עכשיו.'), 'ok');
-      switchTab('login');
-      document.getElementById('lUsername').value = u;
+      // Auto-login after registration then redirect to onboarding
+      var lr = await fetch(API_BASE + '/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, password: p })
+      });
+      var ldata = await lr.json();
+      if (lr.ok && ldata.token) {
+        localStorage.setItem('nt_token', ldata.token);
+        localStorage.setItem('nt_user', JSON.stringify({ username: ldata.username, role: ldata.role }));
+        localStorage.removeItem('nt_onboarding_done');
+        setMsg('✅ נרשמת בהצלחה! מעביר לשאלון הכרות...', 'ok');
+        setTimeout(function() { window.location.href = 'onboarding.html'; }, 1200);
+      } else {
+        setMsg('✅ נרשמת בהצלחה! התחבר כדי להמשיך.', 'ok');
+        switchTab('login');
+        document.getElementById('lUsername').value = u;
+      }
     } catch(e2) {
       setMsg('❌ לא ניתן להתחבר לשרת: ' + e2.message, 'err');
     }

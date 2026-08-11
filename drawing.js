@@ -310,14 +310,11 @@
   function drawPositionTV(s, selected) {
     var yE = pToY(s.entry), ySL = pToY(s.sl), yTP = pToY(s.tp);
     if (yE == null || ySL == null || yTP == null) { return; }
-    // Bounded box — uses pixel sizes anchored to entry point
     var anchorX = lToX(s.l);
     if (anchorX == null) { return; }
-    // Default 100px wide; height = distance between TP and SL pixels
     var boxW = s.pxW || 100;
     var x1 = anchorX;
     var x2 = anchorX + boxW;
-    // If user has dragged edges, recalc from l1/l2
     if (s.l1 != null && s.l2 != null) {
       var xl = lToX(s.l1), xr = lToX(s.l2);
       if (xl != null && xr != null) { x1 = Math.min(xl, xr); x2 = Math.max(xl, xr); boxW = x2 - x1; }
@@ -325,13 +322,13 @@
     if (boxW < 20) { x2 = x1 + 100; boxW = 100; }
     var isLong = s.dir === 'long';
     var qty = s.qty || 1;
-    var R = 6; // corner radius
+    var R = 6;
     var tpCol = s.tpColor || '#26a69a';
     var slCol = s.slColor || '#ef5350';
     var tpOpa = s.tpOpacity != null ? s.tpOpacity : 0.22;
     var slOpa = s.slOpacity != null ? s.slOpacity : 0.22;
 
-    // ---- Profit zone ----
+    // ---- Profit zone (clean — no labels inside) ----
     var tpTop = Math.min(yE, yTP), tpBot = Math.max(yE, yTP);
     ctx.save();
     ctx.globalAlpha = tpOpa;
@@ -340,7 +337,7 @@
     ctx.fill();
     ctx.globalAlpha = 1;
 
-    // ---- Loss zone ----
+    // ---- Loss zone (clean — no labels inside) ----
     var slTop = Math.min(yE, ySL), slBot = Math.max(yE, ySL);
     ctx.globalAlpha = slOpa;
     ctx.fillStyle = slCol;
@@ -379,41 +376,42 @@
     var risk = Math.abs(s.entry - s.sl), reward = Math.abs(s.tp - s.entry);
     var rr = risk > 0 ? (reward / risk).toFixed(2) : '∞';
 
-    var padX = 6;
-    var midX = x1 + boxW / 2;
+    var isTASE = (window.currentSymbol || '').endsWith('.TA');
+    var curr = isTASE ? '₪' : '$';
 
-    // ---- Labels inside profit zone ----
-    var tpMidY = (yE + yTP) / 2;
-    var tpZoneH = Math.abs(yTP - yE);
+    // ---- GREEN INFO BOX — ABOVE the bar (profit info) ----
+    var greenBoxH = 36;
+    var greenBoxY = (isLong ? tpTop : slTop) - greenBoxH - 6;
+    var greenBoxPad = 8;
+    ctx.fillStyle = 'rgba(38,166,154,0.92)';
+    roundRect(ctx, x1, greenBoxY, boxW, greenBoxH, {tl:5,tr:5,bl:5,br:5});
+    ctx.fill();
+    ctx.font = '700 11px Heebo, sans-serif';
+    ctx.fillStyle = '#ffffff';
     ctx.textBaseline = 'middle';
-    if (tpZoneH > 28) {
-      ctx.font = '700 11px Heebo, sans-serif';
-      ctx.fillStyle = '#26a69a';
-      ctx.fillText(fmtPrice(s.tp), x1 + padX, yTP + (isLong ? 12 : -10));
-      if (tpZoneH > 42) {
-        ctx.font = '600 10px Heebo, sans-serif';
-        ctx.fillStyle = '#c8e6c9';
-        ctx.fillText((profitPct >= 0 ? '+' : '') + profitPct.toFixed(2) + '%', x1 + padX, tpMidY - 7);
-        ctx.fillText((profitAbs >= 0 ? '+' : '-') + fmtPrice(profitAbs), x1 + padX, tpMidY + 8);
-      }
-    }
+    var tpPriceText = curr + (s.entry + profitAbs / qty).toFixed(2);
+    var tpPctText = '+' + profitPct.toFixed(2) + '%  (+' + curr + profitAbs.toFixed(2) + ')';
+    ctx.fillText(tpPriceText, x1 + greenBoxPad, greenBoxY + 11);
+    ctx.font = '600 10px Heebo, sans-serif';
+    ctx.fillText(tpPctText, x1 + greenBoxPad, greenBoxY + 26);
 
-    // ---- Labels inside loss zone ----
-    var slMidY = (yE + ySL) / 2;
-    var slZoneH = Math.abs(ySL - yE);
-    if (slZoneH > 28) {
-      ctx.font = '700 11px Heebo, sans-serif';
-      ctx.fillStyle = '#ef5350';
-      ctx.fillText(fmtPrice(s.sl), x1 + padX, ySL + (isLong ? -10 : 12));
-      if (slZoneH > 42) {
-        ctx.font = '600 10px Heebo, sans-serif';
-        ctx.fillStyle = '#ef9a9a';
-        ctx.fillText(lossPct.toFixed(2) + '%', x1 + padX, slMidY - 7);
-        ctx.fillText('-' + fmtPrice(lossAbs), x1 + padX, slMidY + 8);
-      }
-    }
+    // ---- RED INFO BOX — BELOW the bar (loss info) ----
+    var redBoxH = 36;
+    var redBoxY = (isLong ? slBot : tpBot) + 6;
+    var redBoxPad = 8;
+    ctx.fillStyle = 'rgba(239,83,80,0.92)';
+    roundRect(ctx, x1, redBoxY, boxW, redBoxH, {tl:5,tr:5,bl:5,br:5});
+    ctx.fill();
+    ctx.font = '700 11px Heebo, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.textBaseline = 'middle';
+    var slPriceText = curr + (s.entry - lossAbs / qty).toFixed(2);
+    var slPctText = lossPct.toFixed(2) + '%  (-' + curr + lossAbs.toFixed(2) + ')';
+    ctx.fillText(slPriceText, x1 + redBoxPad, redBoxY + 11);
+    ctx.font = '600 10px Heebo, sans-serif';
+    ctx.fillText(slPctText, x1 + redBoxPad, redBoxY + 26);
 
-    // ---- Entry badge (right-aligned inside) ----
+    // ---- Entry badge (right-aligned on entry line) ----
     var dirLabel = isLong ? '▲ Long' : '▼ Short';
     var entryLabel = dirLabel + '  ' + fmtPrice(s.entry);
     ctx.font = '700 11px Heebo, sans-serif';
@@ -422,20 +420,18 @@
     var badgeX = x2 - entryW - badgePad * 2;
     var badgeY = yE - 12;
     var badgeH = 20;
-    // Badge bg
     ctx.fillStyle = isLong ? 'rgba(38,166,154,.92)' : 'rgba(239,83,80,.92)';
     roundRect(ctx, badgeX, badgeY, entryW + badgePad * 2, badgeH, {tl:4,tr:4,bl:4,br:4});
     ctx.fill();
-    // Badge text
     ctx.fillStyle = '#fff';
     ctx.fillText(entryLabel, badgeX + badgePad, badgeY + badgeH / 2);
 
-    // ---- R:R badge (left-aligned inside) ----
+    // ---- R:R badge (left-aligned on entry line) ----
     ctx.font = '700 10px Heebo, sans-serif';
     var rrLabel = 'R:R ' + rr;
     var rrW = ctx.measureText(rrLabel).width;
     ctx.fillStyle = 'rgba(255,255,255,.12)';
-    roundRect(ctx, x1 + padX, yE + 4, rrW + 10, 17, {tl:3,tr:3,bl:3,br:3});
+    roundRect(ctx, x1 + 6, yE + 4, rrW + 10, 17, {tl:3,tr:3,bl:3,br:3});
     ctx.fill();
     ctx.fillStyle = '#f5a623';
     ctx.fillText(rrLabel, x1 + padX + 5, yE + 13);
