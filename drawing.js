@@ -573,6 +573,9 @@
       if (hit) {
         selectedId = hit.id;
         showActionBar(hit);
+        if (hit.type === 'position') {
+          ppRefresh(); // open position panel on click
+        }
         if (!(hit.type === 'position' && posLocked)) {
           dragState = { kind: 'move', id: hit.id, start: px, orig: clone(hit) };
         }

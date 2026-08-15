@@ -878,7 +878,7 @@ function initPriceAxisScroll() {
     // On price axis (right 65px) — vertical zoom (stretch/compress prices)
     if (xFromRight <= 65) {
       var dir = e.deltaY > 0 ? 1 : -1;
-      var step = 0.03;
+      var step = 0.009; // 70% slower than original 0.03
       _priceMarginTop    = Math.max(0.01, Math.min(0.88, _priceMarginTop    + dir * step));
       _priceMarginBottom = Math.max(0.01, Math.min(0.88, _priceMarginBottom + dir * step));
       chartInstance.applyOptions({
