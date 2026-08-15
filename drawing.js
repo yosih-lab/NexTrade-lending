@@ -434,7 +434,7 @@
     roundRect(ctx, x1 + 6, yE + 4, rrW + 10, 17, {tl:3,tr:3,bl:3,br:3});
     ctx.fill();
     ctx.fillStyle = '#f5a623';
-    ctx.fillText(rrLabel, x1 + padX + 5, yE + 13);
+    ctx.fillText(rrLabel, x1 + 11, yE + 13);
 
     // ---- Qty badge ----
     if (qty > 1) {
@@ -454,6 +454,7 @@
 
     // ---- Selection handles ----
     if (selected) {
+      var midX = x1 + boxW / 2;
       // Horizontal drag handles on each line (mid-point)
       handleAt(midX, yE);
       handleAt(midX, yTP);
