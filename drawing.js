@@ -128,6 +128,24 @@
     canvas.addEventListener('dblclick', onDblClick);
     document.addEventListener('keydown', onKey);
 
+    // Click-through handler: catch clicks on position shapes even in 'off' mode
+    // Since canvas has pointer-events:none in off mode, clicks land on the wrap/chart.
+    // We listen on the wrap in capture phase to detect hits on position shapes.
+    wrap.addEventListener('mousedown', function(ev) {
+      if (mode !== 'off') return; // already handled by canvas onDown
+      var rect = canvas.getBoundingClientRect();
+      var px = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+      var posHit = topShapeAt(px);
+      if (posHit && posHit.type === 'position') {
+        selectedId = posHit.id;
+        showActionBar(posHit);
+        ppRefresh();
+        scheduleDraw();
+        ev.stopPropagation();
+        ev.preventDefault();
+      }
+    }, true);
+
     // redraw on pan/zoom
     var t = ts();
     if (t) {
@@ -558,8 +576,9 @@
   }
 
   function onDown(e) {
-    if (mode === 'off') return;
     var px = relPos(e);
+
+    if (mode === 'off') return;
 
     if (mode === 'select') {
       // first: hit a handle of the selected shape (resize)?
