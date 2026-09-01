@@ -177,7 +177,7 @@
     .sidebar-hdr-title { display:flex; align-items:center; gap:.4rem; }
     .sidebar-body {
       flex:1; overflow-y:auto; padding:0;
-      padding-top:130px;
+      padding-top:0;
       display:flex; flex-direction:column;
     }
     .sidebar-view { display:none; flex:1; overflow-y:auto; padding:.65rem .75rem; flex-direction:column; gap:.5rem; }
@@ -195,15 +195,15 @@
     /* Watchlist Management Panel */
     .wl-mgr { padding:.6rem .5rem .3rem; flex-shrink:0; }
     .wl-mgr-title { font-size:.75rem; font-weight:800; color:var(--text); letter-spacing:.5px; margin-bottom:.45rem; }
-    .wl-mgr-filters { display:flex; flex-direction:column; gap:.3rem; }
+    .wl-mgr-filters { display:flex; flex-direction:row; gap:.3rem; align-items:center; }
     .wl-filter-inp {
-      width:100%; background:var(--surface2); border:1px solid var(--border);
+      width:25%; flex-shrink:0; background:var(--surface2); border:1px solid var(--border);
       border-radius:6px; padding:.3rem .5rem; color:var(--text); font-size:.74rem;
       font-family:'Heebo',sans-serif; direction:rtl; box-sizing:border-box;
     }
     .wl-filter-inp:focus { outline:none; border-color:var(--accent); }
     .wl-filter-sel {
-      width:100%; background:var(--surface2); border:1px solid var(--border);
+      flex:1; background:var(--surface2); border:1px solid var(--border);
       border-radius:6px; padding:.28rem .4rem; color:var(--text); font-size:.72rem;
       font-family:'Heebo',sans-serif; direction:rtl; cursor:pointer;
     }
@@ -542,8 +542,8 @@
       border-radius:2px;
       transition:background .15s;
     }
-    .ib-hamburger:hover span,.ib-hamburger.active span{background:var(--accent)}
-    .ib-hamburger:hover,.ib-hamburger.active{background:rgba(41,98,255,.10)}
+    .ib-hamburger:hover span{background:var(--accent)}
+    .ib-hamburger:hover{background:rgba(41,98,255,.10)}
     .ib-hamburger .ib-tip{
       position:absolute;
       right:44px;
@@ -838,6 +838,51 @@
     .uptrend-gain{font-size:.75rem;font-weight:700;color:var(--green)}
     .uptrend-close{position:absolute;top:.4rem;left:.5rem;background:none;border:none;color:var(--text-muted);font-size:.9rem;cursor:pointer;padding:2px}
     .uptrend-close:hover{color:#fff}
+    /* ===== BELL ALERTS POPUP ===== */
+    #bellAlertsPopup {
+      position:fixed; top:46px; right:120px; z-index:9998;
+      width:360px; max-height:70vh;
+      background:#0a0d16; border:1px solid var(--border);
+      border-radius:12px; box-shadow:0 8px 40px rgba(0,0,0,.7);
+      display:none; flex-direction:column; direction:rtl;
+      font-family:'Heebo',sans-serif;
+    }
+    #bellAlertsPopup.open { display:flex; }
+    .bell-popup-hdr {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:.6rem .8rem; border-bottom:1px solid var(--border);
+      background:var(--surface2); border-radius:12px 12px 0 0;
+    }
+    .bell-popup-hdr span { font-size:.82rem; font-weight:700; color:var(--text); }
+    .bell-popup-close { background:none; border:none; color:var(--text-muted); font-size:1rem; cursor:pointer; }
+    .bell-popup-close:hover { color:#ef5350; }
+    .bell-popup-body {
+      flex:1; overflow-y:auto; padding:.5rem;
+      display:flex; flex-direction:column; gap:.4rem;
+    }
+    .bell-alert-card {
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:8px; padding:.5rem .65rem;
+      display:flex; align-items:center; gap:.4rem;
+      animation:fadeIn .3s ease;
+    }
+    .bell-alert-card .bell-a-dot {
+      width:8px; height:8px; border-radius:50%; flex-shrink:0;
+    }
+    .bell-alert-card .bell-a-text {
+      flex:1; font-size:.78rem; color:var(--text); line-height:1.4;
+    }
+    .bell-alert-card .bell-a-time {
+      font-size:.62rem; color:var(--text-muted); white-space:nowrap;
+    }
+    .bell-alert-card .bell-a-del {
+      background:none; border:none; color:var(--text-muted);
+      font-size:.85rem; cursor:pointer; padding:2px 4px;
+    }
+    .bell-alert-card .bell-a-del:hover { color:#ef5350; }
+    .bell-popup-empty {
+      text-align:center; padding:1.5rem; color:var(--text-muted); font-size:.82rem;
+    }
     /* ===== DRAWING / ANALYSIS TOOLS — permanent left panel ===== */
     #drawToolbar {
       position:fixed; top:42px; left:0; bottom:0; width:40px;
@@ -1302,7 +1347,7 @@
       <!-- SPACER -->
       <div style="flex:1"></div>
       <!-- SEARCH + USER -->
-      <button class="topbar-bell" id="ib-alerts" onclick="ibToggle('alerts')" title="התראות וסורק" style="position:relative">
+      <button class="topbar-bell" id="ib-alerts" onclick="toggleBellPopup()" title="איתותי קנייה" style="position:relative">
         🔔
         <span id="alertBadge" class="alert-badge" style="display:none">0</span>
       </button>
@@ -1344,14 +1389,10 @@
               <input type="text" id="wlSymFilter" class="wl-filter-inp" placeholder="סנן לפי סמל..." oninput="renderWatchlist()" autocomplete="off" />
               <select id="wlPctFilter" class="wl-filter-sel" onchange="renderWatchlist()">
                 <option value="">כל השינויים</option>
+                <option value="sort-desc">% שינוי: גדול → קטן</option>
+                <option value="sort-asc">% שינוי: קטן → גדול</option>
                 <option value="up">עלייה בלבד &#9650;</option>
                 <option value="down">ירידה בלבד &#9660;</option>
-                <option value="1">+1% ומעלה</option>
-                <option value="-1">&#8722;1% ומטה</option>
-                <option value="3">+3% ומעלה</option>
-                <option value="-3">&#8722;3% ומטה</option>
-                <option value="5">+5% ומעלה</option>
-                <option value="-5">&#8722;5% ומטה</option>
               </select>
             </div>
             <div class="wl-divider"></div>
@@ -1557,10 +1598,10 @@
     </main>
   </div>
 </div>
-<script src="scanner-symbols.js?v=20260816"></script>
-<script src="main.js?v=20260816"></script>
-<script src="drawing.js?v=20260816"></script>
-<script src="features.js?v=20260816"></script>
+<script src="scanner-symbols.js?v=20260901"></script>
+<script src="main.js?v=20260901"></script>
+<script src="drawing.js?v=20260901"></script>
+<script src="features.js?v=20260901"></script>
 
 <!-- CHART RIGHT-CLICK CONTEXT MENU -->
 <div id="chartCtxMenu">
@@ -1630,6 +1671,15 @@
 <div id="ibPanel-alerts"  class="ib-panel"><div class="ib-panel-body">
   <div id="_scannerList_old"></div>
   <div class="ib-panel-add-row"><input id="ibAlertSym" placeholder="סמל" style="width:60px" /><input id="ibAlertPrice" placeholder="מחיר" type="number" style="width:70px" /><button class="btn btn-sm" onclick="ibAddAlert()">הוסף</button></div><ul id="ibAlertList" style="list-style:none;margin-top:.5rem"></ul></div></div>
+</div>
+
+<!-- BELL ALERTS POPUP -->
+<div id="bellAlertsPopup">
+  <div class="bell-popup-hdr">
+    <span>🔔 איתותי קנייה</span>
+    <button class="bell-popup-close" onclick="toggleBellPopup()">✕</button>
+  </div>
+  <div class="bell-popup-body" id="bellAlertsList"></div>
 </div>
 
 <!-- NEWS POPUP -->
@@ -1952,6 +2002,56 @@ async function ibRunScanner2() {
     body.appendChild(el);
   });
 }
+
+// ===== BELL ALERTS POPUP =====
+function toggleBellPopup() {
+  var popup = document.getElementById('bellAlertsPopup');
+  if (!popup) return;
+  var isOpen = popup.classList.contains('open');
+  if (isOpen) {
+    popup.classList.remove('open');
+  } else {
+    renderBellAlerts();
+    popup.classList.add('open');
+    clearAlertBadge();
+  }
+}
+function renderBellAlerts() {
+  var body = document.getElementById('bellAlertsList');
+  if (!body) return;
+  var alerts = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
+  if (!alerts.length) {
+    body.innerHTML = '<div class="bell-popup-empty">🔕 אין איתותי קנייה כרגע</div>';
+    return;
+  }
+  body.innerHTML = alerts.map(function(a, i) {
+    var dotColor = a.severity === 'green' ? '#26a69a' : a.severity === 'red' ? '#ef5350' : '#f5a623';
+    var text = a.msg || (a.sym ? a.sym.replace('.TA','') : 'איתות');
+    var symClick = a.sym ? ' onclick="selectSymbol(\'' + a.sym + '\');toggleBellPopup()" style="cursor:pointer"' : '';
+    return '<div class="bell-alert-card">'
+      + '<div class="bell-a-dot" style="background:' + dotColor + '"></div>'
+      + '<div class="bell-a-text"' + symClick + '>' + text + '</div>'
+      + '<span class="bell-a-time">' + (a.time || '') + '</span>'
+      + '<button class="bell-a-del" onclick="deleteBellAlert(' + i + ')" title="מחק">✕</button>'
+      + '</div>';
+  }).join('');
+}
+function deleteBellAlert(idx) {
+  var alerts = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
+  alerts.splice(idx, 1);
+  localStorage.setItem('ib_alerts2', JSON.stringify(alerts));
+  renderBellAlerts();
+}
+// Close bell popup on outside click
+document.addEventListener('click', function(e) {
+  var popup = document.getElementById('bellAlertsPopup');
+  var bell = document.getElementById('ib-alerts');
+  if (popup && popup.classList.contains('open')) {
+    if (!popup.contains(e.target) && e.target !== bell && !bell.contains(e.target)) {
+      popup.classList.remove('open');
+    }
+  }
+});
 
 // ALERTS 2
 function ibRenderAlerts2() {

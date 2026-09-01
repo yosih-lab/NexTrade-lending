@@ -1644,15 +1644,18 @@ function renderWatchlist() {
         var pct = d.changePct;
         if (pctFilter === 'up' && pct < 0) return false;
         if (pctFilter === 'down' && pct >= 0) return false;
-        var thresh = parseFloat(pctFilter);
-        if (!isNaN(thresh)) {
-          if (thresh > 0 && pct < thresh) return false;
-          if (thresh < 0 && pct > thresh) return false;
-        }
       }
     }
     return true;
   });
+  // Sort by % change if requested
+  if (pctFilter === 'sort-desc' || pctFilter === 'sort-asc') {
+    toShow.sort(function(a, b) {
+      var da = priceCache[a], db = priceCache[b];
+      var pa = da ? da.changePct : 0, pb = db ? db.changePct : 0;
+      return pctFilter === 'sort-desc' ? pb - pa : pa - pb;
+    });
+  }
   ul.innerHTML = toShow.map(function(sym) {
     var d   = priceCache[sym];
     var cls = d ? (d.change >= 0 ? 'up' : 'down') : '';
@@ -2202,7 +2205,7 @@ async function init() {
       currentSymbol = watchlist[0];
     }
     if (!currentSymbol) {
-      currentSymbol = DEFAULT_SYMBOLS[0] || 'AAPL';
+      currentSymbol = DEFAULT_SYMBOLS[0] || '';
     }
     var resolvedInitial = await resolveSymbolForData(currentSymbol, currentTF);
     if (resolvedInitial) {
@@ -2365,18 +2368,8 @@ async function runBackgroundScanner() {
 }
 
 function showBuySignalPopup(r) {
-  var popup = document.createElement('div');
-  popup.className = 'uptrend-popup';
-  popup.innerHTML = '<div class="uptrend-popup-header">🟢 איתות קנייה</div>'
-    + '<div class="uptrend-popup-body">'
-    + '<span class="uptrend-sym" onclick="(function(){selectSymbol(\'' + r.sym + '\');})()">' + r.sym.replace('.TA', '') + '</span>'
-    + '<span class="uptrend-name">' + r.name + '</span>'
-    + '<span class="uptrend-price">מחיר: ' + r.curr + r.price.toFixed(2) + '</span>'
-    + '<span class="uptrend-gain">MA16: ' + r.curr + r.ma16.toFixed(2) + ' | מגמה: +' + r.maGain + '% | מרחק: ' + r.distPct + '%</span>'
-    + '</div>'
-    + '<button class="uptrend-close" onclick="this.parentElement.remove()">✕</button>';
-  document.body.appendChild(popup);
-  setTimeout(function() { if (popup.parentElement) popup.remove(); }, 12000);
+  // No popup toast — signals go to bell panel only
+  // The bell badge increments and user clicks bell to see all signals
 }
 
 // Start scanner on init + every 5 minutes
