@@ -2300,6 +2300,9 @@ async function runBackgroundScanner() {
 
         var currentPrice = bars[bars.length - 1].close;
 
+        // Condition 0: Skip penny/junk symbols (unreliable price action)
+        if (currentPrice < 1) return;
+
         // Condition 1: Price above MA16
         if (currentPrice < ma16now) return;
 
@@ -2313,6 +2316,21 @@ async function runBackgroundScanner() {
         // Calculate trend strength: how much MA rose over 16 weeks
         var maGainNum = ((ma16now - ma16prev) / ma16prev * 100);
         var maGain = maGainNum.toFixed(1);
+
+        // Condition 4: MA trend must be meaningfully rising, not just flat/noisy (min 0.5% over 4 weeks)
+        if (maGainNum < 0.5) return;
+
+        // Condition 5: Filter out dead/illiquid symbols (avg weekly volume too low = unreliable data)
+        var last8 = bars.slice(-8);
+        var avgVol8 = last8.reduce(function(s, b) { return s + (b.volume || 0); }, 0) / last8.length;
+        if (avgVol8 < 1000) return;
+
+        // Condition 6: Reject "falling knife" pullbacks — last weekly candle dropped too sharply to be a healthy pullback
+        var prevClose = bars[bars.length - 2] ? bars[bars.length - 2].close : null;
+        if (prevClose) {
+          var weekReturn = (currentPrice - prevClose) / prevClose;
+          if (weekReturn < -0.08) return; // more than 8% drop in one week — likely a breakdown, not a pullback
+        }
 
         // Trend type by recent weekly closes
         var last6 = bars.slice(-6);
