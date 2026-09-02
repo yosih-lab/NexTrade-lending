@@ -1653,10 +1653,10 @@
     </main>
   </div>
 </div>
-<script src="scanner-symbols.js?v=20260902b"></script>
-<script src="main.js?v=20260902b"></script>
-<script src="drawing.js?v=20260902b"></script>
-<script src="features.js?v=20260902b"></script>
+<script src="scanner-symbols.js?v=20260902c"></script>
+<script src="main.js?v=20260902c"></script>
+<script src="drawing.js?v=20260902c"></script>
+<script src="features.js?v=20260902c"></script>
 
 <!-- CHART RIGHT-CLICK CONTEXT MENU -->
 <div id="chartCtxMenu">
@@ -2122,7 +2122,15 @@ function renderBellAlerts() {
       html += '<div class="bell-date-group">' + currentDate + '</div>';
     }
     var dotColor = a.severity === 'green' ? '#26a69a' : a.severity === 'red' ? '#ef5350' : '#f5a623';
-    var text = a.msg || (a.sym ? a.sym.replace('.TA','') : 'איתות');
+    var text;
+    if (a.condition === 'buy_signal') {
+      // Always rebuild the text on the fly (ignores any stale stored msg, e.g. old entries with MA16 text)
+      var symDisp = a.sym ? a.sym.replace('.TA','') : '';
+      var trendDisp = a.trendType || 'לא ידוע';
+      text = '🟢 קנייה: ' + symDisp + ' — מגמה ' + trendDisp + ' | חזרה לתמיכה שבועית';
+    } else {
+      text = a.msg || (a.sym ? a.sym.replace('.TA','') : 'איתות');
+    }
     html += '<div class="bell-alert-card" onclick="openBellAlertDetails(' + i + ')">'
       + '<div class="bell-a-dot" style="background:' + dotColor + '"></div>'
       + '<div class="bell-a-text">' + text + '</div>'
