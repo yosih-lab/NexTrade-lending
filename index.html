@@ -860,6 +860,16 @@
       flex:1; overflow-y:auto; padding:.5rem;
       display:flex; flex-direction:column; gap:.4rem;
     }
+    .bell-date-group {
+      margin:.15rem 0 .1rem;
+      padding:.28rem .5rem;
+      font-size:.72rem;
+      font-weight:800;
+      color:#9fb6d8;
+      border-bottom:1px solid #233753;
+      background:rgba(18,35,56,.55);
+      border-radius:6px;
+    }
     .bell-popup-ftr {
       border-top:1px solid var(--border);
       padding:.5rem .7rem;
@@ -1643,10 +1653,10 @@
     </main>
   </div>
 </div>
-<script src="scanner-symbols.js?v=20260902"></script>
-<script src="main.js?v=20260902"></script>
-<script src="drawing.js?v=20260902"></script>
-<script src="features.js?v=20260902"></script>
+<script src="scanner-symbols.js?v=20260902b"></script>
+<script src="main.js?v=20260902b"></script>
+<script src="drawing.js?v=20260902b"></script>
+<script src="features.js?v=20260902b"></script>
 
 <!-- CHART RIGHT-CLICK CONTEXT MENU -->
 <div id="chartCtxMenu">
@@ -2088,16 +2098,39 @@ function renderBellAlerts() {
     body.innerHTML = '<div class="bell-popup-empty">🔕 אין איתותי קנייה כרגע</div>';
     return;
   }
-  body.innerHTML = alerts.map(function(a, i) {
+
+  var normalized = alerts.map(function(a, sourceIdx) {
+    var parsedTs = typeof a.ts === 'number' ? a.ts : Date.now() - sourceIdx;
+    var parsedDate = a.date || new Date(parsedTs).toLocaleDateString('he-IL');
+    return {
+      a: a,
+      sourceIdx: sourceIdx,
+      ts: parsedTs,
+      date: parsedDate
+    };
+  }).sort(function(x, y) {
+    return y.ts - x.ts;
+  });
+
+  var html = '';
+  var currentDate = null;
+  normalized.forEach(function(row) {
+    var a = row.a;
+    var i = row.sourceIdx;
+    if (row.date !== currentDate) {
+      currentDate = row.date;
+      html += '<div class="bell-date-group">' + currentDate + '</div>';
+    }
     var dotColor = a.severity === 'green' ? '#26a69a' : a.severity === 'red' ? '#ef5350' : '#f5a623';
     var text = a.msg || (a.sym ? a.sym.replace('.TA','') : 'איתות');
-    return '<div class="bell-alert-card" onclick="openBellAlertDetails(' + i + ')">'
+    html += '<div class="bell-alert-card" onclick="openBellAlertDetails(' + i + ')">'
       + '<div class="bell-a-dot" style="background:' + dotColor + '"></div>'
       + '<div class="bell-a-text">' + text + '</div>'
       + '<span class="bell-a-time">' + (a.time || '') + '</span>'
       + '<button class="bell-a-del" onclick="return deleteBellAlert(event,' + i + ')" title="מחק">✕</button>'
       + '</div>';
-  }).join('');
+  });
+  body.innerHTML = html;
 }
 function deleteBellAlert(ev, idx) {
   if (ev) {
@@ -2129,10 +2162,12 @@ function openBellAlertDetails(idx) {
   var pullbackStatus = (a.supportDistPct != null && parseFloat(a.supportDistPct) <= 3.0 && parseFloat(a.supportDistPct) >= -1.0)
     ? 'כן (בטווח)'
     : 'לא (רחוק מהתמיכה)';
+  var dateText = a.date || 'לא זמין';
 
   body.innerHTML = ''
     + '<div class="bad-row"><span class="bad-k">סימול</span><span class="bad-v">' + (a.sym || '') + '</span></div>'
     + '<div class="bad-row"><span class="bad-k">סוג איתות</span><span class="bad-v">' + ((a.direction || 'long') === 'short' ? 'שורט' : 'לונג') + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">תאריך איתות</span><span class="bad-v">' + dateText + '</span></div>'
     + '<div class="bad-row"><span class="bad-k">סוג מגמה</span><span class="bad-v">' + trend + '</span></div>'
     + '<div class="bad-row"><span class="bad-k">מחיר נוכחי</span><span class="bad-v">' + ((a.curr || '') + (typeof a.price === 'number' ? a.price.toFixed(2) : a.price || '')) + '</span></div>'
     + '<div class="bad-row"><span class="bad-k">תמיכה שבועית</span><span class="bad-v">' + supportText + '</span></div>'

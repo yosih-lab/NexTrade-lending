@@ -2362,8 +2362,11 @@ async function runBackgroundScanner() {
       if (_scannerFiredToday[fireKey]) return;
       _scannerFiredToday[fireKey] = true;
 
-      var time = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-      var msg = '🟢 קנייה: ' + r.sym.replace('.TA', '') + ' — חזרה ל-MA16 ' + r.curr + r.ma16.toFixed(2) + ' (מגמה +' + r.maGain + '%)';
+      var now = new Date();
+      var time = now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+      var date = now.toLocaleDateString('he-IL');
+      var ts = now.getTime();
+      var msg = '🟢 קנייה: ' + r.sym.replace('.TA', '') + ' — מגמה ' + r.trendType + ' | חזרה לתמיכה שבועית';
       var stored = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
       stored.unshift({
         sym: r.sym,
@@ -2378,7 +2381,9 @@ async function runBackgroundScanner() {
         support5: r.support5,
         supportDistPct: r.supportDistPct,
         distPct: r.distPct,
+        date: date,
         time: time,
+        ts: ts,
         key: fireKey,
         msg: msg,
         severity: 'green'
