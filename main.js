@@ -2311,7 +2311,25 @@ async function runBackgroundScanner() {
         if (distFromMA > 0.02) return; // price too far above MA — not a pullback
 
         // Calculate trend strength: how much MA rose over 16 weeks
-        var maGain = ((ma16now - ma16prev) / ma16prev * 100).toFixed(1);
+        var maGainNum = ((ma16now - ma16prev) / ma16prev * 100);
+        var maGain = maGainNum.toFixed(1);
+
+        // Trend type by recent weekly closes
+        var last6 = bars.slice(-6);
+        var upCount = 0;
+        var downCount = 0;
+        for (var w = 1; w < last6.length; w++) {
+          if (last6[w].close > last6[w - 1].close) upCount++;
+          else if (last6[w].close < last6[w - 1].close) downCount++;
+        }
+        var trendType = 'דישדוש';
+        if (upCount >= 4) trendType = 'עלייה';
+        else if (downCount >= 4) trendType = 'ירידה';
+
+        // Weekly support from last 5 weeks
+        var last5 = bars.slice(-5);
+        var support5 = Math.min.apply(null, last5.map(function(b) { return b.low; }));
+        var supportDistPct = ((currentPrice - support5) / support5 * 100);
 
         // Determine currency
         var isTASE = sym.endsWith('.TA');
@@ -2323,6 +2341,9 @@ async function runBackgroundScanner() {
           price: currentPrice,
           ma16: ma16now,
           maGain: maGain,
+          trendType: trendType,
+          support5: support5,
+          supportDistPct: supportDistPct,
           distPct: (distFromMA * 100).toFixed(1),
           curr: curr
         });
@@ -2344,7 +2365,24 @@ async function runBackgroundScanner() {
       var time = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
       var msg = '🟢 קנייה: ' + r.sym.replace('.TA', '') + ' — חזרה ל-MA16 ' + r.curr + r.ma16.toFixed(2) + ' (מגמה +' + r.maGain + '%)';
       var stored = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
-      stored.unshift({ sym: r.sym, price: r.price, condition: 'buy_signal', time: time, key: fireKey, msg: msg, severity: 'green' });
+      stored.unshift({
+        sym: r.sym,
+        name: r.name,
+        price: r.price,
+        curr: r.curr,
+        condition: 'buy_signal',
+        direction: 'long',
+        trendType: r.trendType,
+        ma16: r.ma16,
+        maGain: r.maGain,
+        support5: r.support5,
+        supportDistPct: r.supportDistPct,
+        distPct: r.distPct,
+        time: time,
+        key: fireKey,
+        msg: msg,
+        severity: 'green'
+      });
       if (stored.length > 200) stored = stored.slice(0, 200);
       localStorage.setItem('ib_alerts2', JSON.stringify(stored));
 
