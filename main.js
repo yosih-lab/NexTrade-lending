@@ -2287,96 +2287,134 @@ async function runBackgroundScanner() {
       try {
         var bars = await fetchYahooChartDirect(sym, '1W');
         scanned++;
-        if (!bars || bars.length < 20) { errors++; return; }
+        if (!bars || bars.length < 21) { errors++; return; }
 
         // Calculate current MA16
         var ma16now = calcMA(bars, 16);
         if (!ma16now) return;
 
-        // Calculate MA16 from 4 weeks ago (to check if rising)
+        // Calculate MA16 from 4 weeks ago (to check if rising/falling)
         var bars4ago = bars.slice(0, -4);
         var ma16prev = calcMA(bars4ago, 16);
         if (!ma16prev) return;
 
         var currentPrice = bars[bars.length - 1].close;
 
-        // Condition 0: Skip penny/junk symbols (unreliable price action)
+        // Skip penny/junk symbols (unreliable price action)
         if (currentPrice < 1) return;
 
-        // Condition 1: Price above MA16
-        if (currentPrice < ma16now) return;
-
-        // Condition 2: MA16 is rising (current MA > MA 4 weeks ago)
-        if (ma16now <= ma16prev) return;
-
-        // Condition 3: Price is near MA16 (pullback) — within 2% above MA
-        var distFromMA = (currentPrice - ma16now) / ma16now;
-        if (distFromMA > 0.02) return; // price too far above MA — not a pullback
-
-        // Calculate trend strength: how much MA rose over 16 weeks
-        var maGainNum = ((ma16now - ma16prev) / ma16prev * 100);
-        var maGain = maGainNum.toFixed(1);
-
-        // Condition 4: MA trend must be meaningfully rising, not just flat/noisy (min 0.5% over 4 weeks)
-        if (maGainNum < 0.5) return;
-
-        // Condition 5: Filter out dead/illiquid symbols (avg weekly volume too low = unreliable data)
+        // Filter out dead/illiquid symbols (avg weekly volume too low = unreliable data)
         var last8 = bars.slice(-8);
         var avgVol8 = last8.reduce(function(s, b) { return s + (b.volume || 0); }, 0) / last8.length;
         if (avgVol8 < 1000) return;
 
-        // Condition 6: Reject "falling knife" pullbacks — last weekly candle dropped too sharply to be a healthy pullback
         var prevClose = bars[bars.length - 2] ? bars[bars.length - 2].close : null;
-        if (prevClose) {
-          var weekReturn = (currentPrice - prevClose) / prevClose;
-          if (weekReturn < -0.08) return; // more than 8% drop in one week — likely a breakdown, not a pullback
+        var weekReturn = prevClose ? (currentPrice - prevClose) / prevClose : 0;
+
+        // ===== Trend definition: last 16 weeks (~4 months) of highs/lows =====
+        // "מגמת עלייה" = highs AND lows over the period are rising or not falling.
+        // "מגמת ירידה" = highs AND lows over the period are falling or not rising.
+        // Excludes the current (still forming) week — looks 16 weeks back from the last closed week.
+        var lookback16 = bars.slice(-17, -1);
+        var isUptrend16 = false, isDowntrend16 = false, recentHigh16 = null, recentLow16 = null;
+        if (lookback16.length === 16) {
+          var firstHalf = lookback16.slice(0, 8);
+          var secondHalf = lookback16.slice(8, 16);
+          var avgHighFirst = firstHalf.reduce(function(s,b){return s+b.high;},0) / 8;
+          var avgHighSecond = secondHalf.reduce(function(s,b){return s+b.high;},0) / 8;
+          var avgLowFirst = firstHalf.reduce(function(s,b){return s+b.low;},0) / 8;
+          var avgLowSecond = secondHalf.reduce(function(s,b){return s+b.low;},0) / 8;
+          isUptrend16 = (avgHighSecond >= avgHighFirst) && (avgLowSecond >= avgLowFirst);
+          isDowntrend16 = (avgHighSecond <= avgHighFirst) && (avgLowSecond <= avgLowFirst);
+          recentHigh16 = Math.max.apply(null, lookback16.map(function(b){return b.high;}));
+          recentLow16 = Math.min.apply(null, lookback16.map(function(b){return b.low;}));
         }
 
-        // Trend type by recent weekly closes
-        var last6 = bars.slice(-6);
-        var upCount = 0;
-        var downCount = 0;
-        for (var w = 1; w < last6.length; w++) {
-          if (last6[w].close > last6[w - 1].close) upCount++;
-          else if (last6[w].close < last6[w - 1].close) downCount++;
-        }
-        var trendType = 'דישדוש';
-        if (upCount >= 4) trendType = 'עלייה';
-        else if (downCount >= 4) trendType = 'ירידה';
-
-        // Weekly support from last 5 weeks
-        var last5 = bars.slice(-5);
-        var support5 = Math.min.apply(null, last5.map(function(b) { return b.low; }));
-        var supportDistPct = ((currentPrice - support5) / support5 * 100);
+        var trendType = isUptrend16 ? 'עלייה' : (isDowntrend16 ? 'ירידה' : 'דישדוש');
 
         // Determine currency
         var isTASE = sym.endsWith('.TA');
         var curr = isTASE ? '₪' : '$';
 
-        results.push({
-          sym: sym,
-          name: NAMES[sym] || sym.replace('.TA', ''),
-          price: currentPrice,
-          ma16: ma16now,
-          maGain: maGain,
-          trendType: trendType,
-          support5: support5,
-          supportDistPct: supportDistPct,
-          distPct: (distFromMA * 100).toFixed(1),
-          curr: curr
-        });
+        // ===== BUY (long) signal =====
+        // MA16 pullback: price above a rising MA16, corrected back down near it (within 2%)
+        // PLUS trend confirmation (16-week uptrend) PLUS price reached the last 16-week high (retest of prior high as support)
+        var buyOk = true;
+        if (currentPrice < ma16now) buyOk = false;
+        if (buyOk && ma16now <= ma16prev) buyOk = false;
+        var distFromMA = (currentPrice - ma16now) / ma16now;
+        if (buyOk && distFromMA > 0.02) buyOk = false; // price too far above MA — not a pullback
+        var maGainNum = ((ma16now - ma16prev) / ma16prev * 100);
+        if (buyOk && maGainNum < 0.5) buyOk = false; // MA rise too weak/noisy
+        if (buyOk && weekReturn < -0.08) buyOk = false; // falling knife, not a healthy pullback
+        if (buyOk && !isUptrend16) buyOk = false; // 16-week HH/HL trend must confirm uptrend
+        var highDistPct = recentHigh16 ? Math.abs(currentPrice - recentHigh16) / recentHigh16 : 1;
+        if (buyOk && (recentHigh16 === null || highDistPct > 0.03)) buyOk = false; // must reach the last 16-week high
+
+        // ===== SELL/SHORT signal (mirror pattern) =====
+        // MA16 rally: price below a falling MA16, corrected back up near it (within 2%)
+        // PLUS trend confirmation (16-week downtrend) PLUS price reached the last 16-week low (retest of prior low as resistance)
+        var sellOk = true;
+        if (currentPrice > ma16now) sellOk = false;
+        if (sellOk && ma16now >= ma16prev) sellOk = false;
+        var distFromMASell = (ma16now - currentPrice) / ma16now;
+        if (sellOk && distFromMASell > 0.02) sellOk = false; // price too far below MA — not a relief rally
+        var maLossNum = ((ma16prev - ma16now) / ma16prev * 100);
+        if (sellOk && maLossNum < 0.5) sellOk = false; // MA drop too weak/noisy
+        if (sellOk && weekReturn > 0.08) sellOk = false; // rising knife, not a healthy rally
+        if (sellOk && !isDowntrend16) sellOk = false; // 16-week HH/HL trend must confirm downtrend
+        var lowDistPct = recentLow16 ? Math.abs(currentPrice - recentLow16) / recentLow16 : 1;
+        if (sellOk && (recentLow16 === null || lowDistPct > 0.03)) sellOk = false; // must reach the last 16-week low
+
+        if (buyOk) {
+          var last5 = bars.slice(-5);
+          var support5 = Math.min.apply(null, last5.map(function(b) { return b.low; }));
+          var supportDistPct = ((currentPrice - support5) / support5 * 100);
+          results.push({
+            sym: sym,
+            name: NAMES[sym] || sym.replace('.TA', ''),
+            price: currentPrice,
+            ma16: ma16now,
+            maGain: maGainNum.toFixed(1),
+            trendType: trendType,
+            direction: 'long',
+            support5: support5,
+            supportDistPct: supportDistPct,
+            distPct: (distFromMA * 100).toFixed(1),
+            curr: curr
+          });
+        }
+        if (sellOk) {
+          var last5s = bars.slice(-5);
+          var resistance5 = Math.max.apply(null, last5s.map(function(b) { return b.high; }));
+          var resistDistPct = ((resistance5 - currentPrice) / resistance5 * 100);
+          results.push({
+            sym: sym,
+            name: NAMES[sym] || sym.replace('.TA', ''),
+            price: currentPrice,
+            ma16: ma16now,
+            maGain: (-maLossNum).toFixed(1),
+            trendType: trendType,
+            direction: 'short',
+            support5: resistance5,
+            supportDistPct: resistDistPct,
+            distPct: (distFromMASell * 100).toFixed(1),
+            curr: curr
+          });
+        }
       } catch(e) { errors++; }
     }));
   }
 
   console.log('[Scanner] Done. Scanned:', scanned, '| Errors:', errors, '| Signals:', results.length);
 
-  // Fire buy signals
+  // Fire buy/sell signals
   if (results.length) {
-    results.sort(function(a, b) { return parseFloat(b.maGain) - parseFloat(a.maGain); });
+    results.sort(function(a, b) { return Math.abs(parseFloat(b.maGain)) - Math.abs(parseFloat(a.maGain)); });
 
     results.forEach(function(r) {
-      var fireKey = 'buy_' + r.sym + '_' + today;
+      var isShort = r.direction === 'short';
+      var fireKey = (isShort ? 'sell_' : 'buy_') + r.sym + '_' + today;
       if (_scannerFiredToday[fireKey]) return;
       _scannerFiredToday[fireKey] = true;
 
@@ -2384,15 +2422,17 @@ async function runBackgroundScanner() {
       var time = now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
       var date = now.toLocaleDateString('he-IL');
       var ts = now.getTime();
-      var msg = '🟢 קנייה: ' + r.sym.replace('.TA', '') + ' — מגמה ' + r.trendType + ' | חזרה לתמיכה שבועית';
+      var msg = isShort
+        ? ('🔴 מכירה (שורט): ' + r.sym.replace('.TA', '') + ' — מגמה ' + r.trendType + ' | חזרה להתנגדות שבועית')
+        : ('🟢 קנייה: ' + r.sym.replace('.TA', '') + ' — מגמה ' + r.trendType + ' | חזרה לתמיכה שבועית');
       var stored = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
       stored.unshift({
         sym: r.sym,
         name: r.name,
         price: r.price,
         curr: r.curr,
-        condition: 'buy_signal',
-        direction: 'long',
+        condition: isShort ? 'sell_signal' : 'buy_signal',
+        direction: r.direction,
         trendType: r.trendType,
         ma16: r.ma16,
         maGain: r.maGain,
@@ -2404,7 +2444,7 @@ async function runBackgroundScanner() {
         ts: ts,
         key: fireKey,
         msg: msg,
-        severity: 'green'
+        severity: isShort ? 'red' : 'green'
       });
       if (stored.length > 200) stored = stored.slice(0, 200);
       localStorage.setItem('ib_alerts2', JSON.stringify(stored));

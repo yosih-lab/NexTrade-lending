@@ -874,16 +874,16 @@
     .bell-date-group:first-child { margin-top:.1rem; }
     /* ===== LANGUAGE SWITCHER ===== */
     #langFab {
-      position:fixed; bottom:20px; right:20px; z-index:9997;
-      width:44px; height:44px; border-radius:50%;
+      position:fixed; bottom:8px; right:8px; z-index:9997;
+      width:26px; height:26px; border-radius:50%;
       background:#0a1628; border:1px solid var(--border);
-      color:var(--text); font-size:1.3rem;
+      color:var(--text); font-size:.78rem;
       display:flex; align-items:center; justify-content:center;
       cursor:pointer; box-shadow:0 4px 20px rgba(0,0,0,.5);
     }
     #langFab:hover { border-color:var(--accent); }
     #langPopup {
-      display:none; position:fixed; bottom:74px; right:20px; z-index:9997;
+      display:none; position:fixed; bottom:40px; right:8px; z-index:9997;
       background:#0a0d16; border:1px solid var(--border); border-radius:12px;
       box-shadow:0 8px 32px rgba(0,0,0,.6); min-width:170px;
       font-family:'Heebo',sans-serif; direction:rtl; overflow:hidden;
@@ -1433,7 +1433,7 @@
       <!-- SPACER -->
       <div style="flex:1"></div>
       <!-- SEARCH + USER -->
-      <button class="topbar-bell" id="ib-alerts" onclick="toggleBellPopup()" title="איתותי קנייה" style="position:relative">
+      <button class="topbar-bell" id="ib-alerts" onclick="toggleBellPopup()" title="איתותי מסחר" style="position:relative">
         🔔
         <span id="alertBadge" class="alert-badge" style="display:none">0</span>
       </button>
@@ -1684,10 +1684,10 @@
     </main>
   </div>
 </div>
-<script src="scanner-symbols.js?v=20260902e"></script>
-<script src="main.js?v=20260902e"></script>
-<script src="drawing.js?v=20260902e"></script>
-<script src="features.js?v=20260902e"></script>
+<script src="scanner-symbols.js?v=20260902f"></script>
+<script src="main.js?v=20260902f"></script>
+<script src="drawing.js?v=20260902f"></script>
+<script src="features.js?v=20260902f"></script>
 
 <!-- CHART RIGHT-CLICK CONTEXT MENU -->
 <div id="chartCtxMenu">
@@ -1762,7 +1762,7 @@
 <!-- BELL ALERTS POPUP -->
 <div id="bellAlertsPopup">
   <div class="bell-popup-hdr">
-    <span>🔔 איתותי קנייה</span>
+    <span>🔔 איתותי מסחר</span>
     <button class="bell-popup-close" onclick="closeBellPopup()">✕</button>
   </div>
   <div class="bell-popup-body" id="bellAlertsList"></div>
@@ -2126,7 +2126,7 @@ function renderBellAlerts() {
   if (!body) return;
   var alerts = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
   if (!alerts.length) {
-    body.innerHTML = '<div class="bell-popup-empty">🔕 אין איתותי קנייה כרגע</div>';
+    body.innerHTML = '<div class="bell-popup-empty">🔕 אין איתותי מסחר כרגע</div>';
     return;
   }
 
@@ -2159,6 +2159,10 @@ function renderBellAlerts() {
       var symDisp = a.sym ? a.sym.replace('.TA','') : '';
       var trendDisp = a.trendType || 'לא ידוע';
       text = '🟢 קנייה: ' + symDisp + ' — מגמה ' + trendDisp + ' | חזרה לתמיכה שבועית';
+    } else if (a.condition === 'sell_signal') {
+      var symDispS = a.sym ? a.sym.replace('.TA','') : '';
+      var trendDispS = a.trendType || 'לא ידוע';
+      text = '🔴 מכירה (שורט): ' + symDispS + ' — מגמה ' + trendDispS + ' | חזרה להתנגדות שבועית';
     } else {
       text = a.msg || (a.sym ? a.sym.replace('.TA','') : 'איתות');
     }
@@ -2192,6 +2196,13 @@ function openBellAlertDetails(idx) {
   if (!modal || !body) return;
 
   var trend = a.trendType || (parseFloat(a.maGain || '0') > 0.5 ? 'עלייה' : (parseFloat(a.maGain || '0') < -0.5 ? 'ירידה' : 'דישדוש'));
+  var isShortAlert = (a.direction === 'short');
+  var levelLabel = isShortAlert ? 'התנגדות שבועית' : 'תמיכה שבועית';
+  var levelDistLabel = isShortAlert ? 'מרחק מההתנגדות' : 'מרחק מהתמיכה';
+  var pullbackLabel = isShortAlert ? 'חזרה להתנגדות שבועית' : 'חזרה לתמיכה שבועית';
+  var levelNote = isShortAlert
+    ? 'הגדרת ההתנגדות השבועית מחושבת לפי השיא הגבוה מתוך 5 השבועות האחרונים.'
+    : 'הגדרת התמיכה השבועית מחושבת לפי השפל הנמוך מתוך 5 השבועות האחרונים.';
   var supportText = (typeof a.support5 === 'number')
     ? (a.curr || '') + a.support5.toFixed(2)
     : 'לא זמין';
@@ -2200,20 +2211,20 @@ function openBellAlertDetails(idx) {
     : 'לא זמין';
   var pullbackStatus = (a.supportDistPct != null && parseFloat(a.supportDistPct) <= 3.0 && parseFloat(a.supportDistPct) >= -1.0)
     ? 'כן (בטווח)'
-    : 'לא (רחוק מהתמיכה)';
+    : (isShortAlert ? 'לא (רחוק מההתנגדות)' : 'לא (רחוק מהתמיכה)');
   var dateText = a.date || 'לא זמין';
 
   body.innerHTML = ''
     + '<div class="bad-row"><span class="bad-k">סימול</span><span class="bad-v">' + (a.sym || '') + '</span></div>'
-    + '<div class="bad-row"><span class="bad-k">סוג איתות</span><span class="bad-v">' + ((a.direction || 'long') === 'short' ? 'שורט' : 'לונג') + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">סוג איתות</span><span class="bad-v">' + (isShortAlert ? 'שורט' : 'לונג') + '</span></div>'
     + '<div class="bad-row"><span class="bad-k">תאריך איתות</span><span class="bad-v">' + dateText + '</span></div>'
     + '<div class="bad-row"><span class="bad-k">סוג מגמה</span><span class="bad-v">' + trend + '</span></div>'
     + '<div class="bad-row"><span class="bad-k">מחיר נוכחי</span><span class="bad-v">' + ((a.curr || '') + (typeof a.price === 'number' ? a.price.toFixed(2) : a.price || '')) + '</span></div>'
-    + '<div class="bad-row"><span class="bad-k">תמיכה שבועית</span><span class="bad-v">' + supportText + '</span></div>'
-    + '<div class="bad-row"><span class="bad-k">מרחק מהתמיכה</span><span class="bad-v">' + supportDistText + '</span></div>'
-    + '<div class="bad-row"><span class="bad-k">חזרה לתמיכה שבועית</span><span class="bad-v">' + pullbackStatus + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">' + levelLabel + '</span><span class="bad-v">' + supportText + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">' + levelDistLabel + '</span><span class="bad-v">' + supportDistText + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">' + pullbackLabel + '</span><span class="bad-v">' + pullbackStatus + '</span></div>'
     + '<div class="bad-row"><span class="bad-k">שעת איתות</span><span class="bad-v">' + (a.time || '') + '</span></div>'
-    + '<div class="bad-note">הגדרת התמיכה השבועית מחושבת לפי השפל הנמוך מתוך 5 השבועות האחרונים.</div>'
+    + '<div class="bad-note">' + levelNote + '</div>'
     + (a.sym ? '<button class="btn btn-sm" style="width:100%;margin-top:.25rem" onclick="selectSymbol(\'' + a.sym + '\')">פתח גרף של ' + a.sym.replace('.TA','') + '</button>' : '');
 
   modal.classList.add('open');
