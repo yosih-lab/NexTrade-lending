@@ -1,8 +1,9 @@
 ﻿<!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="he" dir="rtl" translate="no">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="google" content="notranslate" />
   <title>NexTrade הבורסה הישראלית</title>
 
   <!-- PWA manifest -->
@@ -861,15 +862,45 @@
       display:flex; flex-direction:column; gap:.4rem;
     }
     .bell-date-group {
-      margin:.15rem 0 .1rem;
-      padding:.28rem .5rem;
+      margin:.6rem 0 .15rem;
+      padding:0 .15rem;
       font-size:.72rem;
       font-weight:800;
       color:#9fb6d8;
-      border-bottom:1px solid #233753;
-      background:rgba(18,35,56,.55);
-      border-radius:6px;
+      background:none;
+      border:none;
+      box-shadow:none;
     }
+    .bell-date-group:first-child { margin-top:.1rem; }
+    /* ===== LANGUAGE SWITCHER ===== */
+    #langFab {
+      position:fixed; bottom:20px; right:20px; z-index:9997;
+      width:44px; height:44px; border-radius:50%;
+      background:#0a1628; border:1px solid var(--border);
+      color:var(--text); font-size:1.3rem;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; box-shadow:0 4px 20px rgba(0,0,0,.5);
+    }
+    #langFab:hover { border-color:var(--accent); }
+    #langPopup {
+      display:none; position:fixed; bottom:74px; right:20px; z-index:9997;
+      background:#0a0d16; border:1px solid var(--border); border-radius:12px;
+      box-shadow:0 8px 32px rgba(0,0,0,.6); min-width:170px;
+      font-family:'Heebo',sans-serif; direction:rtl; overflow:hidden;
+    }
+    #langPopup.open { display:block; }
+    .lang-opt {
+      display:flex; align-items:center; gap:.5rem;
+      padding:.6rem .8rem; font-size:.83rem; color:var(--text);
+      cursor:pointer; transition:background .15s;
+    }
+    .lang-opt:hover { background:var(--surface2); }
+    .lang-opt.active { color:var(--accent); font-weight:700; }
+    .lang-opt + .lang-opt { border-top:1px solid var(--border); }
+    #google_translate_element { display:none; }
+    .goog-te-banner-frame, .goog-te-gadget-icon, iframe.goog-te-menu-frame { display:none !important; }
+    body { top:0 !important; }
+    .goog-te-banner-frame.skiptranslate { display:none !important; }
     .bell-popup-ftr {
       border-top:1px solid var(--border);
       padding:.5rem .7rem;
@@ -1653,10 +1684,10 @@
     </main>
   </div>
 </div>
-<script src="scanner-symbols.js?v=20260902c"></script>
-<script src="main.js?v=20260902c"></script>
-<script src="drawing.js?v=20260902c"></script>
-<script src="features.js?v=20260902c"></script>
+<script src="scanner-symbols.js?v=20260902d"></script>
+<script src="main.js?v=20260902d"></script>
+<script src="drawing.js?v=20260902d"></script>
+<script src="features.js?v=20260902d"></script>
 
 <!-- CHART RIGHT-CLICK CONTEXT MENU -->
 <div id="chartCtxMenu">
@@ -2232,6 +2263,56 @@ function ibDelAlert2(i) {
 <button id="pwaInstallBtn" onclick="pwaInstall()">
   📲 התקן את NexTrade כאפליקציה
 </button>
+
+<!-- Language switcher (replaces native browser translate popup) -->
+<div id="google_translate_element"></div>
+<button id="langFab" onclick="toggleLangPopup()" title="שפה / Language">🌐</button>
+<div id="langPopup">
+  <div class="lang-opt" data-lang="he" onclick="setSiteLanguage('he')">🇮🇱 עברית</div>
+  <div class="lang-opt" data-lang="en" onclick="setSiteLanguage('en')">🇺🇸 English</div>
+  <div class="lang-opt" data-lang="ru" onclick="setSiteLanguage('ru')">🇷🇺 Русский</div>
+  <div class="lang-opt" data-lang="ar" onclick="setSiteLanguage('ar')">🇸🇦 العربية</div>
+  <div class="lang-opt" data-lang="fr" onclick="setSiteLanguage('fr')">🇫🇷 Français</div>
+</div>
+<script>
+// ===== Language switcher: replaces the native "Translate this page?" popup =====
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({ pageLanguage: 'he', autoDisplay: false }, 'google_translate_element');
+}
+function toggleLangPopup() {
+  var p = document.getElementById('langPopup');
+  if (!p) return;
+  p.classList.toggle('open');
+  if (p.classList.contains('open')) markActiveLang();
+}
+function markActiveLang() {
+  var current = (document.cookie.match(/googtrans=\/he\/([a-z-]+)/) || [])[1] || 'he';
+  document.querySelectorAll('.lang-opt').forEach(function(el) {
+    el.classList.toggle('active', el.getAttribute('data-lang') === current);
+  });
+}
+function setSiteLanguage(lang) {
+  var domain = location.hostname;
+  if (lang === 'he') {
+    // Revert to original Hebrew — clear translate cookie
+    document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + domain + ';';
+  } else {
+    var val = '/he/' + lang;
+    document.cookie = 'googtrans=' + val + '; path=/;';
+    document.cookie = 'googtrans=' + val + '; path=/; domain=' + domain + ';';
+  }
+  location.reload();
+}
+document.addEventListener('click', function(e) {
+  var popup = document.getElementById('langPopup');
+  var fab = document.getElementById('langFab');
+  if (!popup || !popup.classList.contains('open')) return;
+  if (popup.contains(e.target) || (fab && fab.contains(e.target))) return;
+  popup.classList.remove('open');
+});
+</script>
+<script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 
 <script>
 // Register Service Worker (PWA)
