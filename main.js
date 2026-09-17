@@ -418,7 +418,7 @@ function renderMAs(bars) {
     var data = computeMA(bars, cfg.period);
     if (!maSeries[cfg.period]) {
       maSeries[cfg.period] = chartInstance.addLineSeries({
-        color: cfg.color, lineWidth: 1,
+        color: cfg.color, lineWidth: 2,
         lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false,
       });
     }
@@ -450,7 +450,7 @@ function toggleMA(period) {
       var data = computeMA(lastBars, period);
       if (!maSeries[period]) {
         maSeries[period] = chartInstance.addLineSeries({
-          color: cfg.color, lineWidth: 1,
+          color: cfg.color, lineWidth: 2,
           lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false,
         });
       }
@@ -809,6 +809,7 @@ function initChart() {
     upColor: '#26a69a',   downColor: '#ef5350',
     borderUpColor: '#26a69a', borderDownColor: '#ef5350',
     wickUpColor: '#26a69a',   wickDownColor: '#ef5350',
+    borderVisible: true,
   });
   candleSeries.applyOptions({ visible: true });
 
@@ -827,7 +828,7 @@ function initChart() {
     priceLineVisible: false,
   });
   chartInstance.priceScale('volume').applyOptions({
-    scaleMargins: { top: 0.84, bottom: 0 },
+    scaleMargins: { top: 0.78, bottom: 0 },
   });
   volumeSeries.applyOptions({ visible: volumeVisible });
 
@@ -1339,7 +1340,7 @@ async function loadChart(symbol, tf, preserveZoom) {
     return {
       time:  b.time,
       value: b.volume || 0,
-      color: isUp ? 'rgba(38,166,154,0.5)' : 'rgba(239,83,80,0.5)',
+      color: isUp ? 'rgba(38,166,154,0.82)' : 'rgba(239,83,80,0.82)',
     };
   });
 
