@@ -782,7 +782,7 @@ function initChart() {
 
   chartInstance = LightweightCharts.createChart(mainEl, {
     autoSize: true,
-    layout: { background: { color: '#0f1117' }, textColor: '#8899aa' },
+    layout: { background: { color: '#0f1117' }, textColor: '#8899aa', fontSize: 10 },
     grid:   { vertLines: { color: 'transparent' }, horzLines: { color: 'transparent' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
     rightPriceScale: { borderColor: '#1e2533', autoScale: true },

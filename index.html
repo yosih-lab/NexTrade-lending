@@ -1693,10 +1693,10 @@
     </main>
   </div>
 </div>
-<script src="scanner-symbols.js?v=20260918c"></script>
-<script src="main.js?v=20260918c"></script>
-<script src="drawing.js?v=20260918c"></script>
-<script src="features.js?v=20260918c"></script>
+<script src="scanner-symbols.js?v=20260918d"></script>
+<script src="main.js?v=20260918d"></script>
+<script src="drawing.js?v=20260918d"></script>
+<script src="features.js?v=20260918d"></script>
 
 <!-- CHART RIGHT-CLICK CONTEXT MENU -->
 <div id="chartCtxMenu">
@@ -1787,6 +1787,7 @@
   </div>
   <div class="bad-body" id="bellAlertDetailsBody"></div>
   <div class="bad-actions">
+    <button class="btn btn-sm" id="badOpenChartBtn" style="flex:1;background:var(--accent);border-color:var(--accent)">📈 פתח גרף</button>
     <button class="btn btn-sm" onclick="closeBellAlertDetails()">סגור פרטים</button>
   </div>
 </div>
@@ -2234,8 +2235,18 @@ function openBellAlertDetails(idx) {
     + '<div class="bad-row"><span class="bad-k">' + levelDistLabel + '</span><span class="bad-v">' + supportDistText + '</span></div>'
     + '<div class="bad-row"><span class="bad-k">' + pullbackLabel + '</span><span class="bad-v">' + pullbackStatus + '</span></div>'
     + '<div class="bad-row"><span class="bad-k">שעת איתות</span><span class="bad-v">' + (a.time || '') + '</span></div>'
-    + '<div class="bad-note">' + levelNote + '</div>'
-    + (a.sym ? '<button class="btn btn-sm" style="width:100%;margin-top:.25rem" onclick="openChartFromAlert(\'' + a.sym + '\')">📈 פתח גרף של ' + a.sym.replace('.TA','') + '</button>' : '');
+    + '<div class="bad-note">' + levelNote + '</div>';
+
+  var openBtn = document.getElementById('badOpenChartBtn');
+  if (openBtn) {
+    if (a.sym) {
+      openBtn.style.display = '';
+      openBtn.textContent = '📈 פתח גרף של ' + a.sym.replace('.TA','');
+      openBtn.onclick = function() { openChartFromAlert(a.sym); };
+    } else {
+      openBtn.style.display = 'none';
+    }
+  }
 
   modal.classList.add('open');
 }
@@ -2248,6 +2259,27 @@ function openChartFromAlert(sym) {
   closeBellPopup();
   if (typeof selectSymbol === 'function') selectSymbol(sym);
 }
+
+// Close bell popup / details / legacy alert popup when clicking anywhere outside them
+document.addEventListener('click', function(e) {
+  var badModal   = document.getElementById('bellAlertDetails');
+  var bellPopup  = document.getElementById('bellAlertsPopup');
+  var bellBtn    = document.getElementById('ib-alerts');
+  var alertPopup = document.getElementById('alertPopup');
+
+  if (badModal && badModal.classList.contains('open') && !badModal.contains(e.target)) {
+    closeBellAlertDetails();
+  }
+  if (bellPopup && bellPopup.classList.contains('open')
+      && !bellPopup.contains(e.target)
+      && !(bellBtn && bellBtn.contains(e.target))
+      && !(badModal && badModal.contains(e.target))) {
+    closeBellPopup();
+  }
+  if (alertPopup && alertPopup.classList.contains('open') && !alertPopup.contains(e.target)) {
+    alertPopup.classList.remove('open');
+  }
+});
 
 // ALERTS 2
 function ibRenderAlerts2() {
