@@ -782,10 +782,10 @@ function initChart() {
 
   chartInstance = LightweightCharts.createChart(mainEl, {
     autoSize: true,
-    layout: { background: { color: '#0f1117' }, textColor: '#8899aa', fontSize: 10 },
+    layout: { background: { color: '#0f1117' }, textColor: '#8899aa', fontSize: 8 },
     grid:   { vertLines: { color: 'transparent' }, horzLines: { color: 'transparent' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-    rightPriceScale: { borderColor: '#1e2533', autoScale: true },
+    rightPriceScale: { borderColor: '#1e2533', autoScale: true, entireTextOnly: true, minimumWidth: 46 },
     timeScale: { borderColor: '#1e2533', timeVisible: true, secondsVisible: false },
     handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
     handleScale: { mouseWheel: false, pinch: true, axisPressedMouseMove: { time: true, price: true } },
@@ -1670,20 +1670,30 @@ function renderWatchlist() {
     var d   = priceCache[sym];
     var cls = d ? (d.change >= 0 ? 'up' : 'down') : '';
     var pct = d ? (d.change >= 0 ? '+' : '') + d.changePct.toFixed(2) + '%' : '';
+    var priceText = d ? formatPrice(d.price, sym) : '';
     var name = (NAMES[sym] || (d && d.name) || sym).replace(/\s*\(.*?\)\s*/g, '').trim();
     var shortSym = sym.replace('.TA','');
     var logoUrl = getStockLogo(sym);
     if (logoUrl === null) fetchStockLogoAsync(sym);
+    var initials = shortSym.slice(0, 2).toUpperCase();
+    var iconBg = (typeof smColor === 'function') ? smColor(shortSym) : '#2a3040';
     var logoImg = '<img class="wl-logo" data-sym="' + shortSym + '" src="' + (logoUrl || '') + '"'
       + (logoUrl ? '' : ' style="display:none"')
-      + ' width="18" height="18" onerror="this.style.display=\'none\'">';
+      + ' width="26" height="26" onerror="this.style.display=\'none\'">';
     return '<li class="watch-item" onclick="selectSymbol(\'' + sym + '\')">'
+      + '<div class="watch-icon-wrap">'
+      + '<div class="watch-icon" style="background:' + iconBg + '">' + initials + '</div>'
       + logoImg
+      + '<span class="watch-dot ' + cls + '" style="background:' + (cls === 'up' ? 'var(--green)' : cls === 'down' ? 'var(--red)' : 'var(--accent)') + '"></span>'
+      + '</div>'
       + '<div class="watch-main">'
       + '<span class="watch-sym">' + shortSym + '</span>'
       + '<span class="watch-name">' + name + '</span>'
       + '</div>'
+      + '<div class="watch-price-wrap">'
+      + (priceText ? '<span class="watch-price">' + priceText + '</span>' : '')
       + (pct ? '<span class="watch-chg ' + cls + '">' + pct + '</span>' : '')
+      + '</div>'
       + '<button class="watch-remove-btn" title="מחק" onclick="removeFromWatchlist(event,\'' + sym + '\')">✕</button>'
       + '</li>';
   }).join('');
@@ -2699,7 +2709,7 @@ var SCANNER_SYMS = (typeof ALL_SCANNER_SYMBOLS !== 'undefined') ? ALL_SCANNER_SY
 // ============================================
 //   SEARCH MODAL (centered overlay with tabs)
 // ============================================
-var smCurrentTab = 'stocks';
+var smCurrentTab = 'all';
 
 var SM_INDICES = [
   { sym: 'TA35.TA', short: 'TA35', name: 'מדד ת״א-35', cat: 'indices' },
@@ -2743,7 +2753,25 @@ function openSearchModal() {
   modal.classList.add('open');
   var inp = document.getElementById('smInput');
   if (inp) { inp.value = ''; inp.focus(); }
+  var clearBtn = document.getElementById('smClearBtn');
+  if (clearBtn) clearBtn.classList.remove('show');
   smSetTab(smCurrentTab);
+}
+
+function smOnInput() {
+  var inp = document.getElementById('smInput');
+  var clearBtn = document.getElementById('smClearBtn');
+  var q = inp ? inp.value.trim() : '';
+  if (clearBtn) clearBtn.classList.toggle('show', !!q);
+  smRender(q);
+}
+
+function smClearInput() {
+  var inp = document.getElementById('smInput');
+  if (inp) { inp.value = ''; inp.focus(); }
+  var clearBtn = document.getElementById('smClearBtn');
+  if (clearBtn) clearBtn.classList.remove('show');
+  smRender('');
 }
 
 function closeSearchModal() {
@@ -2772,10 +2800,18 @@ function smRender(q) {
     var initials = smInitials(it.short);
     var bgCol = smColor(it.short);
     var inWL = wl.indexOf(it.sym) !== -1;
+    var typeLabel = it.typeLabel || 'מניה';
+    var exchLabel = it.exch || '';
     return '<div class="sm-item">'
       + '<div class="sm-icon" style="background:' + bgCol + '" onclick="smPick(\'' + it.sym + '\')">' + initials + '</div>'
-      + '<span class="sm-sym" onclick="smPick(\'' + it.sym + '\')">' + it.short + '</span>'
-      + '<span class="sm-name" onclick="smPick(\'' + it.sym + '\')">' + it.name + '</span>'
+      + '<div class="sm-item-main" onclick="smPick(\'' + it.sym + '\')">'
+      + '<div class="sm-sym-row"><span class="sm-sym">' + it.short + '</span></div>'
+      + '<span class="sm-name">' + it.name + '</span>'
+      + '</div>'
+      + '<div class="sm-meta">'
+      + '<div class="sm-meta-badges"><span class="sm-meta-type">' + typeLabel + '</span>' + (exchLabel ? '<span class="sm-meta-exch">' + exchLabel + '</span>' : '') + '</div>'
+      + (exchLabel ? '<span class="sm-exch-dot">' + exchLabel.slice(0,1) + '</span>' : '')
+      + '</div>'
       + '<button class="sm-wl-btn' + (inWL ? ' added' : '') + '" data-sym="' + it.sym + '" onclick="smToggleWL(this,\'' + it.sym + '\')">'
       + (inWL ? '✓' : '+') + '</button>'
       + '</div>';
@@ -2794,18 +2830,34 @@ function smColor(sym) {
 
 function smGetItems(tab, q) {
   var source;
-  if (tab === 'indices') source = SM_INDICES;
-  else if (tab === 'general') source = SM_GENERAL;
-  else if (tab === 'us') {
-    source = (typeof US_SYMBOLS !== 'undefined' ? US_SYMBOLS : [])
-      .map(function(s) { return { sym: s, short: s, name: NAMES[s] || s }; });
-  }
-  else {
-    // Israeli stocks from TASE universe
-    source = (typeof TASE_UNIVERSE !== 'undefined' && TASE_UNIVERSE.length)
-      ? TASE_UNIVERSE.map(function(it) { return { sym: it.sym, short: it.short, name: it.name }; })
-      : Object.keys(NAMES).filter(function(s) { return s.endsWith('.TA'); }).map(function(s) { return { sym: s, short: s.replace('.TA',''), name: NAMES[s] }; });
-  }
+  var taseSrc = function() {
+    return (typeof TASE_UNIVERSE !== 'undefined' && TASE_UNIVERSE.length)
+      ? TASE_UNIVERSE.map(function(it) { return { sym: it.sym, short: it.short, name: it.name, typeLabel: 'מניה', exch: 'TASE' }; })
+      : Object.keys(NAMES).filter(function(s) { return s.endsWith('.TA'); }).map(function(s) { return { sym: s, short: s.replace('.TA',''), name: NAMES[s], typeLabel: 'מניה', exch: 'TASE' }; });
+  };
+  var usSrc = function() {
+    return (typeof US_SYMBOLS !== 'undefined' ? US_SYMBOLS : [])
+      .map(function(s) { return { sym: s, short: s, name: NAMES[s] || s, typeLabel: 'מניה', exch: 'US' }; });
+  };
+  var idxSrc = function() {
+    return SM_INDICES.map(function(it) { return { sym: it.sym, short: it.short, name: it.name, typeLabel: 'מדד', exch: 'TASE' }; });
+  };
+  var genSrc = function() {
+    return SM_GENERAL.map(function(it) {
+      var isCrypto = it.sym.indexOf('-USD') !== -1;
+      var isFuture = it.sym.indexOf('=F') !== -1;
+      var typeLabel = isCrypto ? 'קריפטו' : (isFuture ? 'סחורה' : 'מניה');
+      var exch = isCrypto ? 'CRYPTO' : (isFuture ? 'FUT' : 'US');
+      return { sym: it.sym, short: it.short, name: it.name, typeLabel: typeLabel, exch: exch };
+    });
+  };
+
+  if (tab === 'indices') source = idxSrc();
+  else if (tab === 'general') source = genSrc();
+  else if (tab === 'us') source = usSrc();
+  else if (tab === 'all') source = taseSrc().concat(usSrc()).concat(idxSrc()).concat(genSrc());
+  else source = taseSrc();
+
   if (!q) return source.slice(0, 40);
   var qu = q.toUpperCase();
   var starts = [], contains = [];

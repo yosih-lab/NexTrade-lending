@@ -106,37 +106,46 @@
     /* SEARCH MODAL — center of page */
     #searchModal { display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.7); backdrop-filter:blur(4px); align-items:center; justify-content:center; }
     #searchModal.open { display:flex; }
-    .sm-box { background:#1e2230; border:1px solid #333; border-radius:16px; width:min(560px,92vw); max-height:80vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,.8); overflow:hidden; direction:rtl; }
-    .sm-header { padding:1.2rem 1.4rem .8rem; }
-    .sm-title { font-size:1.4rem; font-weight:900; color:#fff; margin-bottom:.7rem; }
-    .sm-icon { width:28px; height:28px; border-radius:50%; background:#2a3040; display:flex; align-items:center; justify-content:center; font-size:.82rem; flex-shrink:0; color:#8899bb; font-weight:800; letter-spacing:-.5px; overflow:hidden; }
+    .sm-box { background:#1a1d27; border:1px solid #333; border-radius:16px; width:min(640px,92vw); max-height:80vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,.8); overflow:hidden; direction:rtl; }
+    .sm-header { padding:1.1rem 1.4rem .8rem; position:relative; }
+    .sm-title { font-size:1.15rem; font-weight:900; color:#fff; margin-bottom:.7rem; }
+    .sm-close { position:absolute; top:1.1rem; left:1.3rem; background:none; border:none; color:#888; font-size:1.3rem; cursor:pointer; line-height:1; padding:2px; }
+    .sm-close:hover { color:#fff; }
+    .sm-icon { width:34px; height:34px; border-radius:50%; background:#2a3040; display:flex; align-items:center; justify-content:center; font-size:.8rem; flex-shrink:0; color:#8899bb; font-weight:800; letter-spacing:-.5px; overflow:hidden; }
     .sm-input-wrap { position:relative; }
-    .sm-input { width:100%; background:#161a24; border:1px solid #333; border-radius:10px; padding:.55rem .9rem; font-size:1rem; color:#fff; font-family:'Heebo',sans-serif; direction:rtl; }
+    .sm-search-ic { position:absolute; right:.85rem; top:50%; transform:translateY(-50%); color:#666; font-size:.95rem; pointer-events:none; }
+    .sm-input { width:100%; background:#12141c; border:1px solid #333; border-radius:10px; padding:.6rem 2.4rem .6rem 2.4rem; font-size:.95rem; color:#fff; font-family:'Heebo',sans-serif; direction:rtl; }
     .sm-input:focus { outline:none; border-color:var(--accent); }
-    .sm-input::placeholder { color:rgba(255,255,255,.6); }
-    .sm-tabs { display:flex; gap:.3rem; padding:.6rem 1.4rem 0; border-bottom:1px solid #222; }
-    .sm-tab { background:transparent; border:none; color:#888; font-size:.82rem; font-weight:700; padding:.45rem .8rem; cursor:pointer; border-bottom:2px solid transparent; transition:all .15s; font-family:'Heebo',sans-serif; }
-    .sm-tab:hover { color:#ccc; }
-    .sm-tab.active { color:#fff; border-bottom-color:var(--accent); }
-    .sm-body { flex:1; overflow-y:auto; padding:.6rem 0; min-height:180px; }
-    .sm-item { display:flex; align-items:center; gap:.7rem; padding:.55rem 1.4rem; cursor:pointer; transition:background .1s; direction:rtl; }
-    .sm-item:nth-child(odd) { background:rgba(255,255,255,.03); }
-    .sm-item:hover { background:rgba(41,98,255,.12); }
-    .sm-sym { font-weight:800; color:var(--accent); min-width:58px; direction:ltr; font-size:.88rem; }
-    .sm-name { color:#ccc; font-size:.82rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
-    .sm-cat { font-size:.66rem; color:#666; margin-right:auto; }
+    .sm-input::placeholder { color:rgba(255,255,255,.5); }
+    .sm-clear { position:absolute; left:.7rem; top:50%; transform:translateY(-50%); background:none; border:none; color:#666; font-size:1rem; cursor:pointer; display:none; }
+    .sm-clear:hover { color:#fff; }
+    .sm-clear.show { display:block; }
+    .sm-tabs { display:flex; gap:.4rem; padding:.7rem 1.4rem; flex-wrap:wrap; }
+    .sm-tab { background:#2a2e3a; border:none; color:#aab; font-size:.76rem; font-weight:700; padding:.4rem .85rem; cursor:pointer; border-radius:999px; transition:all .15s; font-family:'Heebo',sans-serif; }
+    .sm-tab:hover { color:#fff; background:#343a48; }
+    .sm-tab.active { color:#0b0d13; background:#fff; }
+    .sm-body { flex:1; overflow-y:auto; padding:.3rem 0; min-height:220px; }
+    .sm-item { display:flex; align-items:center; gap:.7rem; padding:.5rem 1.4rem; cursor:pointer; transition:background .1s; direction:rtl; }
+    .sm-item:hover { background:rgba(255,255,255,.06); }
+    .sm-item-main { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; }
+    .sm-sym-row { display:flex; align-items:baseline; gap:.4rem; }
+    .sm-sym { font-weight:800; color:#fff; direction:ltr; font-size:.86rem; }
+    .sm-name { color:#8891a0; font-size:.74rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .sm-meta { display:flex; align-items:center; gap:.35rem; flex-shrink:0; }
+    .sm-meta-badges { display:flex; flex-direction:column; align-items:flex-end; gap:1px; font-size:.62rem; color:#7a8497; }
+    .sm-meta-type { color:#63707f; }
+    .sm-meta-exch { color:#aab4c4; font-weight:700; }
+    .sm-exch-dot { width:16px; height:16px; border-radius:50%; background:#2a3040; display:flex; align-items:center; justify-content:center; font-size:.55rem; color:#aab4c4; }
     .sm-wl-btn {
-      width:26px; height:26px; border-radius:50%; border:1px solid var(--border);
-      background:transparent; color:var(--text-muted); font-size:1rem; font-weight:700;
+      width:24px; height:24px; border-radius:50%; border:1px solid var(--border);
+      background:transparent; color:var(--text-muted); font-size:.9rem; font-weight:700;
       display:flex; align-items:center; justify-content:center; flex-shrink:0;
-      cursor:pointer; transition:all .15s; margin-left:4px;
+      cursor:pointer; transition:all .15s; margin-right:2px;
     }
     .sm-wl-btn:hover { border-color:var(--accent); color:var(--accent); }
     .sm-wl-btn.added { background:rgba(38,166,154,.15); border-color:var(--green); color:var(--green); }
     .sm-empty { text-align:center; color:#555; padding:2rem 1rem; font-size:.86rem; }
     .sm-tabs { border-bottom-color:#2a2e3a; }
-    .sm-tab { color:#778; }
-    .sm-tab.active { color:#fff; }
     .user-menu { position:relative; }
     .user-btn { background:var(--surface2); border:1px solid var(--border); border-radius:999px; padding:.08rem; display:flex; gap:0; align-items:center; cursor:pointer; }
     .user-btn:hover { border-color:var(--accent); }
@@ -210,34 +219,43 @@
     }
     .wl-filter-sel:focus { outline:none; border-color:var(--accent); }
     .wl-divider { height:1px; background:var(--border); margin:.5rem 0 .2rem; border:none; }
-    .wl-logo { border-radius:3px; object-fit:contain; flex-shrink:0; background:transparent; }
+    .wl-logo { border-radius:50%; object-fit:contain; flex-shrink:0; background:var(--surface); position:absolute; top:0; left:0; }
     .watch-item {
       display:flex;
       flex-direction:row;
       align-items:center;
-      gap:.4rem;
-      padding:.42rem .5rem;
+      gap:.5rem;
+      padding:.48rem .5rem;
       border-radius:0;
       cursor:pointer;
       transition:background .15s;
       direction:rtl;
-      border-bottom:1px solid rgba(255,255,255,0.10);
+      border-bottom:1px solid rgba(255,255,255,0.08);
     }
     .watch-item:hover { background:var(--surface2); }
-    .watch-main { display:flex; flex-direction:row; align-items:center; gap:.35rem; flex:1; min-width:0; }
+    .watch-icon-wrap { position:relative; flex-shrink:0; width:26px; height:26px; }
+    .watch-icon {
+      width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+      font-size:.68rem; font-weight:800; color:#fff; overflow:hidden; background:#2a3040;
+    }
+    .watch-dot {
+      position:absolute; top:-2px; left:-2px; width:9px; height:9px; border-radius:50%;
+      background:var(--accent); border:2px solid var(--surface);
+    }
+    .watch-main { display:flex; flex-direction:column; align-items:flex-start; gap:1px; flex:1; min-width:0; }
     .watch-name {
-      font-size:.78rem;
-      color:var(--text);
-      font-weight:600;
+      font-size:.68rem;
+      color:var(--text-muted);
+      font-weight:500;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
-      flex:1;
-      min-width:0;
+      max-width:100%;
     }
-    .watch-sym { font-size:.72rem; font-weight:800; white-space:nowrap; color:var(--text-muted); direction:ltr; flex-shrink:0; }
-    .watch-price-wrap { display:none; }
-    .watch-chg { font-size:.74rem; white-space:nowrap; font-weight:700; flex-shrink:0; }
+    .watch-sym { font-size:.8rem; font-weight:800; white-space:nowrap; color:var(--text); direction:ltr; }
+    .watch-price-wrap { display:flex; flex-direction:column; align-items:flex-end; gap:1px; flex-shrink:0; }
+    .watch-price { font-size:.78rem; font-weight:700; color:var(--text); direction:ltr; }
+    .watch-chg { font-size:.7rem; white-space:nowrap; font-weight:700; flex-shrink:0; direction:ltr; }
     .watch-chg.up { color:var(--green); }
     .watch-chg.down { color:var(--red); }
     .watch-remove-btn {
@@ -245,15 +263,16 @@
       border:1px solid transparent;
       color:var(--text-muted);
       cursor:pointer;
-      width:28px;
-      height:28px;
+      width:22px;
+      height:22px;
       border-radius:6px;
       display:flex;
       align-items:center;
       justify-content:center;
-      font-size:.95rem;
+      font-size:.85rem;
       line-height:1;
       visibility:hidden;
+      flex-shrink:0;
     }
     .watch-item:hover .watch-remove-btn { visibility:visible; }
     .watch-remove-btn:hover {
@@ -1693,10 +1712,10 @@
     </main>
   </div>
 </div>
-<script src="scanner-symbols.js?v=20260918d"></script>
-<script src="main.js?v=20260918d"></script>
-<script src="drawing.js?v=20260918d"></script>
-<script src="features.js?v=20260918d"></script>
+<script src="scanner-symbols.js?v=20260918e"></script>
+<script src="main.js?v=20260918e"></script>
+<script src="drawing.js?v=20260918e"></script>
+<script src="features.js?v=20260918e"></script>
 
 <!-- CHART RIGHT-CLICK CONTEXT MENU -->
 <div id="chartCtxMenu">
@@ -1862,12 +1881,16 @@
   <div class="sm-box">
     <div class="sm-header">
       <div class="sm-title">חיפוש סמל</div>
+      <button class="sm-close" onclick="closeSearchModal()" title="סגור">✕</button>
       <div class="sm-input-wrap">
-        <input class="sm-input" id="smInput" placeholder="הקלד שם מניה או סימול..." autocomplete="off" />
+        <span class="sm-search-ic">🔍</span>
+        <input class="sm-input" id="smInput" placeholder="הקלד שם מניה או סימול..." autocomplete="off" oninput="smOnInput()" />
+        <button class="sm-clear" id="smClearBtn" onclick="smClearInput()" title="נקה">✕</button>
       </div>
     </div>
     <div class="sm-tabs">
-      <button class="sm-tab active" data-cat="stocks" onclick="smSetTab('stocks')">🇮🇱 מניות ישראליות</button>
+      <button class="sm-tab active" data-cat="all" onclick="smSetTab('all')">הכל</button>
+      <button class="sm-tab" data-cat="stocks" onclick="smSetTab('stocks')">🇮🇱 מניות ישראליות</button>
       <button class="sm-tab" data-cat="us" onclick="smSetTab('us')">🇺🇸 מניות ארה"ב</button>
       <button class="sm-tab" data-cat="indices" onclick="smSetTab('indices')">📊 מדדים</button>
       <button class="sm-tab" data-cat="general" onclick="smSetTab('general')">🌐 כללי</button>
@@ -2177,7 +2200,7 @@ function renderBellAlerts() {
     } else {
       text = a.msg || (a.sym ? a.sym.replace('.TA','') : 'איתות');
     }
-    html += '<div class="bell-alert-card" onclick="openBellAlertDetails(' + i + ')">'
+    html += '<div class="bell-alert-card" onclick="openBellAlertDetails(' + i + ',event)">'
       + '<div class="bell-a-dot" style="background:' + dotColor + '"></div>'
       + '<div class="bell-a-text">' + text + '</div>'
       + '<span class="bell-a-time">' + (a.time || '') + '</span>'
@@ -2197,7 +2220,8 @@ function deleteBellAlert(ev, idx) {
   renderBellAlerts();
   return false;
 }
-function openBellAlertDetails(idx) {
+function openBellAlertDetails(idx, ev) {
+  if (ev) { ev.stopPropagation(); }
   var alerts = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
   var a = alerts[idx];
   if (!a) return;
