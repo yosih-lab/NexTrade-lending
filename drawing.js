@@ -1124,6 +1124,30 @@
     ppRefresh();
   }
 
+  // Add a long/short position box at a specific price (used by the chart "+" quick menu).
+  function addPositionAtPrice(dir, price) {
+    if (!price || !isFinite(price)) return;
+    ensureDom();
+    var yMid = pToY(price);
+    var tp50 = yMid != null ? yToP(yMid - 50) : null;
+    var sl50 = yMid != null ? yToP(yMid + 50) : null;
+    var sl, tp;
+    if (dir === 'long') { tp = tp50 || price * 1.02; sl = sl50 || price * 0.98; }
+    else { tp = sl50 || price * 0.98; sl = tp50 || price * 1.02; }
+    var t = ts();
+    var l = 0;
+    if (t) { var r = t.getVisibleLogicalRange(); if (r) l = Math.round((r.from + r.to) / 2); }
+    commit({ type: 'position', dir: dir, entry: price, sl: sl, tp: tp, l: l, pxW: 100, qty: 1 });
+    ppRefresh();
+  }
+
+  // Add a horizontal line at a specific price (used by the chart "+" quick menu).
+  function addHLine(price) {
+    if (!price || !isFinite(price)) return;
+    ensureDom();
+    commit({ type: 'hline', p: price });
+  }
+
   // ===== expose toggle for icon toolbar =====
   function openPositionPanel() {
     ensurePositionPanel();
@@ -1265,6 +1289,8 @@
     onSymbolChanged: onSymbolChanged,
     redraw: scheduleDraw,
     ensure: ensureDom,
-    openPositionPanel: openPositionPanel
+    openPositionPanel: openPositionPanel,
+    addPositionAtPrice: addPositionAtPrice,
+    addHLine: addHLine
   };
 })();

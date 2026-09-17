@@ -1173,22 +1173,35 @@ function updateCrosshairAlertBtn(param) {
   btn.style.display = 'flex';
 }
 
+function buildCrosshairMenuHtml() {
+  var sym = (currentSymbol || '').replace('.TA', '');
+  var price = (_crosshairAlertPrice && isFinite(_crosshairAlertPrice)) ? parseFloat(_crosshairAlertPrice.toFixed(2)) : null;
+  var priceTxt = price != null ? formatPrice(price) : '';
+  return ''
+    + '<div class="cm-item" onclick="crosshairMenuAddAlert(false)"><span class="cm-ic">🔔</span><span class="cm-txt">הוסף התראה על ' + sym + ' במחיר ' + priceTxt + '</span><span class="cm-key">Alt+A</span></div>'
+    + '<div class="cm-item" onclick="crosshairMenuAddAlert(true)"><span class="cm-ic">🔔</span><span class="cm-txt">הוסף התראה על SMA במחיר ' + priceTxt + '</span><span class="cm-key">Alt+A</span></div>'
+    + '<div class="cm-sep"></div>'
+    + '<div class="cm-item" onclick="crosshairMenuOrder(\'long\',\'limit\')"><span class="cm-ic cm-buy">⌃</span><span class="cm-txt">קנה 1 ' + sym + ' במחיר ' + priceTxt + ' לימיט</span><span class="cm-key">Alt+Shift+B</span></div>'
+    + '<div class="cm-item" onclick="crosshairMenuOrder(\'short\',\'stop\')"><span class="cm-ic cm-sell">⌄</span><span class="cm-txt">מכור 1 ' + sym + ' במחיר ' + priceTxt + ' סטופ</span></div>'
+    + '<div class="cm-item" onclick="crosshairMenuOrder(\'short\',\'stoplimit\')"><span class="cm-ic cm-sell">⌄</span><span class="cm-txt">מכור 1 ' + sym + ' סטופ ' + priceTxt + ' לימיט</span></div>'
+    + '<div class="cm-item" onclick="crosshairMenuShowOrderForm()"><span class="cm-ic">✎</span><span class="cm-txt">הוסף פקודה על ' + sym + ' במחיר ' + priceTxt + '…</span><span class="cm-key">Shift+T</span></div>'
+    + '<div class="cm-sep"></div>'
+    + '<div class="cm-item" onclick="crosshairMenuDrawHLine()"><span class="cm-ic">—</span><span class="cm-txt">צייר קו אופקי במחיר ' + priceTxt + '</span><span class="cm-key">Alt+H</span></div>';
+}
+
 function openCrosshairAlertPopup() {
   var popup = document.getElementById('crosshairAlertPopup');
   var btn   = document.getElementById('crosshairAlertBtn');
   if (!popup || !btn) return;
-  var priceLabel = document.getElementById('crosshairAlertPriceLabel');
-  var priceInput = document.getElementById('crosshairAlertPriceInp');
-  if (_crosshairAlertPrice && isFinite(_crosshairAlertPrice)) {
-    var rounded = parseFloat(_crosshairAlertPrice.toFixed(2));
-    if (priceLabel) priceLabel.textContent = 'מחיר: ' + formatPrice(rounded);
-    if (priceInput) priceInput.value = rounded;
-  }
+  var list = document.getElementById('crosshairMenuList');
+  var form = document.getElementById('crosshairOrderForm');
+  if (list) { list.innerHTML = buildCrosshairMenuHtml(); list.style.display = 'flex'; }
+  if (form) form.style.display = 'none';
   // Position popup near the button
   var btnTop = parseInt(btn.style.top) || 0;
   var btnLeft = parseInt(btn.style.left) || 0;
   popup.style.top  = Math.max(5, btnTop - 30) + 'px';
-  popup.style.left = Math.max(5, btnLeft - 225) + 'px';
+  popup.style.left = Math.max(5, btnLeft - 285) + 'px';
   popup.style.display = 'block';
   // Keep button visible while popup is open
   btn.style.display = 'flex';
@@ -1197,6 +1210,73 @@ function openCrosshairAlertPopup() {
 function closeCrosshairAlertPopup() {
   var popup = document.getElementById('crosshairAlertPopup');
   if (popup) popup.style.display = 'none';
+}
+
+function showCrosshairBanner(msg) {
+  var banner = document.createElement('div');
+  banner.textContent = msg;
+  banner.style.cssText = 'position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#0a3020;border:1px solid #26a69a;color:#26a69a;padding:.4rem 1rem;border-radius:8px;font-size:.78rem;z-index:9999;font-family:Heebo,sans-serif;';
+  document.body.appendChild(banner);
+  setTimeout(function() { banner.remove(); }, 2500);
+}
+
+function crosshairMenuAddAlert(isSma) {
+  var price = (_crosshairAlertPrice && isFinite(_crosshairAlertPrice)) ? parseFloat(_crosshairAlertPrice.toFixed(2)) : null;
+  var sym = currentSymbol;
+  if (!sym || price == null) return;
+  var live = priceCache[sym] ? priceCache[sym].price : null;
+  var cond = (live != null && price < live) ? 'below' : 'above';
+  alerts.push({ symbol: sym, condition: cond, price: price, email: null, kind: isSma ? 'sma' : 'price' });
+  localStorage.setItem('ml_alerts', JSON.stringify(alerts));
+  renderAlerts();
+  closeCrosshairAlertPopup();
+  if (typeof incrementAlertBadge === 'function') incrementAlertBadge();
+  var label = isSma ? 'SMA' : sym.replace('.TA', '');
+  showCrosshairBanner('✅ התראה נוספה: ' + label + ' ' + (cond === 'above' ? 'מעל' : 'מתחת') + ' ' + formatPrice(price));
+}
+
+function crosshairMenuOrder(dir, kind) {
+  var price = (_crosshairAlertPrice && isFinite(_crosshairAlertPrice)) ? parseFloat(_crosshairAlertPrice.toFixed(2)) : null;
+  var sym = currentSymbol;
+  if (!sym || price == null) return;
+  if (window.NTDraw && typeof window.NTDraw.addPositionAtPrice === 'function') {
+    window.NTDraw.addPositionAtPrice(dir, price);
+  }
+  closeCrosshairAlertPopup();
+  var verb = dir === 'long' ? 'קניית' : 'מכירת';
+  var kindTxt = kind === 'limit' ? 'לימיט' : kind === 'stop' ? 'סטופ' : 'סטופ-לימיט';
+  showCrosshairBanner('✅ סומנה ' + verb + ' 1 ' + sym.replace('.TA', '') + ' (' + kindTxt + ') במחיר ' + formatPrice(price));
+}
+
+function crosshairMenuShowOrderForm() {
+  var list = document.getElementById('crosshairMenuList');
+  var form = document.getElementById('crosshairOrderForm');
+  if (list) list.style.display = 'none';
+  if (form) form.style.display = 'block';
+  var priceLabel = document.getElementById('crosshairAlertPriceLabel');
+  var priceInput = document.getElementById('crosshairAlertPriceInp');
+  if (_crosshairAlertPrice && isFinite(_crosshairAlertPrice)) {
+    var rounded = parseFloat(_crosshairAlertPrice.toFixed(2));
+    if (priceLabel) priceLabel.textContent = 'מחיר: ' + formatPrice(rounded);
+    if (priceInput) priceInput.value = rounded;
+  }
+}
+
+function crosshairMenuBackToList() {
+  var list = document.getElementById('crosshairMenuList');
+  var form = document.getElementById('crosshairOrderForm');
+  if (form) form.style.display = 'none';
+  if (list) { list.innerHTML = buildCrosshairMenuHtml(); list.style.display = 'flex'; }
+}
+
+function crosshairMenuDrawHLine() {
+  var price = (_crosshairAlertPrice && isFinite(_crosshairAlertPrice)) ? parseFloat(_crosshairAlertPrice.toFixed(2)) : null;
+  if (price == null) return;
+  if (window.NTDraw && typeof window.NTDraw.addHLine === 'function') {
+    window.NTDraw.addHLine(price);
+  }
+  closeCrosshairAlertPopup();
+  showCrosshairBanner('✅ קו אופקי צויר במחיר ' + formatPrice(price));
 }
 
 function crosshairAddAlert() {
@@ -1210,12 +1290,7 @@ function crosshairAddAlert() {
   renderAlerts();
   closeCrosshairAlertPopup();
   if (typeof incrementAlertBadge === 'function') incrementAlertBadge();
-  // Confirmation banner
-  var banner = document.createElement('div');
-  banner.textContent = '✅ התראה נוספה: ' + sym + ' ' + (cond === 'above' ? 'מעל' : 'מתחת') + ' ' + formatPrice(price);
-  banner.style.cssText = 'position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#0a3020;border:1px solid #26a69a;color:#26a69a;padding:.4rem 1rem;border-radius:8px;font-size:.78rem;z-index:9999;font-family:Heebo,sans-serif;';
-  document.body.appendChild(banner);
-  setTimeout(function() { banner.remove(); }, 2500);
+  showCrosshairBanner('✅ התראה נוספה: ' + sym.replace('.TA', '') + ' ' + (cond === 'above' ? 'מעל' : 'מתחת') + ' ' + formatPrice(price));
 }
 
 // Close crosshair popup when clicking outside
@@ -1719,7 +1794,7 @@ function renderWatchlist() {
     var iconBg = (typeof smColor === 'function') ? smColor(shortSym) : '#2a3040';
     var logoImg = '<img class="wl-logo" data-sym="' + shortSym + '" src="' + (logoUrl || '') + '"'
       + (logoUrl ? '' : ' style="display:none"')
-      + ' width="17" height="17" onerror="this.style.display=\'none\'">';
+      + ' width="20" height="20" onerror="this.style.display=\'none\'">';
     return '<li class="watch-item" onclick="selectSymbol(\'' + sym + '\')">'
       + '<div class="watch-icon-wrap">'
       + '<div class="watch-icon" style="background:' + iconBg + '">' + initials + '</div>'
