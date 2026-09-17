@@ -844,6 +844,7 @@ function initChart() {
       var el = document.getElementById('chart');
       if (el && el.offsetWidth > 0 && el.offsetHeight > 0) {
         chartInstance.resize(el.offsetWidth, el.offsetHeight);
+        chartInstance.timeScale().fitContent();
       }
     }
   }, 120);
@@ -1354,8 +1355,16 @@ async function loadChart(symbol, tf, preserveZoom) {
   renderMAs(bars);
 
   // Fit time scale only on initial load (not on background refresh)
+  // Also re-fit after a short delay: the chart container can still be mid-resize
+  // (e.g. right after page load / first paint) when this first runs, which would
+  // fit the view to a too-small width and make the chart look overly zoomed in
+  // once the container reaches its real size. Re-fitting once the layout settles
+  // guarantees the full history is shown clearly, matching TradingView-style overview.
   if (!preserveZoom) {
     chartInstance.timeScale().fitContent();
+    setTimeout(function() {
+      if (chartInstance) chartInstance.timeScale().fitContent();
+    }, 200);
   }
 
   // Subtitle

@@ -807,17 +807,25 @@
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:transparent; }
     ::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
-    /* PWA install button */
+    /* PWA install button — small dismissible corner FAB (kept out of the chart's way) */
     #pwaInstallBtn {
-      display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
-      z-index:9999; background:#2962ff; color:#fff; border:none; border-radius:999px;
-      padding:.7rem 1.6rem; font-size:.88rem; font-weight:800; font-family:'Heebo',sans-serif;
-      cursor:pointer; box-shadow:0 6px 24px rgba(41,98,255,.55); gap:.5rem; align-items:center;
-      white-space:nowrap; animation:pwaSlide .4s ease;
+      display:none; position:fixed; bottom:8px; left:8px; z-index:9997;
+      width:44px; height:44px; border-radius:50%; padding:0;
+      background:#2962ff; color:#fff; border:none;
+      font-size:1.25rem; cursor:pointer; box-shadow:0 4px 20px rgba(41,98,255,.5);
+      align-items:center; justify-content:center;
+      animation:pwaSlide .4s ease;
     }
-    @keyframes pwaSlide { from{opacity:0;transform:translateX(-50%) translateY(20px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+    @keyframes pwaSlide { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
     @keyframes bellPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.4)} }
     #pwaInstallBtn:hover { background:#1a4fd6; }
+    #pwaInstallClose {
+      display:none; position:fixed; bottom:40px; left:40px; z-index:9998;
+      width:18px; height:18px; border-radius:50%; padding:0;
+      background:#0a0d16; border:1px solid var(--border); color:var(--text-muted);
+      font-size:.65rem; line-height:1; cursor:pointer; align-items:center; justify-content:center;
+    }
+    #pwaInstallClose:hover { color:#ef5350; border-color:#ef5350; }
     /* UPTREND POPUP */
     .uptrend-popup{
       position:fixed; bottom:20px; right:60px; z-index:9999;
@@ -1324,6 +1332,7 @@
 
       /* PWA install button above bottom draw bar */
       #pwaInstallBtn { bottom:52px; }
+      #pwaInstallClose { bottom:84px; }
 
       /* User avatar */
       .topbar .user-avatar { width:28px; height:28px; font-size:.82rem; }
@@ -1684,10 +1693,10 @@
     </main>
   </div>
 </div>
-<script src="scanner-symbols.js?v=20260918a"></script>
-<script src="main.js?v=20260918a"></script>
-<script src="drawing.js?v=20260918a"></script>
-<script src="features.js?v=20260918a"></script>
+<script src="scanner-symbols.js?v=20260918b"></script>
+<script src="main.js?v=20260918b"></script>
+<script src="drawing.js?v=20260918b"></script>
+<script src="features.js?v=20260918b"></script>
 
 <!-- CHART RIGHT-CLICK CONTEXT MENU -->
 <div id="chartCtxMenu">
@@ -2226,13 +2235,18 @@ function openBellAlertDetails(idx) {
     + '<div class="bad-row"><span class="bad-k">' + pullbackLabel + '</span><span class="bad-v">' + pullbackStatus + '</span></div>'
     + '<div class="bad-row"><span class="bad-k">שעת איתות</span><span class="bad-v">' + (a.time || '') + '</span></div>'
     + '<div class="bad-note">' + levelNote + '</div>'
-    + (a.sym ? '<button class="btn btn-sm" style="width:100%;margin-top:.25rem" onclick="selectSymbol(\'' + a.sym + '\')">פתח גרף של ' + a.sym.replace('.TA','') + '</button>' : '');
+    + (a.sym ? '<button class="btn btn-sm" style="width:100%;margin-top:.25rem" onclick="openChartFromAlert(\'' + a.sym + '\')">📈 פתח גרף של ' + a.sym.replace('.TA','') + '</button>' : '');
 
   modal.classList.add('open');
 }
 function closeBellAlertDetails() {
   var modal = document.getElementById('bellAlertDetails');
   if (modal) modal.classList.remove('open');
+}
+function openChartFromAlert(sym) {
+  closeBellAlertDetails();
+  closeBellPopup();
+  if (typeof selectSymbol === 'function') selectSymbol(sym);
 }
 
 // ALERTS 2
@@ -2272,9 +2286,8 @@ function ibDelAlert2(i) {
 }
 </script>
 
-<button id="pwaInstallBtn" onclick="pwaInstall()">
-  📲 התקן את NexTrade כאפליקציה
-</button>
+<button id="pwaInstallBtn" onclick="pwaInstall()" title="התקן את NexTrade כאפליקציה">📲</button>
+<button id="pwaInstallClose" onclick="pwaDismiss(event)" title="לא עכשיו">✕</button>
 
 <!-- Language switcher (replaces native browser translate popup) -->
 <div id="google_translate_element"></div>
@@ -2338,24 +2351,45 @@ if ('serviceWorker' in navigator) {
 
 // PWA Install prompt
 var _pwaPrompt = null;
+var PWA_DISMISS_KEY = 'nt_pwa_dismiss_until';
+function pwaWasDismissedRecently() {
+  var until = parseInt(localStorage.getItem(PWA_DISMISS_KEY) || '0', 10);
+  return Date.now() < until;
+}
 window.addEventListener('beforeinstallprompt', function(e) {
   e.preventDefault();
   _pwaPrompt = e;
+  if (pwaWasDismissedRecently()) return;
   var btn = document.getElementById('pwaInstallBtn');
+  var close = document.getElementById('pwaInstallClose');
   if (btn) btn.style.display = 'flex';
+  if (close) close.style.display = 'flex';
 });
 window.addEventListener('appinstalled', function() {
   var btn = document.getElementById('pwaInstallBtn');
+  var close = document.getElementById('pwaInstallClose');
   if (btn) btn.style.display = 'none';
+  if (close) close.style.display = 'none';
   _pwaPrompt = null;
 });
+function pwaDismiss(ev) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  // Remember the dismissal for 14 days so the button doesn't keep reappearing
+  localStorage.setItem(PWA_DISMISS_KEY, String(Date.now() + 14 * 24 * 60 * 60 * 1000));
+  var btn = document.getElementById('pwaInstallBtn');
+  var close = document.getElementById('pwaInstallClose');
+  if (btn) btn.style.display = 'none';
+  if (close) close.style.display = 'none';
+}
 function pwaInstall() {
   if (_pwaPrompt) {
     _pwaPrompt.prompt();
     _pwaPrompt.userChoice.then(function(r) {
       if (r.outcome === 'accepted') {
         var btn = document.getElementById('pwaInstallBtn');
+        var close = document.getElementById('pwaInstallClose');
         if (btn) btn.style.display = 'none';
+        if (close) close.style.display = 'none';
       }
       _pwaPrompt = null;
     });
