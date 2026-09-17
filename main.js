@@ -942,6 +942,38 @@ function initChartVerticalPan() {
 }
 
 // ============================================
+//   SIDEBAR DYNAMIC WIDTH (mouse-wheel resize, trades off against chart size)
+// ============================================
+function initSidebarResize() {
+  var sidebar = document.querySelector('aside.sidebar');
+  if (!sidebar) return;
+  var MIN_W = 160, MAX_W = 560;
+
+  var saved = parseInt(localStorage.getItem('nt_sidebar_w') || '0', 10);
+  if (saved && saved >= MIN_W && saved <= MAX_W) {
+    document.documentElement.style.setProperty('--sidebar-w', saved + 'px');
+  }
+
+  sidebar.addEventListener('wheel', function(e) {
+    // Only intercept horizontal scroll (trackpad swipe / Shift+wheel).
+    // Plain vertical wheel is left alone so the watchlist itself still scrolls normally.
+    if (Math.abs(e.deltaX) < Math.abs(e.deltaY) || Math.abs(e.deltaX) < 2) return;
+    e.preventDefault();
+    var current = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w')) || 320;
+    // Scrolling right (deltaX > 0) shrinks the sidebar (more room for the chart).
+    // Scrolling left (deltaX < 0) grows the sidebar.
+    var next = current - e.deltaX;
+    next = Math.max(MIN_W, Math.min(MAX_W, next));
+    document.documentElement.style.setProperty('--sidebar-w', next + 'px');
+    localStorage.setItem('nt_sidebar_w', String(Math.round(next)));
+    if (chartInstance) {
+      var el = document.getElementById('chart');
+      if (el && el.offsetWidth > 0 && el.offsetHeight > 0) chartInstance.resize(el.offsetWidth, el.offsetHeight);
+    }
+  }, { passive: false });
+}
+
+// ============================================
 //   CHART RIGHT-CLICK CONTEXT MENU
 // ============================================
 var CTX_COLORS = [
@@ -1679,7 +1711,7 @@ function renderWatchlist() {
     var iconBg = (typeof smColor === 'function') ? smColor(shortSym) : '#2a3040';
     var logoImg = '<img class="wl-logo" data-sym="' + shortSym + '" src="' + (logoUrl || '') + '"'
       + (logoUrl ? '' : ' style="display:none"')
-      + ' width="26" height="26" onerror="this.style.display=\'none\'">';
+      + ' width="13" height="13" onerror="this.style.display=\'none\'">';
     return '<li class="watch-item" onclick="selectSymbol(\'' + sym + '\')">'
       + '<div class="watch-icon-wrap">'
       + '<div class="watch-icon" style="background:' + iconBg + '">' + initials + '</div>'
@@ -2201,6 +2233,7 @@ async function init() {
     initChartVerticalPan();
     initChartContextMenu();
     initAlertLineUpdater();
+    initSidebarResize();
     renderMAPanel();
     console.log('[NexTrade] Chart initialized.');
     

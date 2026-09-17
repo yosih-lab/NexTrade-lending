@@ -224,8 +224,8 @@
       display:flex;
       flex-direction:row;
       align-items:center;
-      gap:.5rem;
-      padding:.48rem .5rem;
+      gap:.25rem;
+      padding:.24rem .25rem;
       border-radius:0;
       cursor:pointer;
       transition:background .15s;
@@ -233,18 +233,18 @@
       border-bottom:1px solid rgba(255,255,255,0.08);
     }
     .watch-item:hover { background:var(--surface2); }
-    .watch-icon-wrap { position:relative; flex-shrink:0; width:26px; height:26px; }
+    .watch-icon-wrap { position:relative; flex-shrink:0; width:13px; height:13px; }
     .watch-icon {
-      width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-      font-size:.68rem; font-weight:800; color:#fff; overflow:hidden; background:#2a3040;
+      width:13px; height:13px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+      font-size:.34rem; font-weight:800; color:#fff; overflow:hidden; background:#2a3040;
     }
     .watch-dot {
-      position:absolute; top:-2px; left:-2px; width:9px; height:9px; border-radius:50%;
-      background:var(--accent); border:2px solid var(--surface);
+      position:absolute; top:-1px; left:-1px; width:5px; height:5px; border-radius:50%;
+      background:var(--accent); border:1px solid var(--surface);
     }
-    .watch-main { display:flex; flex-direction:column; align-items:flex-start; gap:1px; flex:1; min-width:0; }
+    .watch-main { display:flex; flex-direction:column; align-items:flex-start; gap:0; flex:1; min-width:0; }
     .watch-name {
-      font-size:.68rem;
+      font-size:.34rem;
       color:var(--text-muted);
       font-weight:500;
       white-space:nowrap;
@@ -252,10 +252,10 @@
       text-overflow:ellipsis;
       max-width:100%;
     }
-    .watch-sym { font-size:.8rem; font-weight:800; white-space:nowrap; color:var(--text); direction:ltr; }
-    .watch-price-wrap { display:flex; flex-direction:column; align-items:flex-end; gap:1px; flex-shrink:0; }
-    .watch-price { font-size:.78rem; font-weight:700; color:var(--text); direction:ltr; }
-    .watch-chg { font-size:.7rem; white-space:nowrap; font-weight:700; flex-shrink:0; direction:ltr; }
+    .watch-sym { font-size:.4rem; font-weight:800; white-space:nowrap; color:var(--text); direction:ltr; }
+    .watch-price-wrap { display:flex; flex-direction:column; align-items:flex-end; gap:0; flex-shrink:0; }
+    .watch-price { font-size:.39rem; font-weight:700; color:var(--text); direction:ltr; }
+    .watch-chg { font-size:.35rem; white-space:nowrap; font-weight:700; flex-shrink:0; direction:ltr; }
     .watch-chg.up { color:var(--green); }
     .watch-chg.down { color:var(--red); }
     .watch-remove-btn {
@@ -263,13 +263,13 @@
       border:1px solid transparent;
       color:var(--text-muted);
       cursor:pointer;
-      width:22px;
-      height:22px;
-      border-radius:6px;
+      width:11px;
+      height:11px;
+      border-radius:3px;
       display:flex;
       align-items:center;
       justify-content:center;
-      font-size:.85rem;
+      font-size:.43rem;
       line-height:1;
       visibility:hidden;
       flex-shrink:0;
@@ -1712,10 +1712,10 @@
     </main>
   </div>
 </div>
-<script src="scanner-symbols.js?v=20260918e"></script>
-<script src="main.js?v=20260918e"></script>
-<script src="drawing.js?v=20260918e"></script>
-<script src="features.js?v=20260918e"></script>
+<script src="scanner-symbols.js?v=20260918f"></script>
+<script src="main.js?v=20260918f"></script>
+<script src="drawing.js?v=20260918f"></script>
+<script src="features.js?v=20260918f"></script>
 
 <!-- CHART RIGHT-CLICK CONTEXT MENU -->
 <div id="chartCtxMenu">
