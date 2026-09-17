@@ -947,22 +947,18 @@ function initChartVerticalPan() {
 function initSidebarResize() {
   var sidebar = document.querySelector('aside.sidebar');
   if (!sidebar) return;
-  var MIN_W = 160, MAX_W = 560;
+  var MIN_W = 130, MAX_W = 380;
 
   var saved = parseInt(localStorage.getItem('nt_sidebar_w') || '0', 10);
   if (saved && saved >= MIN_W && saved <= MAX_W) {
     document.documentElement.style.setProperty('--sidebar-w', saved + 'px');
   }
 
-  sidebar.addEventListener('wheel', function(e) {
-    // Only intercept horizontal scroll (trackpad swipe / Shift+wheel).
-    // Plain vertical wheel is left alone so the watchlist itself still scrolls normally.
-    if (Math.abs(e.deltaX) < Math.abs(e.deltaY) || Math.abs(e.deltaX) < 2) return;
-    e.preventDefault();
-    var current = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w')) || 320;
-    // Scrolling right (deltaX > 0) shrinks the sidebar (more room for the chart).
-    // Scrolling left (deltaX < 0) grows the sidebar.
-    var next = current - e.deltaX;
+  function applyDelta(delta) {
+    var current = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w')) || 210;
+    // Positive delta (scrolling right / down) shrinks the sidebar (more room for the chart).
+    // Negative delta (scrolling left / up) grows the sidebar.
+    var next = current - delta;
     next = Math.max(MIN_W, Math.min(MAX_W, next));
     document.documentElement.style.setProperty('--sidebar-w', next + 'px');
     localStorage.setItem('nt_sidebar_w', String(Math.round(next)));
@@ -970,6 +966,18 @@ function initSidebarResize() {
       var el = document.getElementById('chart');
       if (el && el.offsetWidth > 0 && el.offsetHeight > 0) chartInstance.resize(el.offsetWidth, el.offsetHeight);
     }
+  }
+
+  sidebar.addEventListener('wheel', function(e) {
+    // True horizontal scroll (trackpad swipe, or Shift+wheel which browsers report as deltaX).
+    if (Math.abs(e.deltaX) >= 2) { e.preventDefault(); applyDelta(e.deltaX); return; }
+    // Shift+wheel on setups that don't auto-convert deltaY -> deltaX.
+    if (e.shiftKey && Math.abs(e.deltaY) >= 2) { e.preventDefault(); applyDelta(e.deltaY); return; }
+    // Plain vertical wheel over a non-scrollable part of the sidebar (header/filters bar,
+    // not the watchlist itself) also resizes, so an ordinary mouse wheel works too.
+    var overScrollableList = !!(e.target.closest && e.target.closest('#watchlist, .sidebar-view'));
+    if (!overScrollableList && Math.abs(e.deltaY) >= 2) { e.preventDefault(); applyDelta(e.deltaY); return; }
+    // Otherwise: plain vertical wheel over the watchlist list -> let it scroll normally.
   }, { passive: false });
 }
 
@@ -1711,7 +1719,7 @@ function renderWatchlist() {
     var iconBg = (typeof smColor === 'function') ? smColor(shortSym) : '#2a3040';
     var logoImg = '<img class="wl-logo" data-sym="' + shortSym + '" src="' + (logoUrl || '') + '"'
       + (logoUrl ? '' : ' style="display:none"')
-      + ' width="13" height="13" onerror="this.style.display=\'none\'">';
+      + ' width="17" height="17" onerror="this.style.display=\'none\'">';
     return '<li class="watch-item" onclick="selectSymbol(\'' + sym + '\')">'
       + '<div class="watch-icon-wrap">'
       + '<div class="watch-icon" style="background:' + iconBg + '">' + initials + '</div>'
