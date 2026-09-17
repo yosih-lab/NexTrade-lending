@@ -2786,6 +2786,10 @@ function smGetItems(tab, q) {
   var source;
   if (tab === 'indices') source = SM_INDICES;
   else if (tab === 'general') source = SM_GENERAL;
+  else if (tab === 'us') {
+    source = (typeof US_SYMBOLS !== 'undefined' ? US_SYMBOLS : [])
+      .map(function(s) { return { sym: s, short: s, name: NAMES[s] || s }; });
+  }
   else {
     // Israeli stocks from TASE universe
     source = (typeof TASE_UNIVERSE !== 'undefined' && TASE_UNIVERSE.length)
