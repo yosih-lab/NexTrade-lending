@@ -462,6 +462,8 @@
       padding:.4rem;
       box-shadow:0 8px 28px rgba(0,0,0,.9);
       width:270px;
+      max-height:calc(100% - 12px);
+      overflow-y:auto;
       font-family:'Heebo',sans-serif;
       direction:rtl;
       pointer-events:auto;
@@ -479,22 +481,83 @@
     .cm-txt { flex:1; line-height:1.3; }
     .cm-key { font-size:.58rem; color:#5b6577; flex-shrink:0; white-space:nowrap; }
     .cm-sep { height:1px; background:#1e2637; margin:.3rem .2rem; }
-    /* ===== CHART CONTEXT MENU ===== */
-    #chartCtxMenu { position:fixed; z-index:9999; display:none; background:#050810; border:1px solid #1e2637; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,.95); width:190px; font-family:'Heebo',sans-serif; overflow:hidden; direction:rtl; }
-    #chartCtxMenu.open { display:block; }
+    .cm-check { color:#2962ff; }
+    /* ===== CHART CONTEXT MENU (canvas color picker — reused inside Settings > Canvas) ===== */
     .ctxm-header { padding:.45rem .75rem .3rem; font-size:.68rem; font-weight:800; color:#8b9ab5; text-transform:uppercase; letter-spacing:.8px; border-bottom:1px solid #1e2637; }
     .ctxm-label { display:flex; align-items:center; gap:.5rem; padding:.35rem .75rem; font-size:.78rem; font-weight:700; color:#fff; cursor:pointer; transition:background .12s; }
     .ctxm-label:hover { background:#0f1420; }
     .ctxm-sub { border-top:1px solid #1e2637; padding:.3rem 0; }
-    .ctxm-tabs { display:flex; margin:.2rem .6rem .3rem; gap:.3rem; }
+    .ctxm-tabs { display:flex; margin:.2rem 0 .3rem; gap:.3rem; }
     .ctxm-tab { flex:1; padding:.24rem .3rem; font-size:.68rem; font-weight:700; border-radius:5px; border:1px solid #1e2637; background:#0a0d16; color:#8b9ab5; cursor:pointer; font-family:'Heebo',sans-serif; transition:all .15s; }
     .ctxm-tab.active { background:#2962ff; border-color:#2962ff; color:#fff; }
-    .ctxm-colors { display:flex; flex-wrap:wrap; gap:3px; padding:.15rem .6rem .4rem; }
+    .ctxm-colors { display:flex; flex-wrap:wrap; gap:3px; padding:.15rem 0 .4rem; }
     .ctxm-swatch { width:18px; height:18px; border-radius:3px; border:1px solid rgba(255,255,255,.1); cursor:pointer; transition:transform .1s,box-shadow .1s; }
     .ctxm-swatch:hover { transform:scale(1.35); box-shadow:0 0 0 2px #fff; }
     .ctxm-swatch.selected { box-shadow:0 0 0 2px #2962ff; }
-    .ctxm-grad-row { display:flex; align-items:center; gap:.4rem; padding:.15rem .75rem; font-size:.68rem; color:#8b9ab5; font-weight:700; }
+    .ctxm-grad-row { display:flex; align-items:center; gap:.4rem; padding:.15rem 0; font-size:.68rem; color:#8b9ab5; font-weight:700; }
     .ctxm-grad-dot { width:13px; height:13px; border-radius:3px; border:1px solid #333; flex-shrink:0; }
+    /* ===== CHART SETTINGS MODAL (TradingView-style) ===== */
+    #chartSettingsOverlay {
+      position:fixed; inset:0; z-index:10000; display:none;
+      background:rgba(0,0,0,.55); align-items:center; justify-content:center;
+    }
+    #chartSettingsOverlay.open { display:flex; }
+    .cst-modal {
+      width:640px; max-width:94vw; height:560px; max-height:88vh;
+      background:#1a1d26; border-radius:10px; box-shadow:0 20px 60px rgba(0,0,0,.7);
+      display:flex; flex-direction:column; overflow:hidden;
+      font-family:'Heebo',sans-serif; direction:ltr; color:#d1d4dc;
+    }
+    .cst-header { display:flex; align-items:center; justify-content:space-between; padding:.85rem 1.1rem; border-bottom:1px solid #2a2e39; flex-shrink:0; }
+    .cst-title { font-size:1.05rem; font-weight:700; color:#fff; }
+    .cst-close { background:transparent; border:none; color:#8b9ab5; font-size:1rem; cursor:pointer; line-height:1; padding:.2rem; }
+    .cst-close:hover { color:#ef5350; }
+    .cst-body { flex:1; display:flex; min-height:0; }
+    .cst-nav { width:170px; flex-shrink:0; border-right:1px solid #2a2e39; padding:.5rem; overflow-y:auto; }
+    .cst-nav-item {
+      display:flex; align-items:center; gap:.55rem; padding:.5rem .6rem; border-radius:6px;
+      font-size:.82rem; font-weight:600; color:#b2b5be; cursor:pointer; transition:background .12s,color .12s;
+    }
+    .cst-nav-item:hover { background:#22252f; color:#fff; }
+    .cst-nav-item.active { background:#2a2e39; color:#fff; }
+    .cst-nav-ic { width:18px; text-align:center; flex-shrink:0; font-size:.85rem; }
+    .cst-content { flex:1; overflow-y:auto; padding:1rem 1.2rem; }
+    .cst-pane { display:none; flex-direction:column; gap:.2rem; }
+    .cst-pane.active { display:flex; }
+    .cst-empty { color:#5b6577; font-size:.82rem; padding:2rem 0; text-align:center; }
+    .cst-section-hdr { font-size:.68rem; font-weight:800; color:#787b86; text-transform:uppercase; letter-spacing:.6px; margin:.9rem 0 .5rem; }
+    .cst-section-hdr:first-child { margin-top:0; }
+    .cst-row { display:flex; align-items:flex-start; gap:.6rem; padding:.4rem 0; cursor:pointer; }
+    .cst-row-sub { margin-inline-start:1.7rem; }
+    .cst-chk {
+      width:16px; height:16px; border-radius:3px; border:1px solid #4a4e5a; background:transparent;
+      flex-shrink:0; margin-top:1px; display:flex; align-items:center; justify-content:center;
+      font-size:.68rem; color:#fff; transition:all .12s;
+    }
+    .cst-row.checked .cst-chk { background:#2962ff; border-color:#2962ff; }
+    .cst-row.checked .cst-chk::after { content:'✓'; }
+    .cst-row-txt { flex:1; }
+    .cst-row-label { font-size:.82rem; font-weight:600; color:#d1d4dc; display:flex; align-items:center; gap:.35rem; }
+    .cst-info-ic { color:#5b6577; font-size:.72rem; cursor:help; }
+    .cst-row-desc { font-size:.72rem; color:#787b86; margin-top:.15rem; line-height:1.4; }
+    .cst-inline-ctrl { display:flex; align-items:center; gap:.6rem; margin-top:.4rem; }
+    .cst-inline-ctrl input[type="range"] { width:100px; accent-color:#2962ff; }
+    .cst-select {
+      background:#0e1015; border:1px solid #3a3e4a; color:#d1d4dc; border-radius:5px;
+      padding:.28rem .5rem; font-size:.74rem; font-family:'Heebo',sans-serif; cursor:pointer;
+    }
+    .cst-sub-row { display:flex; align-items:center; justify-content:space-between; margin-inline-start:1.7rem; padding:.3rem 0; }
+    .cst-footer {
+      display:flex; align-items:center; justify-content:space-between; padding:.7rem 1.1rem;
+      border-top:1px solid #2a2e39; flex-shrink:0;
+    }
+    .cst-tpl { font-size:.78rem; color:#8b9ab5; cursor:pointer; }
+    .cst-footer-btns { display:flex; gap:.55rem; }
+    .cst-btn { border-radius:6px; padding:.4rem 1.1rem; font-size:.8rem; font-weight:700; cursor:pointer; font-family:'Heebo',sans-serif; border:1px solid transparent; }
+    .cst-btn-ghost { background:transparent; border-color:#3a3e4a; color:#d1d4dc; }
+    .cst-btn-ghost:hover { border-color:#8b9ab5; }
+    .cst-btn-primary { background:#2962ff; color:#fff; }
+    .cst-btn-primary:hover { opacity:.9; }
     /* MA INDICATOR PANEL */
     .ma-list { display:flex; flex-direction:column; padding:.35rem .45rem; gap:.18rem; }
     .ma-item { display:flex; align-items:center; gap:.55rem; padding:.32rem .5rem; border-radius:7px; cursor:default; }
@@ -1731,27 +1794,150 @@
     </main>
   </div>
 </div>
-<script src="scanner-symbols.js?v=20260918h"></script>
-<script src="main.js?v=20260918h"></script>
-<script src="drawing.js?v=20260918h"></script>
-<script src="features.js?v=20260918h"></script>
+<script src="scanner-symbols.js?v=20260918i"></script>
+<script src="main.js?v=20260918i"></script>
+<script src="drawing.js?v=20260918i"></script>
+<script src="features.js?v=20260918i"></script>
 
-<!-- CHART RIGHT-CLICK CONTEXT MENU -->
-<div id="chartCtxMenu">
-  <!-- CANVAS SECTION -->
-  <div class="ctxm-header">רקע גרף</div>
-  <div class="ctxm-tabs">
-    <button class="ctxm-tab active" id="ctxTabSolid">צבע אחיד</button>
-    <button class="ctxm-tab" id="ctxTabGrad">Gradient</button>
-  </div>
-  <div id="ctxSolidPanel">
-    <div class="ctxm-colors" id="ctxSolidColors"></div>
-  </div>
-  <div id="ctxGradPanel" style="display:none">
-    <div class="ctxm-grad-row"><div class="ctxm-grad-dot" id="ctxGradTopDot" style="background:#0f1117"></div><span>צבע עליון</span></div>
-    <div class="ctxm-colors" id="ctxGradTopColors"></div>
-    <div class="ctxm-grad-row"><div class="ctxm-grad-dot" id="ctxGradBotDot" style="background:#1a1f2e"></div><span>צבע תחתון</span></div>
-    <div class="ctxm-colors" id="ctxGradBotColors"></div>
+<!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
+<div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
+  <div class="cst-modal" onclick="event.stopPropagation()">
+    <div class="cst-header">
+      <span class="cst-title">Settings</span>
+      <button class="cst-close" onclick="closeChartSettings()">✕</button>
+    </div>
+    <div class="cst-body">
+      <div class="cst-nav">
+        <div class="cst-nav-item" data-tab="symbol" onclick="switchSettingsTab('symbol')"><span class="cst-nav-ic">📈</span>Symbol</div>
+        <div class="cst-nav-item" data-tab="statusline" onclick="switchSettingsTab('statusline')"><span class="cst-nav-ic">≡</span>Status line</div>
+        <div class="cst-nav-item" data-tab="scales" onclick="switchSettingsTab('scales')"><span class="cst-nav-ic">⤢</span>Scales and lines</div>
+        <div class="cst-nav-item" data-tab="canvas" onclick="switchSettingsTab('canvas')"><span class="cst-nav-ic">✏️</span>Canvas</div>
+        <div class="cst-nav-item" data-tab="trading" onclick="switchSettingsTab('trading')"><span class="cst-nav-ic">📶</span>Trading</div>
+        <div class="cst-nav-item" data-tab="alerts" onclick="switchSettingsTab('alerts')"><span class="cst-nav-ic">⏰</span>Alerts</div>
+        <div class="cst-nav-item" data-tab="events" onclick="switchSettingsTab('events')"><span class="cst-nav-ic">📅</span>Events</div>
+      </div>
+      <div class="cst-content">
+        <div class="cst-pane" data-pane="symbol"><div class="cst-empty">אין הגדרות זמינות כאן כרגע</div></div>
+        <div class="cst-pane" data-pane="statusline"><div class="cst-empty">אין הגדרות זמינות כאן כרגע</div></div>
+        <div class="cst-pane" data-pane="scales"><div class="cst-empty">אין הגדרות זמינות כאן כרגע</div></div>
+
+        <!-- CANVAS TAB — background color picker (moved from the old right-click menu) -->
+        <div class="cst-pane" data-pane="canvas">
+          <div class="ctxm-header" style="padding:0 0 .4rem;border-bottom:none">רקע גרף</div>
+          <div class="ctxm-tabs">
+            <button class="ctxm-tab active" id="ctxTabSolid">צבע אחיד</button>
+            <button class="ctxm-tab" id="ctxTabGrad">Gradient</button>
+          </div>
+          <div id="ctxSolidPanel">
+            <div class="ctxm-colors" id="ctxSolidColors"></div>
+          </div>
+          <div id="ctxGradPanel" style="display:none">
+            <div class="ctxm-grad-row"><div class="ctxm-grad-dot" id="ctxGradTopDot" style="background:#0f1117"></div><span>צבע עליון</span></div>
+            <div class="ctxm-colors" id="ctxGradTopColors"></div>
+            <div class="ctxm-grad-row"><div class="ctxm-grad-dot" id="ctxGradBotDot" style="background:#1a1f2e"></div><span>צבע תחתון</span></div>
+            <div class="ctxm-colors" id="ctxGradBotColors"></div>
+          </div>
+        </div>
+
+        <!-- TRADING TAB — matches the TradingView "Settings > Trading" reference design -->
+        <div class="cst-pane active" data-pane="trading">
+          <div class="cst-section-hdr">General</div>
+          <div class="cst-row" id="cstRow_buySellBtns" onclick="cstToggle('buySellBtns')">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">Buy/sell buttons</div>
+              <div class="cst-row-desc">Displays buy and sell buttons directly on the chart</div>
+            </div>
+          </div>
+          <div class="cst-row" id="cstRow_oneTap" onclick="cstToggle('oneTap')">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">One-tap trading <span class="cst-info-ic" title="Instantly place, edit, cancel orders, or close positions without confirmation">ⓘ</span></div>
+              <div class="cst-row-desc">Instantly place, edit, cancel orders, or close positions without confirmation</div>
+            </div>
+          </div>
+          <div class="cst-row checked" id="cstRow_execSound" onclick="cstToggle('execSound')">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">Execution sound</div>
+              <div class="cst-inline-ctrl" onclick="event.stopPropagation()">
+                <span>🔊</span>
+                <input type="range" min="0" max="100" value="70" id="cstVolumeRange">
+                <select class="cst-select" id="cstSoundSelect">
+                  <option>Alarm Clock</option>
+                  <option>Bell</option>
+                  <option>Chime</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="cst-row" id="cstRow_rejectOnly" onclick="cstToggle('rejectOnly')">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">Show only rejection notifications</div>
+            </div>
+          </div>
+
+          <div class="cst-section-hdr">Appearance</div>
+          <div class="cst-row checked" id="cstRow_positionsOrders" onclick="cstToggle('positionsOrders')">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">Positions and orders <span class="cst-info-ic" title="Show open positions and orders on the chart">ⓘ</span></div>
+            </div>
+          </div>
+          <div class="cst-row checked cst-row-sub" id="cstRow_reversePos" onclick="cstToggle('reversePos')">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">Reverse position button</div>
+              <div class="cst-row-desc">Adds the reverse button next to the open position on the chart</div>
+            </div>
+          </div>
+          <div class="cst-row" id="cstRow_projectOrder" onclick="cstToggle('projectOrder')">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">Project order for market orders</div>
+              <div class="cst-row-desc">Shows a project order on the chart before sending a market order</div>
+            </div>
+          </div>
+          <div class="cst-row checked" id="cstRow_pnlValue" onclick="cstToggle('pnlValue')">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">Profit and loss value <span class="cst-info-ic" title="Show open P&L on positions and brackets">ⓘ</span></div>
+            </div>
+          </div>
+          <div class="cst-sub-row">
+            <div class="cst-row checked" style="padding:0" id="cstRow_pnlPositions" onclick="cstToggle('pnlPositions')">
+              <div class="cst-chk"></div>
+              <div class="cst-row-txt"><div class="cst-row-label">Positions</div></div>
+            </div>
+            <select class="cst-select"><option>Money</option><option>Percent</option><option>Pips</option></select>
+          </div>
+          <div class="cst-sub-row">
+            <div class="cst-row checked" style="padding:0" id="cstRow_pnlBrackets" onclick="cstToggle('pnlBrackets')">
+              <div class="cst-chk"></div>
+              <div class="cst-row-txt"><div class="cst-row-label">Brackets</div></div>
+            </div>
+            <select class="cst-select"><option>Money</option><option>Percent</option><option>Pips</option></select>
+          </div>
+          <div class="cst-row checked" id="cstRow_execMarks" onclick="cstToggle('execMarks')">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">Execution marks <span class="cst-info-ic" title="Show buy/sell execution marks on the chart">ⓘ</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cst-pane" data-pane="alerts"><div class="cst-empty">אין הגדרות זמינות כאן כרגע</div></div>
+        <div class="cst-pane" data-pane="events"><div class="cst-empty">אין הגדרות זמינות כאן כרגע</div></div>
+      </div>
+    </div>
+    <div class="cst-footer">
+      <div class="cst-tpl">Template ▾</div>
+      <div class="cst-footer-btns">
+        <button class="cst-btn cst-btn-ghost" onclick="closeChartSettings()">Cancel</button>
+        <button class="cst-btn cst-btn-primary" onclick="closeChartSettings()">Ok</button>
+      </div>
+    </div>
   </div>
 </div>
 

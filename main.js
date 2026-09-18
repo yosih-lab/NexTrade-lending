@@ -1010,9 +1010,8 @@ function _saveBgPref() {
 }
 
 function initChartContextMenu() {
-  var menu    = document.getElementById('chartCtxMenu');
   var chartEl = document.getElementById('chart');
-  if (!menu || !chartEl) return;
+  if (!chartEl) return;
 
   function applyBg() {
     if (!chartInstance) return;
@@ -1059,29 +1058,32 @@ function initChartContextMenu() {
     _ctxBgMode = 'gradient';
   });
 
+  cstApplyInitialState();
+
   chartEl.addEventListener('contextmenu', function(e) {
     e.preventDefault();
-    var x = e.clientX, y = e.clientY;
-    // Hide inline form on new open
-    var ctxForm = document.getElementById('ctxAlertForm');
-    if (ctxForm) ctxForm.style.display = 'none';
-    // Reset positioning
-    menu.style.left = ''; menu.style.right = ''; menu.style.top = ''; menu.style.bottom = '';
-    // Show temporarily to measure height
-    menu.style.visibility = 'hidden'; menu.classList.add('open');
-    var mw = menu.offsetWidth  || 190;
-    var mh = menu.offsetHeight || 300;
-    menu.classList.remove('open'); menu.style.visibility = '';
-    // Position exactly at click point, flip if near edge
-    if (x + mw + 4 > window.innerWidth)  menu.style.left = (x - mw) + 'px';
-    else                                   menu.style.left = x + 'px';
-    if (y + mh + 4 > window.innerHeight)  menu.style.top  = (y - mh) + 'px';
-    else                                   menu.style.top  = y + 'px';
-    menu.classList.add('open');
+    var series = candleSeries || lineSeries;
+    if (series) {
+      try {
+        var chartRect = chartEl.getBoundingClientRect();
+        var priceAtClick = series.coordinateToPrice(e.clientY - chartRect.top);
+        if (priceAtClick != null && isFinite(priceAtClick)) _crosshairAlertPrice = priceAtClick;
+      } catch (err) {}
+    }
+    openChartCtxMenuAt(e.clientX, e.clientY);
   });
 
-  document.addEventListener('click', function() { menu.classList.remove('open'); });
-  menu.addEventListener('click', function(e) { e.stopPropagation(); });
+  // Alt+R / Alt+A / Alt+Shift+B / Alt+Shift+S / Shift+T / Alt+H chart shortcuts
+  document.addEventListener('keydown', function(e) {
+    var tag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (e.altKey && !e.shiftKey && (e.key === 'r' || e.key === 'R')) { ctxResetView(); e.preventDefault(); }
+    else if (e.altKey && !e.shiftKey && (e.key === 'a' || e.key === 'A')) { crosshairMenuAddAlert(false); e.preventDefault(); }
+    else if (e.altKey && e.shiftKey && (e.key === 'b' || e.key === 'B')) { crosshairMenuOrder('long', 'stop'); e.preventDefault(); }
+    else if (e.altKey && e.shiftKey && (e.key === 's' || e.key === 'S')) { crosshairMenuOrder('short', 'limit'); e.preventDefault(); }
+    else if (!e.altKey && e.shiftKey && (e.key === 't' || e.key === 'T')) { crosshairMenuShowOrderForm(); e.preventDefault(); }
+    else if (e.altKey && !e.shiftKey && (e.key === 'h' || e.key === 'H')) { crosshairMenuDrawHLine(); e.preventDefault(); }
+  });
 }
 
 // ============================================
@@ -1195,6 +1197,7 @@ function openCrosshairAlertPopup() {
   if (!popup || !btn) return;
   var list = document.getElementById('crosshairMenuList');
   var form = document.getElementById('crosshairOrderForm');
+  _crosshairMenuMode = 'short';
   if (list) { list.innerHTML = buildCrosshairMenuHtml(); list.style.display = 'flex'; }
   if (form) form.style.display = 'none';
   // Position popup near the button
@@ -1266,7 +1269,10 @@ function crosshairMenuBackToList() {
   var list = document.getElementById('crosshairMenuList');
   var form = document.getElementById('crosshairOrderForm');
   if (form) form.style.display = 'none';
-  if (list) { list.innerHTML = buildCrosshairMenuHtml(); list.style.display = 'flex'; }
+  if (list) {
+    list.innerHTML = _crosshairMenuMode === 'full' ? buildChartCtxMenuHtml() : buildCrosshairMenuHtml();
+    list.style.display = 'flex';
+  }
 }
 
 function crosshairMenuDrawHLine() {
@@ -1277,6 +1283,162 @@ function crosshairMenuDrawHLine() {
   }
   closeCrosshairAlertPopup();
   showCrosshairBanner('✅ קו אופקי צויר במחיר ' + formatPrice(price));
+}
+
+// ============================================
+//   CHART RIGHT-CLICK FULL CONTEXT MENU
+// ============================================
+var _crosshairMenuMode = 'short'; // 'short' (from the chart '+' button) | 'full' (from right-click)
+var _ctxLockCursor = false;
+
+function buildChartCtxMenuHtml() {
+  var sym = (currentSymbol || '').replace('.TA', '');
+  var price = (_crosshairAlertPrice && isFinite(_crosshairAlertPrice)) ? parseFloat(_crosshairAlertPrice.toFixed(2)) : null;
+  var priceTxt = price != null ? formatPrice(price) : '';
+  var drawCount = (window.NTDraw && typeof window.NTDraw.shapeCount === 'function') ? window.NTDraw.shapeCount() : 0;
+  var indCount = Object.keys(maActive).filter(function(p) { return maActive[p]; }).length;
+  return ''
+    + '<div class="cm-item" onclick="ctxResetView()"><span class="cm-ic">↺</span><span class="cm-txt">איפוס תצוגת גרף</span><span class="cm-key">Alt+R</span></div>'
+    + '<div class="cm-item" onclick="ctxCopyPrice()"><span class="cm-ic"></span><span class="cm-txt">העתק מחיר' + (priceTxt ? (' ' + priceTxt) : '') + '</span></div>'
+    + '<div class="cm-item" onclick="ctxPaste()"><span class="cm-ic"></span><span class="cm-txt">הדבק</span><span class="cm-key">Ctrl+V</span></div>'
+    + '<div class="cm-sep"></div>'
+    + '<div class="cm-item" onclick="crosshairMenuAddAlert(false)"><span class="cm-ic">🔔</span><span class="cm-txt">הוסף התראה על ' + sym + ' במחיר ' + priceTxt + '…</span><span class="cm-key">Alt+A</span></div>'
+    + '<div class="cm-item" onclick="crosshairMenuOrder(\'short\',\'limit\')"><span class="cm-ic cm-sell">⌄</span><span class="cm-txt">מכור 1 ' + sym + ' ב-' + priceTxt + ' לימיט</span><span class="cm-key">Alt+Shift+S</span></div>'
+    + '<div class="cm-item" onclick="crosshairMenuOrder(\'long\',\'stop\')"><span class="cm-ic cm-buy">⌃</span><span class="cm-txt">קנה 1 ' + sym + ' ב-' + priceTxt + ' סטופ</span><span class="cm-key">Alt+Shift+B</span></div>'
+    + '<div class="cm-item" onclick="crosshairMenuShowOrderForm()"><span class="cm-ic">✎</span><span class="cm-txt">הוסף פקודה על ' + sym + ' במחיר ' + priceTxt + '…</span><span class="cm-key">Shift+T</span></div>'
+    + '<div class="cm-sep"></div>'
+    + '<div class="cm-item" onclick="ctxToggleLockCursor()"><span class="cm-ic cm-check">' + (_ctxLockCursor ? '✓' : '') + '</span><span class="cm-txt">נעל קו סמן אנכי לפי זמן</span></div>'
+    + '<div class="cm-sep"></div>'
+    + '<div class="cm-item" onclick="ctxStub()"><span class="cm-ic"></span><span class="cm-txt">תצוגת טבלה</span></div>'
+    + '<div class="cm-item" onclick="ctxStub()"><span class="cm-ic"></span><span class="cm-txt">עץ אובייקטים</span></div>'
+    + '<div class="cm-item" onclick="ctxStub()"><span class="cm-ic"></span><span class="cm-txt">תבנית גרף</span><span class="cm-key">›</span></div>'
+    + '<div class="cm-sep"></div>'
+    + '<div class="cm-item" onclick="ctxRemoveDrawings()"><span class="cm-ic">🗑</span><span class="cm-txt">הסר ' + drawCount + ' ציורים</span></div>'
+    + '<div class="cm-item" onclick="ctxRemoveIndicators()"><span class="cm-ic">🗑</span><span class="cm-txt">הסר ' + indCount + ' אינדיקטורים</span></div>'
+    + '<div class="cm-sep"></div>'
+    + '<div class="cm-item" onclick="ctxOpenSettings()"><span class="cm-ic">⚙</span><span class="cm-txt">הגדרות...</span></div>';
+}
+
+function openChartCtxMenuAt(clientX, clientY) {
+  var popup = document.getElementById('crosshairAlertPopup');
+  var list  = document.getElementById('crosshairMenuList');
+  var form  = document.getElementById('crosshairOrderForm');
+  if (!popup || !list) return;
+  _crosshairMenuMode = 'full';
+  list.innerHTML = buildChartCtxMenuHtml();
+  list.style.display = 'flex';
+  if (form) form.style.display = 'none';
+  var wrap = document.querySelector('.chart-wrap');
+  if (!wrap) return;
+  var wrapRect = wrap.getBoundingClientRect();
+  var mw = 270, approxH = 480;
+  var left = clientX - wrapRect.left;
+  var top  = clientY - wrapRect.top;
+  if (left + mw > wrapRect.width)      left = Math.max(4, wrapRect.width - mw - 4);
+  if (top + approxH > wrapRect.height) top  = Math.max(4, wrapRect.height - approxH - 4);
+  popup.style.left = left + 'px';
+  popup.style.top  = top + 'px';
+  popup.style.display = 'block';
+}
+
+function ctxResetView() {
+  closeCrosshairAlertPopup();
+  if (chartInstance) { try { chartInstance.timeScale().fitContent(); } catch (e) {} }
+}
+
+function ctxCopyPrice() {
+  var price = (_crosshairAlertPrice && isFinite(_crosshairAlertPrice)) ? _crosshairAlertPrice : null;
+  closeCrosshairAlertPopup();
+  if (price == null) return;
+  var txt = String(parseFloat(price.toFixed(5)));
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).catch(function() {});
+  }
+  showCrosshairBanner('📋 המחיר ' + txt + ' הועתק');
+}
+
+function ctxPaste() {
+  closeCrosshairAlertPopup();
+  showCrosshairBanner('ℹ️ פעולת הדבקה אינה נתמכת כרגע');
+}
+
+function ctxToggleLockCursor() {
+  _ctxLockCursor = !_ctxLockCursor;
+  crosshairMenuBackToList();
+}
+
+function ctxStub() {
+  closeCrosshairAlertPopup();
+  showCrosshairBanner('🔧 האפשרות הזו תהיה זמינה בקרוב');
+}
+
+function ctxRemoveDrawings() {
+  closeCrosshairAlertPopup();
+  if (!(window.NTDraw && typeof window.NTDraw.shapeCount === 'function')) return;
+  var n = window.NTDraw.shapeCount();
+  if (!n) return;
+  if (confirm('להסיר את כל ' + n + ' הציורים מהגרף?')) {
+    window.NTDraw.clearAllShapes();
+    showCrosshairBanner('🗑️ הציורים הוסרו');
+  }
+}
+
+function ctxRemoveIndicators() {
+  closeCrosshairAlertPopup();
+  var removed = 0;
+  MA_CONFIGS.forEach(function(cfg) {
+    if (maActive[cfg.period]) { toggleMA(cfg.period); removed++; }
+  });
+  if (removed) showCrosshairBanner('🗑️ ' + removed + ' אינדיקטורים הוסרו');
+}
+
+function ctxOpenSettings() {
+  closeCrosshairAlertPopup();
+  var overlay = document.getElementById('chartSettingsOverlay');
+  if (!overlay) return;
+  overlay.classList.add('open');
+  switchSettingsTab('trading');
+}
+
+function closeChartSettings() {
+  var overlay = document.getElementById('chartSettingsOverlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
+function switchSettingsTab(tab) {
+  document.querySelectorAll('.cst-nav-item').forEach(function(el) {
+    el.classList.toggle('active', el.getAttribute('data-tab') === tab);
+  });
+  document.querySelectorAll('.cst-pane').forEach(function(el) {
+    el.classList.toggle('active', el.getAttribute('data-pane') === tab);
+  });
+}
+
+// ---- Settings > Trading tab toggles (persisted, visual state only) ----
+var CST_DEFAULTS = {
+  buySellBtns: false, oneTap: false, execSound: true, rejectOnly: false,
+  positionsOrders: true, reversePos: true, projectOrder: false,
+  pnlValue: true, pnlPositions: true, pnlBrackets: true, execMarks: true
+};
+var CST_SETTINGS = (function() {
+  try { return JSON.parse(localStorage.getItem('nt_chart_trade_settings') || '{}'); } catch (e) { return {}; }
+})();
+
+function cstToggle(key) {
+  var cur = CST_SETTINGS[key] != null ? CST_SETTINGS[key] : CST_DEFAULTS[key];
+  var next = !cur;
+  CST_SETTINGS[key] = next;
+  localStorage.setItem('nt_chart_trade_settings', JSON.stringify(CST_SETTINGS));
+  var row = document.getElementById('cstRow_' + key);
+  if (row) row.classList.toggle('checked', next);
+}
+
+function cstApplyInitialState() {
+  Object.keys(CST_DEFAULTS).forEach(function(key) {
+    var val = CST_SETTINGS[key] != null ? CST_SETTINGS[key] : CST_DEFAULTS[key];
+    var row = document.getElementById('cstRow_' + key);
+    if (row) row.classList.toggle('checked', val);
+  });
 }
 
 function crosshairAddAlert() {
@@ -1936,23 +2098,6 @@ function saveEmailJSConfig() {
   document.getElementById('alertEmailJSForm').style.display = 'none';
 }
 
-function ctxAddAlert() {
-  var price = parseFloat(document.getElementById('ctxAlertPriceInp').value);
-  var cond  = document.getElementById('ctxAlertCond').value;
-  var email = (document.getElementById('ctxAlertEmail').value || '').trim().toLowerCase();
-  var sym   = currentSymbol;
-  if (!sym || !price || isNaN(price)) return;
-  alerts.push({ symbol: sym, condition: cond, price: price, email: email || null });
-  localStorage.setItem('ml_alerts', JSON.stringify(alerts));
-  renderAlerts();
-  // Close menu and show quick confirmation
-  document.getElementById('chartCtxMenu').classList.remove('open');
-  var banner = document.createElement('div');
-  banner.textContent = '✅ התראה נוספה: ' + sym + ' ' + (cond === 'above' ? 'מעל' : 'מתחת') + ' ' + formatPrice(price);
-  banner.style.cssText = 'position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#0a3020;border:1px solid #26a69a;color:#26a69a;padding:.4rem 1rem;border-radius:8px;font-size:.78rem;z-index:9999;font-family:Heebo,sans-serif;';
-  document.body.appendChild(banner);
-  setTimeout(function() { banner.remove(); }, 2500);
-}
 
 var _alertFired = {};  // track already-sent alerts to avoid spam
 

@@ -341,17 +341,19 @@
     var isLong = s.dir === 'long';
     var qty = s.qty || 1;
     var R = 6;
-    var tpCol = s.tpColor || '#26a69a';
-    var slCol = s.slColor || '#ef5350';
-    var tpOpa = s.tpOpacity != null ? s.tpOpacity : 0.22;
-    var slOpa = s.slOpacity != null ? s.slOpacity : 0.22;
+    var LABEL_GREEN = '#1e7d3a';
+    var LABEL_RED   = '#b32828';
+    var tpCol = s.tpColor || '#1e7d3a';
+    var slCol = s.slColor || '#b32828';
+    var tpOpa = s.tpOpacity != null ? s.tpOpacity : 0.55;
+    var slOpa = s.slOpacity != null ? s.slOpacity : 0.55;
 
     // ---- Profit zone (clean — no labels inside) ----
     var tpTop = Math.min(yE, yTP), tpBot = Math.max(yE, yTP);
     ctx.save();
     ctx.globalAlpha = tpOpa;
     ctx.fillStyle = tpCol;
-    roundRect(ctx, x1, tpTop, boxW, tpBot - tpTop, isLong ? {tl:R,tr:R,bl:0,br:0} : {tl:0,tr:0,bl:R,br:R});
+    roundRect(ctx, x1, tpTop, boxW, tpBot - tpTop, isLong ? {tl:0,tr:0,bl:0,br:0} : {tl:0,tr:0,bl:R,br:R});
     ctx.fill();
     ctx.globalAlpha = 1;
 
@@ -359,120 +361,98 @@
     var slTop = Math.min(yE, ySL), slBot = Math.max(yE, ySL);
     ctx.globalAlpha = slOpa;
     ctx.fillStyle = slCol;
-    roundRect(ctx, x1, slTop, boxW, slBot - slTop, isLong ? {tl:0,tr:0,bl:R,br:R} : {tl:R,tr:R,bl:0,br:0});
+    roundRect(ctx, x1, slTop, boxW, slBot - slTop, isLong ? {tl:0,tr:0,bl:R,br:R} : {tl:0,tr:0,bl:0,br:0});
     ctx.fill();
     ctx.globalAlpha = 1;
 
     // ---- Border outline ----
     var totalTop = Math.min(tpTop, slTop), totalBot = Math.max(tpBot, slBot);
-    ctx.strokeStyle = isLong ? '#26a69a' : '#ef5350';
+    ctx.strokeStyle = isLong ? LABEL_GREEN : LABEL_RED;
     ctx.lineWidth = 1;
     ctx.setLineDash([]);
-    roundRect(ctx, x1, totalTop, boxW, totalBot - totalTop, {tl:R,tr:R,bl:R,br:R});
+    roundRect(ctx, x1, totalTop, boxW, totalBot - totalTop, {tl:0,tr:0,bl:R,br:R});
     ctx.stroke();
 
     // ---- Entry line ----
-    ctx.strokeStyle = isLong ? '#2962ff' : '#e040fb';
+    ctx.strokeStyle = '#e8d43a';
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(x1, yE); ctx.lineTo(x2, yE); ctx.stroke();
 
     // ---- TP line ----
-    ctx.strokeStyle = '#26a69a'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
+    ctx.strokeStyle = LABEL_GREEN; ctx.lineWidth = 1; ctx.setLineDash([]);
     ctx.beginPath(); ctx.moveTo(x1, yTP); ctx.lineTo(x2, yTP); ctx.stroke();
 
     // ---- SL line ----
-    ctx.strokeStyle = '#ef5350';
+    ctx.strokeStyle = LABEL_RED;
     ctx.beginPath(); ctx.moveTo(x1, ySL); ctx.lineTo(x2, ySL); ctx.stroke();
     ctx.setLineDash([]);
 
     // ---- Calculations ----
-    var profitPct = ((s.tp - s.entry) / s.entry * 100);
-    var lossPct   = ((s.sl - s.entry) / s.entry * 100);
-    if (!isLong) { profitPct = -profitPct; lossPct = -lossPct; }
-    var profitAbs = Math.abs(s.tp - s.entry) * qty;
-    var lossAbs   = Math.abs(s.sl - s.entry) * qty;
-    var risk = Math.abs(s.entry - s.sl), reward = Math.abs(s.tp - s.entry);
-    var rr = risk > 0 ? (reward / risk).toFixed(2) : '∞';
+    var rewardDelta = Math.abs(s.tp - s.entry);
+    var riskDelta   = Math.abs(s.sl - s.entry);
+    var profitPct = (rewardDelta / s.entry * 100);
+    var lossPct   = (riskDelta / s.entry * 100);
+    var profitAbs = rewardDelta * qty;
+    var lossAbs   = riskDelta * qty;
+    var rewardPts = rewardDelta * 100;
+    var riskPts   = riskDelta * 100;
+    var rr = riskDelta > 0 ? (rewardDelta / riskDelta).toFixed(2) : '∞';
+    var livePrice = (window.priceCache && window.priceCache[window.currentSymbol]) ? window.priceCache[window.currentSymbol].price : s.entry;
+    var openPnl = (livePrice - s.entry) * (isLong ? 1 : -1);
 
-    var isTASE = (window.currentSymbol || '').endsWith('.TA');
-    var curr = isTASE ? '₪' : '$';
-
-    // ---- GREEN INFO BOX — ABOVE the bar (profit info) ----
-    var greenBoxH = 36;
-    var greenBoxY = (isLong ? tpTop : slTop) - greenBoxH - 6;
-    var greenBoxPad = 8;
-    ctx.fillStyle = 'rgba(38,166,154,0.92)';
-    roundRect(ctx, x1, greenBoxY, boxW, greenBoxH, {tl:5,tr:5,bl:5,br:5});
+    // ---- TARGET label bar — solid green, attached to top of profit zone ----
+    var targetBoxH = 22;
+    var targetBoxY = tpTop - targetBoxH;
+    ctx.fillStyle = LABEL_GREEN;
+    roundRect(ctx, x1, targetBoxY, boxW, targetBoxH, {tl:6,tr:6,bl:0,br:0});
     ctx.fill();
-    ctx.font = '700 11px Heebo, sans-serif';
-    ctx.fillStyle = '#ffffff';
-    ctx.textBaseline = 'middle';
-    var tpPriceText = curr + (s.entry + profitAbs / qty).toFixed(2);
-    var tpPctText = '+' + profitPct.toFixed(2) + '%  (+' + curr + profitAbs.toFixed(2) + ')';
-    ctx.fillText(tpPriceText, x1 + greenBoxPad, greenBoxY + 11);
-    ctx.font = '600 10px Heebo, sans-serif';
-    ctx.fillText(tpPctText, x1 + greenBoxPad, greenBoxY + 26);
-
-    // ---- RED INFO BOX — BELOW the bar (loss info) ----
-    var redBoxH = 36;
-    var redBoxY = (isLong ? slBot : tpBot) + 6;
-    var redBoxPad = 8;
-    ctx.fillStyle = 'rgba(239,83,80,0.92)';
-    roundRect(ctx, x1, redBoxY, boxW, redBoxH, {tl:5,tr:5,bl:5,br:5});
-    ctx.fill();
-    ctx.font = '700 11px Heebo, sans-serif';
-    ctx.fillStyle = '#ffffff';
-    ctx.textBaseline = 'middle';
-    var slPriceText = curr + (s.entry - lossAbs / qty).toFixed(2);
-    var slPctText = lossPct.toFixed(2) + '%  (-' + curr + lossAbs.toFixed(2) + ')';
-    ctx.fillText(slPriceText, x1 + redBoxPad, redBoxY + 11);
-    ctx.font = '600 10px Heebo, sans-serif';
-    ctx.fillText(slPctText, x1 + redBoxPad, redBoxY + 26);
-
-    // ---- Entry badge (right-aligned on entry line) ----
-    var dirLabel = isLong ? '▲ Long' : '▼ Short';
-    var entryLabel = dirLabel + '  ' + fmtPrice(s.entry);
-    ctx.font = '700 11px Heebo, sans-serif';
-    var entryW = ctx.measureText(entryLabel).width;
-    var badgePad = 7;
-    var badgeX = x2 - entryW - badgePad * 2;
-    var badgeY = yE - 12;
-    var badgeH = 20;
-    ctx.fillStyle = isLong ? 'rgba(38,166,154,.92)' : 'rgba(239,83,80,.92)';
-    roundRect(ctx, badgeX, badgeY, entryW + badgePad * 2, badgeH, {tl:4,tr:4,bl:4,br:4});
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.fillText(entryLabel, badgeX + badgePad, badgeY + badgeH / 2);
-
-    // ---- R:R badge (left-aligned on entry line) ----
     ctx.font = '700 10px Heebo, sans-serif';
-    var rrLabel = 'R:R ' + rr;
-    var rrW = ctx.measureText(rrLabel).width;
-    ctx.fillStyle = 'rgba(255,255,255,.12)';
-    roundRect(ctx, x1 + 6, yE + 4, rrW + 10, 17, {tl:3,tr:3,bl:3,br:3});
-    ctx.fill();
-    ctx.fillStyle = '#f5a623';
-    ctx.fillText(rrLabel, x1 + 11, yE + 13);
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    var targetText = 'Target: ' + rewardDelta.toFixed(5) + ' (' + profitPct.toFixed(3) + '%) ' + rewardPts.toFixed(1) + ', Amount: ' + profitAbs.toFixed(2);
+    ctx.fillText(targetText, x1 + boxW / 2, targetBoxY + targetBoxH / 2);
 
-    // ---- Qty badge ----
-    if (qty > 1) {
-      ctx.font = '600 9px Heebo, sans-serif';
-      var qLabel = 'Qty: ' + qty;
-      ctx.fillStyle = 'rgba(255,255,255,.07)';
-      var qw = ctx.measureText(qLabel).width;
-      roundRect(ctx, x2 - qw - 14, yE + 4, qw + 10, 16, {tl:3,tr:3,bl:3,br:3});
-      ctx.fill();
-      ctx.fillStyle = '#aaa';
-      ctx.fillText(qLabel, x2 - qw - 9, yE + 13);
-    }
+    // ---- OPEN PNL label — solid red, straddling the entry line ----
+    var pnlBoxH = 30;
+    var pnlBoxY = yE - pnlBoxH / 2;
+    ctx.fillStyle = LABEL_RED;
+    roundRect(ctx, x1, pnlBoxY, boxW, pnlBoxH, {tl:4,tr:4,bl:4,br:4});
+    ctx.fill();
+    ctx.font = '700 10px Heebo, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    var pnlLine1 = 'Open PnL: ' + (openPnl >= 0 ? '' : '-') + Math.abs(openPnl).toFixed(5) + ', Qty: ' + qty;
+    var pnlLine2 = 'Risk/reward ratio: ' + rr;
+    ctx.fillText(pnlLine1, x1 + boxW / 2, pnlBoxY + pnlBoxH * 0.32);
+    ctx.fillText(pnlLine2, x1 + boxW / 2, pnlBoxY + pnlBoxH * 0.72);
+
+    // ---- STOP label bar — solid red, attached to bottom of loss zone ----
+    var stopBoxH = 22;
+    var stopBoxY = slBot;
+    ctx.fillStyle = LABEL_RED;
+    roundRect(ctx, x1, stopBoxY, boxW, stopBoxH, {tl:0,tr:0,bl:6,br:6});
+    ctx.fill();
+    ctx.font = '700 10px Heebo, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    var stopText = 'Stop: ' + riskDelta.toFixed(5) + ' (' + lossPct.toFixed(3) + '%) ' + riskPts.toFixed(1) + ', Amount: ' + lossAbs.toFixed(2);
+    ctx.fillText(stopText, x1 + boxW / 2, stopBoxY + stopBoxH / 2);
+    ctx.textAlign = 'left';
 
     // ---- Price labels on right edge (like TradingView price scale) ----
-    drawPriceTag(x2, yTP, fmtPrice(s.tp), '#26a69a');
-    drawPriceTag(x2, ySL, fmtPrice(s.sl), '#ef5350');
+    drawPriceTag(x2, yTP, fmtPrice(s.tp), LABEL_GREEN);
+    drawPriceTag(x2, ySL, fmtPrice(s.sl), LABEL_RED);
+    drawPriceTag(x2, yE, fmtPrice(s.entry), '#e8d43a');
 
     // ---- Selection handles ----
     if (selected) {
       var midX = x1 + boxW / 2;
+      // Corner handles on target/stop label boxes
+      handleAt(x1, targetBoxY);
+      handleAt(x2, stopBoxY + stopBoxH);
       // Horizontal drag handles on each line (mid-point)
       handleAt(midX, yE);
       handleAt(midX, yTP);
@@ -1148,6 +1128,12 @@
     commit({ type: 'hline', p: price });
   }
 
+  // Count of current drawings / clear-all (used by the chart right-click menu).
+  function shapeCount() { return shapes.length; }
+  function clearAllShapes() {
+    shapes = []; selectedId = null; save(); hideActionBar(); scheduleDraw();
+  }
+
   // ===== expose toggle for icon toolbar =====
   function openPositionPanel() {
     ensurePositionPanel();
@@ -1291,6 +1277,8 @@
     ensure: ensureDom,
     openPositionPanel: openPositionPanel,
     addPositionAtPrice: addPositionAtPrice,
-    addHLine: addHLine
+    addHLine: addHLine,
+    shapeCount: shapeCount,
+    clearAllShapes: clearAllShapes
   };
 })();
