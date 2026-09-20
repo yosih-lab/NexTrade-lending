@@ -231,7 +231,7 @@ app.post('/api/register', async (req, res) => {
     res.json({ ok: true, message: role === 'admin' ? 'נרשמת כמנהל מערכת' : 'נרשמת בהצלחה' });
   } catch(e) {
     console.error('[NexTrade] ✗ Register error:', e.message);
-    res.status(500).json({ error: 'שגיאת שרת בעת ההרשמה' });
+    res.status(500).json({ error: 'שגיאת שרת בעת ההרשמה', detail: e.message });
   }
 });
 
@@ -256,7 +256,7 @@ app.post('/api/login', async (req, res) => {
     res.json({ token, username: user.username, role: user.role });
   } catch(e) {
     console.error('[NexTrade] ✗ Login error:', e.message);
-    res.status(500).json({ error: 'שגיאת שרת בעת ההתחברות' });
+    res.status(500).json({ error: 'שגיאת שרת בעת ההתחברות', detail: e.message });
   }
 });
 
