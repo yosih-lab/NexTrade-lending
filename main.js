@@ -175,7 +175,10 @@ function loginSuccess(user) {
   var avatarEl = document.getElementById('userAvatar');
   if (nameEl) nameEl.textContent = user.name;
   if (avatarEl) avatarEl.textContent = user.name.charAt(0).toUpperCase();
-  
+
+  var backOfficeBtn = document.getElementById('backOfficeBtn');
+  if (backOfficeBtn) backOfficeBtn.style.display = (user.role === 'admin') ? '' : 'none';
+
   console.log('[NexTrade] About to call init()...');
   // defer init so the browser finishes layout before the chart measures width.
   // Use setTimeout (fires even when tab is not focused) instead of requestAnimationFrame,
