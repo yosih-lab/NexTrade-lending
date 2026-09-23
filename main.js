@@ -88,7 +88,7 @@ function handleLogin(e) {
       // Fallback to localStorage auth
       var users = getUsers();
       var user  = users.find(function(u) { return u.email === email && u.password === password; });
-      if (!user) { errEl.textContent = (result.data.error || 'אימייל או סיסמה שגויים') + (result.data.detail ? ' — ' + result.data.detail : ''); errEl.classList.add('show'); return; }
+      if (!user) { errEl.textContent = result.data.error || 'אימייל או סיסמה שגויים'; errEl.classList.add('show'); return; }
       loginSuccess(user);
     }
   }).catch(function() {
@@ -122,7 +122,7 @@ function handleSignup(e) {
   }).then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
   .then(function(result) {
     if (!result.ok) {
-      errEl.textContent = (result.data.error || 'שגיאה בהרשמה') + (result.data.detail ? ' — ' + result.data.detail : '');
+      errEl.textContent = result.data.error || 'שגיאה בהרשמה';
       errEl.classList.add('show');
       return;
     }

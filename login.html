@@ -205,7 +205,7 @@
         body: JSON.stringify({ username: u, password: p })
       });
       var data = await r.json();
-      if (!r.ok) { setMsg((data.error || 'שגיאה') + (data.detail ? ' — ' + data.detail : ''), 'err'); return; }
+      if (!r.ok) { setMsg(data.error || 'שגיאה', 'err'); return; }
       localStorage.setItem('nt_token', data.token);
       localStorage.setItem('nt_user', JSON.stringify({ username: data.username, role: data.role }));
       setMsg('✅ ברוך הבא ' + data.username + '! מעביר...', 'ok');
@@ -227,7 +227,7 @@
         body: JSON.stringify({ username: u, email: e, password: p })
       });
       var data = await r.json();
-      if (!r.ok) { setMsg((data.error || 'שגיאה') + (data.detail ? ' — ' + data.detail : ''), 'err'); return; }
+      if (!r.ok) { setMsg(data.error || 'שגיאה', 'err'); return; }
       // Auto-login after registration then redirect to onboarding
       var lr = await fetch(API_BASE + '/api/login', {
         method: 'POST',
