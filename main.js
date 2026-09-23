@@ -73,7 +73,6 @@ function handleLogin(e) {
   errEl.classList.remove('show');
   if (!email || !password) { errEl.textContent = 'נא למלא אימייל וסיסמה'; errEl.classList.add('show'); return; }
 
-  // Try server login first
   fetch(API_BASE + '/api/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -85,18 +84,12 @@ function handleLogin(e) {
       localStorage.setItem('nt_user', JSON.stringify({ username: result.data.username, role: result.data.role }));
       loginSuccess({ name: result.data.username, email: email, role: result.data.role });
     } else {
-      // Fallback to localStorage auth
-      var users = getUsers();
-      var user  = users.find(function(u) { return u.email === email && u.password === password; });
-      if (!user) { errEl.textContent = result.data.error || 'אימייל או סיסמה שגויים'; errEl.classList.add('show'); return; }
-      loginSuccess(user);
+      errEl.textContent = result.data.error || 'אימייל או סיסמה שגויים';
+      errEl.classList.add('show');
     }
   }).catch(function() {
-    // Server unreachable — fallback to localStorage
-    var users = getUsers();
-    var user  = users.find(function(u) { return u.email === email && u.password === password; });
-    if (!user) { errEl.textContent = 'אימייל או סיסמה שגויים'; errEl.classList.add('show'); return; }
-    loginSuccess(user);
+    errEl.textContent = 'השרת מתעורר... נסה שוב בעוד רגע (עד 30 שניות)';
+    errEl.classList.add('show');
   });
 }
 
@@ -114,7 +107,7 @@ function handleSignup(e) {
   if (password.length < 6) { errEl.textContent = 'הסיסמה חייבת להכיל לפחות 6 תווים'; errEl.classList.add('show'); return; }
   if (password !== confirm) { errEl.textContent = 'הסיסמאות אינן תואמות'; errEl.classList.add('show'); return; }
 
-  // Register on server + localStorage
+  // Register on server
   fetch(API_BASE + '/api/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -126,42 +119,27 @@ function handleSignup(e) {
       errEl.classList.add('show');
       return;
     }
-    // Also save locally as fallback
-    var users = getUsers();
-    if (!users.find(function(u) { return u.email === email; })) {
-      users.push({ name: name, email: email, password: password });
-      localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    }
-    sucEl.textContent = 'ההרשמה הצליחה! ברוך הבא ' + name + '  מועבר לכניסה...';
+    sucEl.textContent = 'ההרשמה הצליחה! מעביר לשאלון הכרות...';
     sucEl.classList.add('show');
-    setTimeout(function() {
-      document.getElementById('signupName').value = '';
-      document.getElementById('signupEmail').value = '';
-      document.getElementById('signupPassword').value = '';
-      document.getElementById('signupConfirm').value = '';
-      var fill = document.getElementById('strengthFill');
-      var txt  = document.getElementById('strengthText');
-      if (fill) fill.style.width = '0%';
-      if (txt)  txt.textContent  = '';
-      switchTab('login');
-      document.getElementById('loginEmail').value = email;
-    }, 2000);
+    // Auto-login after registration, then redirect to onboarding — every new user must complete it
+    fetch(API_BASE + '/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: name, password: password })
+    }).then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+    .then(function(loginResult) {
+      if (loginResult.ok) {
+        localStorage.setItem('nt_token', loginResult.data.token);
+        localStorage.setItem('nt_user', JSON.stringify({ username: loginResult.data.username, role: loginResult.data.role }));
+        localStorage.removeItem('nt_onboarding_done');
+      }
+      setTimeout(function() { window.location.href = 'onboarding.html'; }, 1200);
+    }).catch(function() {
+      setTimeout(function() { window.location.href = 'onboarding.html'; }, 1200);
+    });
   }).catch(function(err) {
-    // Server unreachable — register locally only
-    var users = getUsers();
-    if (users.find(function(u) { return u.email === email; })) { errEl.textContent = 'אימייל זה כבר רשום במערכת'; errEl.classList.add('show'); return; }
-    users.push({ name: name, email: email, password: password });
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    sucEl.textContent = 'ההרשמה הצליחה! ברוך הבא ' + name + '  מועבר לכניסה...';
-    sucEl.classList.add('show');
-    setTimeout(function() {
-      document.getElementById('signupName').value = '';
-      document.getElementById('signupEmail').value = '';
-      document.getElementById('signupPassword').value = '';
-      document.getElementById('signupConfirm').value = '';
-      switchTab('login');
-      document.getElementById('loginEmail').value = email;
-    }, 2000);
+    errEl.textContent = 'השרת מתעורר... נסה שוב בעוד רגע (עד 30 שניות)';
+    errEl.classList.add('show');
   });
 }
 
