@@ -140,13 +140,42 @@ var API_BASE = localStorage.getItem('nt_api_base') || 'https://nextrade-lending.
 var token    = localStorage.getItem('nt_token');
 var me       = JSON.parse(localStorage.getItem('nt_user') || '{}');
 
-// Check admin access
-if (!token || me.role !== 'admin') {
-  alert('גישה לאדמין בלבד. יש להיות מחובר כמנהל מערכת.');
-  window.location.href = 'login.html';
-}
+// Check admin access — verify with server (not just cached role) so a stale/incorrect
+// local cache doesn't wrongly block a real admin, and so we can tell apart
+// "not logged in at all" from "server temporarily unreachable".
+(async function checkAdminAccess() {
+  if (!token) {
+    window.location.href = 'login.html';
+    return;
+  }
+  try {
+    var r = await fetch(API_BASE + '/api/me', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (r.status === 401) {
+      // Token invalid/expired — must log in again
+      localStorage.removeItem('nt_token');
+      localStorage.removeItem('nt_user');
+      alert('החיבור פג תוקף. יש להתחבר מחדש.');
+      window.location.href = 'login.html';
+      return;
+    }
+    var data = await r.json();
+    if (!r.ok || data.role !== 'admin') {
+      alert('גישה לאדמין בלבד. יש להיות מחובר כמנהל מערכת.');
+      window.location.href = 'login.html';
+      return;
+    }
+    // Server confirms admin — refresh local cache in case it was stale, then load the page
+    me = { username: data.username, role: data.role };
+    localStorage.setItem('nt_user', JSON.stringify(me));
+    document.getElementById('adminUsername').textContent = me.username || '';
+    loadUsers();
+  } catch(e) {
+    // Server unreachable (e.g. Render waking up) — don't kick the admin out, just show a message
+    setMsg('⏳ לא ניתן לאמת מול השרת (ייתכן שהשרת מתעורר). נסה לרענן בעוד רגע.', 'err');
+    document.getElementById('loading').style.display = 'none';
+  }
+})();
 
-document.getElementById('adminUsername').textContent = me.username || '';
 document.getElementById('apiBaseInput').value = API_BASE;
 
 function setMsg(text, type) {
@@ -252,8 +281,6 @@ async function changeRole(id, role) {
     loadUsers();
   } catch(e) { alert('שגיאה: ' + e.message); setMsg('❌ ' + e.message, 'err'); }
 }
-
-loadUsers();
 </script>
 </body>
 </html>
