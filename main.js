@@ -836,6 +836,7 @@ function initChart() {
 //   CHART WHEEL HANDLER — slow pan + Ctrl zoom
 // ============================================
 var _priceMarginTop = 0.1, _priceMarginBottom = 0.1;
+var _zoomAutoScaleTimer = null;
 function initPriceAxisScroll() {
   var chartEl = document.getElementById('chart');
   if (!chartEl) return;
@@ -866,7 +867,15 @@ function initPriceAxisScroll() {
       var leftRatio = (anchor - range.from) / span;
       var newFrom = anchor - leftRatio * newSpan;
       var newTo = newFrom + newSpan;
+      // Freeze the vertical (price) auto-scale for the duration of the zoom gesture so the
+      // chart never visually "runs away"/"sinks" up or down while expanding or contracting —
+      // it only re-fits the price axis once the user stops scrolling.
+      chartInstance.applyOptions({ rightPriceScale: { autoScale: false } });
       ts.setVisibleLogicalRange({ from: newFrom, to: newTo });
+      clearTimeout(_zoomAutoScaleTimer);
+      _zoomAutoScaleTimer = setTimeout(function() {
+        if (chartInstance) chartInstance.applyOptions({ rightPriceScale: { autoScale: true } });
+      }, 350);
       return;
     }
 
