@@ -2521,6 +2521,71 @@ var _scannerInterval = null;
 //
 // This is much more realistic than strict higher-highs/higher-lows.
 
+// ── TREND STRUCTURE / REVERSAL DETECTION (swing highs & lows) ──────
+// Implements classic Dow-theory trend structure:
+//   מגמת עלייה  = שיאים עולים + שפלים עולים (higher highs + higher lows)
+//   מגמת ירידה  = שיאים יורדים + שפלים יורדים (lower highs + lower lows)
+//   דישדוש      = לא עומד בתנאי עלייה/ירידה (טווח נעילה בין תמיכה להתנגדות)
+// ותבנית ה"מוטציה" להיפוך מגמה:
+//   היפוך שורי (ירידה→עלייה) = שני שפלים יורדים ואז פריצה מעל השיא האחרון
+//   היפוך דובי (עלייה→ירידה) = שני שיאים עולים ואז שבירה מתחת לשפל האחרון
+
+// Finds actual swing highs/lows using a fractal method: a bar is a confirmed
+// swing high/low only if `wing` bars on BOTH sides are lower/higher respectively.
+// This avoids repainting — only fully-confirmed swings are returned.
+function findSwingPoints(bars, wing) {
+  wing = wing || 2;
+  var swings = [];
+  for (var i = wing; i < bars.length - wing; i++) {
+    var isHigh = true, isLow = true;
+    for (var j = 1; j <= wing; j++) {
+      if (bars[i].high <= bars[i - j].high || bars[i].high <= bars[i + j].high) isHigh = false;
+      if (bars[i].low  >= bars[i - j].low  || bars[i].low  >= bars[i + j].low)  isLow = false;
+    }
+    if (isHigh) swings.push({ idx: i, type: 'high', price: bars[i].high });
+    if (isLow)  swings.push({ idx: i, type: 'low',  price: bars[i].low });
+  }
+  return swings;
+}
+
+// Classifies trend structure from the last two confirmed swing highs and lows.
+function classifyTrendStructure(swings) {
+  var highs = swings.filter(function(s) { return s.type === 'high'; });
+  var lows  = swings.filter(function(s) { return s.type === 'low'; });
+  if (highs.length < 2 || lows.length < 2) return 'דישדוש';
+  var h1 = highs[highs.length - 2], h2 = highs[highs.length - 1];
+  var l1 = lows[lows.length - 2],   l2 = lows[lows.length - 1];
+  if (h2.price >= h1.price && l2.price >= l1.price) return 'עלייה';
+  if (h2.price <= h1.price && l2.price <= l1.price) return 'ירידה';
+  return 'דישדוש';
+}
+
+// Detects the trend-reversal "mutation" pattern (see comment block above).
+// Returns { type: 'bullish'|'bearish', breakoutLevel } or null.
+function detectTrendReversal(bars, swings) {
+  var highs = swings.filter(function(s) { return s.type === 'high'; });
+  var lows  = swings.filter(function(s) { return s.type === 'low'; });
+  var currentPrice = bars[bars.length - 1].close;
+
+  // Bullish reversal: two lower lows (downtrend structure) → breakout above last swing high
+  if (lows.length >= 2 && highs.length >= 1) {
+    var dl1 = lows[lows.length - 2], dl2 = lows[lows.length - 1];
+    var lastHigh = highs[highs.length - 1];
+    if (dl2.price <= dl1.price && currentPrice > lastHigh.price) {
+      return { type: 'bullish', breakoutLevel: lastHigh.price };
+    }
+  }
+  // Bearish reversal: two higher highs (uptrend structure) → breakdown below last swing low
+  if (highs.length >= 2 && lows.length >= 1) {
+    var uh1 = highs[highs.length - 2], uh2 = highs[highs.length - 1];
+    var lastLow = lows[lows.length - 1];
+    if (uh2.price >= uh1.price && currentPrice < lastLow.price) {
+      return { type: 'bearish', breakoutLevel: lastLow.price };
+    }
+  }
+  return null;
+}
+
 function calcMA(bars, period) {
   // Calculate simple moving average of closing prices
   if (bars.length < period) return null;
@@ -2536,6 +2601,7 @@ async function runBackgroundScanner() {
   _scannerRunning = true;
   var today = new Date().toDateString();
   var results = [];
+  var reversalResults = [];
   var scanned = 0;
   var errors = 0;
   var symbols = (typeof ALL_SCANNER_SYMBOLS !== 'undefined') ? ALL_SCANNER_SYMBOLS : TASE_SYMBOLS;
@@ -2664,6 +2730,22 @@ async function runBackgroundScanner() {
             curr: curr
           });
         }
+
+        // ===== TREND STRUCTURE REVERSAL (swing highs/lows — Dow-theory structure) =====
+        // Reuses the already-fetched weekly bars — no extra network calls.
+        var swingBars = bars.slice(-30);
+        var swings = findSwingPoints(swingBars, 2);
+        var reversal = detectTrendReversal(swingBars, swings);
+        if (reversal) {
+          reversalResults.push({
+            sym: sym,
+            name: NAMES[sym] || sym.replace('.TA', ''),
+            price: currentPrice,
+            curr: curr,
+            direction: reversal.type, // 'bullish' | 'bearish'
+            breakoutLevel: reversal.breakoutLevel
+          });
+        }
       } catch(e) { errors++; }
     }));
   }
@@ -2725,7 +2807,54 @@ async function runBackgroundScanner() {
     if (typeof ibRenderAlerts2 === 'function') ibRenderAlerts2();
   }
 
-  console.log('[Scanner] Results:', results);
+  // Fire trend-reversal signals (swing-structure based — separate from MA16 buy/sell)
+  if (reversalResults.length) {
+    reversalResults.forEach(function(r) {
+      var isBearish = r.direction === 'bearish';
+      var fireKey = 'rev_' + r.direction + '_' + r.sym + '_' + today;
+      if (_scannerFiredToday[fireKey]) return;
+      _scannerFiredToday[fireKey] = true;
+
+      var now = new Date();
+      var time = now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+      var date = now.toLocaleDateString('he-IL');
+      var ts = now.getTime();
+      var msg = isBearish
+        ? ('🔄🔴 היפוך מגמה: ' + r.sym.replace('.TA', '') + ' — מעלייה לירידה | שבירת שפל אחרון')
+        : ('🔄🟢 היפוך מגמה: ' + r.sym.replace('.TA', '') + ' — מירידה לעלייה | פריצת שיא אחרון');
+      var stored = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
+      stored.unshift({
+        sym: r.sym,
+        name: r.name,
+        price: r.price,
+        curr: r.curr,
+        condition: 'reversal_signal',
+        direction: r.direction,
+        breakoutLevel: r.breakoutLevel,
+        date: date,
+        time: time,
+        ts: ts,
+        key: fireKey,
+        msg: msg,
+        severity: isBearish ? 'red' : 'green'
+      });
+      if (stored.length > 200) stored = stored.slice(0, 200);
+      localStorage.setItem('ib_alerts2', JSON.stringify(stored));
+
+      if (typeof incrementAlertBadge === 'function') incrementAlertBadge();
+    });
+
+    // Flash bell
+    var bellBtn2 = document.getElementById('ib-alerts');
+    if (bellBtn2) {
+      bellBtn2.style.animation = 'none';
+      bellBtn2.offsetHeight;
+      bellBtn2.style.animation = 'bellPulse 0.6s ease 3';
+    }
+    if (typeof ibRenderAlerts2 === 'function') ibRenderAlerts2();
+  }
+
+  console.log('[Scanner] Results:', results, 'Reversals:', reversalResults);
   _scannerRunning = false;
   return results;
 }
