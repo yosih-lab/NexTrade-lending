@@ -846,36 +846,43 @@ function initPriceAxisScroll() {
     var rect = chartEl.getBoundingClientRect();
     var xFromRight = rect.right - e.clientX;
 
-    // Ctrl + scroll = zoom in/out — anchored to the mouse cursor's logical position
-    // so the point under the cursor stays fixed (stable, no horizontal/vertical drift).
+    // Ctrl + scroll = zoom in/out — anchored to the mouse cursor's horizontal position
+    // (computed with plain arithmetic only — no reliance on possibly-unavailable API
+    // methods — so this can never silently throw and "do nothing").
     if (e.ctrlKey) {
-      var ts = chartInstance.timeScale();
-      var range = ts.getVisibleLogicalRange();
-      if (!range) return;
-      var span = range.to - range.from;
-      if (!(span > 0)) return;
-      var mouseX = e.clientX - rect.left;
-      var logical = ts.coordinateToLogical(mouseX);
-      var anchor = (logical === null || logical === undefined || isNaN(logical)) ? (range.from + range.to) / 2 : logical;
-      // Exact reciprocal factors → zooming in then out returns to the identical range (no drift).
-      var ZOOM_STEP = 1.15;
-      var factor = e.deltaY > 0 ? ZOOM_STEP : (1 / ZOOM_STEP); // scroll down = contract(zoom out), scroll up = expand(zoom in)
-      var newSpan = span * factor;
-      // Clamp so it can never "over-approach" (too few bars) or explode unbounded.
-      var MIN_SPAN = 5, MAX_SPAN = 3000;
-      newSpan = Math.max(MIN_SPAN, Math.min(MAX_SPAN, newSpan));
-      var leftRatio = (anchor - range.from) / span;
-      var newFrom = anchor - leftRatio * newSpan;
-      var newTo = newFrom + newSpan;
-      // Freeze the vertical (price) auto-scale for the duration of the zoom gesture so the
-      // chart never visually "runs away"/"sinks" up or down while expanding or contracting —
-      // it only re-fits the price axis once the user stops scrolling.
-      chartInstance.applyOptions({ rightPriceScale: { autoScale: false } });
-      ts.setVisibleLogicalRange({ from: newFrom, to: newTo });
-      clearTimeout(_zoomAutoScaleTimer);
-      _zoomAutoScaleTimer = setTimeout(function() {
-        if (chartInstance) chartInstance.applyOptions({ rightPriceScale: { autoScale: true } });
-      }, 350);
+      try {
+        var ts = chartInstance.timeScale();
+        var range = ts.getVisibleLogicalRange();
+        if (!range) return;
+        var span = range.to - range.from;
+        if (!(span > 0)) return;
+        // Fraction of the plot width (excludes the ~78px price-scale strip on the right)
+        // where the cursor sits, used to keep that same point fixed while zooming.
+        var plotWidth = Math.max(1, rect.width - 78);
+        var mouseX = e.clientX - rect.left;
+        var frac = Math.max(0, Math.min(1, mouseX / plotWidth));
+        var anchor = range.from + frac * span;
+        // Exact reciprocal factors → zooming in then out returns to the identical range (no drift).
+        var ZOOM_STEP = 1.15;
+        var factor = e.deltaY > 0 ? ZOOM_STEP : (1 / ZOOM_STEP); // scroll down = contract(zoom out), scroll up = expand(zoom in)
+        var newSpan = span * factor;
+        // Clamp so it can never "over-approach" (too few bars) or explode unbounded.
+        var MIN_SPAN = 5, MAX_SPAN = 3000;
+        newSpan = Math.max(MIN_SPAN, Math.min(MAX_SPAN, newSpan));
+        var newFrom = anchor - frac * newSpan;
+        var newTo = newFrom + newSpan;
+        // Freeze the vertical (price) auto-scale for the duration of the zoom gesture so the
+        // chart never visually "runs away"/"sinks" up or down while expanding or contracting —
+        // it only re-fits the price axis once the user stops scrolling.
+        chartInstance.applyOptions({ rightPriceScale: { autoScale: false } });
+        ts.setVisibleLogicalRange({ from: newFrom, to: newTo });
+        clearTimeout(_zoomAutoScaleTimer);
+        _zoomAutoScaleTimer = setTimeout(function() {
+          if (chartInstance) chartInstance.applyOptions({ rightPriceScale: { autoScale: true } });
+        }, 350);
+      } catch (zoomErr) {
+        console.warn('[Chart] ctrl+wheel zoom failed:', zoomErr);
+      }
       return;
     }
 
