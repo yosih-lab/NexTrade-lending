@@ -150,7 +150,7 @@ var me       = JSON.parse(localStorage.getItem('nt_user') || '{}');
     return;
   }
   try {
-    var r = await fetch(API_BASE + '/api/me', { headers: { 'Authorization': 'Bearer ' + token } });
+    var r = await fetch(API_BASE + '/api/me', { cache: 'no-store', headers: { 'Authorization': 'Bearer ' + token } });
     if (r.status === 401) {
       // Token invalid/expired — must log in again
       localStorage.removeItem('nt_token');
@@ -207,6 +207,7 @@ async function loadUsers() {
   setMsg('','');
   try {
     var r = await fetch(API_BASE + '/api/admin/users', {
+      cache: 'no-store',
       headers: { 'Authorization': 'Bearer ' + token }
     });
     if (r.status === 401 || r.status === 403) {

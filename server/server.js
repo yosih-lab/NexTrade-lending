@@ -262,6 +262,7 @@ app.post('/api/login', async (req, res) => {
 
 // Me
 app.get('/api/me', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   res.json({ username: req.user.username, role: req.user.role });
 });
 
@@ -269,6 +270,7 @@ app.get('/api/me', requireAuth, (req, res) => {
 
 // List all users
 app.get('/api/admin/users', requireAdmin, async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   try {
     const users = (await getAllUsers()).map(u => ({
       id: u.id, username: u.username, email: u.email,
@@ -377,6 +379,7 @@ app.get('/', async (req, res) => {
 
 // Debug endpoint — see users without auth (no passwords/hashes)
 app.get('/api/debug/users', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   const users = (await getAllUsers()).map(u => ({ id: u.id, username: u.username, role: u.role }));
   res.json({ count: users.length, users });
 });
