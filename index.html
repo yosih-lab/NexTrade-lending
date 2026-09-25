@@ -171,7 +171,7 @@
     .status-dot { width:7px; height:7px; border-radius:50%; background:var(--red); }
     .status-dot.open { background:var(--green); animation:blink 2s infinite; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-    .layout { display:flex; flex-direction:row; height:calc(100vh - 42px); padding-right:37px; }
+    .layout { display:flex; flex-direction:row; height:calc(100vh - 42px); padding-right:41px; }
     .sidebar {
       width:var(--sidebar-w);
       flex:0 0 var(--sidebar-w);
@@ -347,12 +347,12 @@
     /* Stock info overlay — removed duplicate (see below in CHART WRAP section) */
     /* TIMEFRAME TOOLBAR */
     .tf-toolbar { display:flex; gap:.22rem; align-items:center; flex:1; min-width:0; overflow:visible; position:relative; z-index:60; }
-    .tf-btn { background:transparent; border:1px solid transparent; color:var(--text-muted); border-radius:5px; padding:.154rem .462rem; font-size:.76rem; font-weight:700; font-family:'Heebo',sans-serif; cursor:pointer; transition:all .15s; letter-spacing:.3px; white-space:nowrap; }
+    .tf-btn { background:transparent; border:1px solid transparent; color:var(--text-muted); border-radius:5px; padding:.169rem .508rem; font-size:.84rem; font-weight:700; font-family:'Heebo',sans-serif; cursor:pointer; transition:all .15s; letter-spacing:.3px; white-space:nowrap; }
     .tf-btn:hover { border-color:var(--accent); color:var(--accent); }
     .tf-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
     .tf-sep { width:1px; height:11px; background:var(--border); margin:0 .1rem; }
     .tase-badge { font-size:.64rem; padding:.1rem .36rem; border-radius:4px; background:var(--surface); border:1px solid var(--border); color:var(--text-muted); white-space:nowrap; margin-right:auto; margin-left:0; display:none; }
-    .tase-dot { width:10px; height:10px; border-radius:50%; background:var(--red); flex-shrink:0; }
+    .tase-dot { width:11px; height:11px; border-radius:50%; background:var(--red); flex-shrink:0; }
     .tase-dot.open { background:var(--green); animation:blink 2s infinite; }
     .tase-dot.closed { background:var(--red); }
     .tase-dot.pre { background:var(--gold); }
@@ -360,7 +360,7 @@
     .chart-type-btn {
       display:flex; align-items:center; gap:.26rem;
       background:rgba(245,166,35,.08); border:1px solid rgba(245,166,35,.45);
-      color:var(--gold); border-radius:7px; padding:.154rem .374rem; font-size:.73rem; font-weight:800;
+      color:var(--gold); border-radius:7px; padding:.169rem .411rem; font-size:.80rem; font-weight:800;
       cursor:pointer; white-space:nowrap;
     }
     .chart-type-btn:hover { background:rgba(245,166,35,.14); }
@@ -373,11 +373,11 @@
     .chart-type-opt {
       width:100%; display:flex; align-items:center; gap:.34rem;
       background:transparent; color:var(--text); border:1px solid transparent; border-radius:8px;
-      padding:.3rem .374rem; font-size:.64rem; cursor:pointer; text-align:right;
+      padding:.33rem .411rem; font-size:.70rem; cursor:pointer; text-align:right;
     }
     .chart-type-opt:hover { border-color:rgba(245,166,35,.38); color:var(--gold); background:rgba(245,166,35,.05); }
     .chart-type-opt.active { border-color:rgba(245,166,35,.55); color:var(--gold); background:rgba(245,166,35,.08); }
-    .chart-icon-gold { color:var(--gold); font-size:.89rem; }
+    .chart-icon-gold { color:var(--gold); font-size:.98rem; }
     .tase-badge.open   { border-color:rgba(38,166,154,.5); color:var(--green); background:rgba(38,166,154,.08); }
     .tase-badge.closed { border-color:rgba(239,83,80,.4);  color:var(--red);   background:rgba(239,83,80,.07); }
     .tase-badge.pre    { border-color:rgba(245,166,35,.5);  color:var(--gold);  background:rgba(245,166,35,.07); }
@@ -585,7 +585,7 @@
       right:0;
       top:42px;            /* below ticker(42px) */
       bottom:0;
-      width:37px;
+      width:41px;
       z-index:200;
       display:flex;
       flex-direction:column;
@@ -598,15 +598,15 @@
       box-shadow:-2px 0 10px rgba(0,0,0,.28);
     }
     .ib{
-      width:33px;
-      height:33px;
+      width:36px;
+      height:36px;
       display:flex;
       align-items:center;
       justify-content:center;
       border-radius:8px;
       cursor:pointer;
       color:var(--text-muted);
-      font-size:1.45rem;
+      font-size:1.6rem;
       transition:background .15s,color .15s;
       position:relative;
       border:none;
@@ -616,8 +616,8 @@
     .ib.active{background:rgba(41,98,255,.12);color:var(--accent)}
     /* Hamburger button — bigger, always highlighted at top */
     .ib-hamburger{
-      width:33px;
-      height:39px;
+      width:36px;
+      height:43px;
       margin-bottom:4px;
       display:flex;
       flex-direction:column;
@@ -633,7 +633,7 @@
     }
     .ib-hamburger span{
       display:block;
-      width:22px;
+      width:24px;
       height:2px;
       background:var(--text-muted);
       border-radius:2px;
@@ -1010,21 +1010,21 @@
     }
     /* ===== DRAWING / ANALYSIS TOOLS — permanent left panel ===== */
     #drawToolbar {
-      position:fixed; top:42px; left:0; bottom:0; width:35px;
+      position:fixed; top:42px; left:0; bottom:0; width:39px;
       z-index:200; display:flex !important; flex-direction:column; gap:2px;
       background:var(--surface); border-right:1px solid var(--border);
       padding:6px 3px; align-items:center; overflow-y:auto;
     }
-    .layout { padding-left:35px; }
+    .layout { padding-left:39px; }
     .dt-btn {
-      width:26px; height:26px; display:flex; align-items:center; justify-content:center;
+      width:29px; height:29px; display:flex; align-items:center; justify-content:center;
       background:transparent; border:none; border-radius:7px; color:var(--text-muted);
-      font-size:1.32rem; cursor:pointer; position:relative; transition:background .12s,color .12s;
+      font-size:1.45rem; cursor:pointer; position:relative; transition:background .12s,color .12s;
     }
     .dt-btn:hover { background:var(--surface2); color:var(--accent); }
     .dt-btn.active { background:rgba(41,98,255,.18); color:var(--accent); }
     .dt-tip {
-      position:absolute; left:32px; top:50%; transform:translateY(-50%);
+      position:absolute; left:35px; top:50%; transform:translateY(-50%);
       background:var(--surface2); border:1px solid var(--border); border-radius:6px;
       padding:.18rem .5rem; font-size:.68rem; white-space:nowrap; color:var(--text);
       opacity:0; pointer-events:none; transition:opacity .12s; z-index:20;
@@ -1767,10 +1767,10 @@
     </main>
   </div>
 </div>
-<script src="scanner-symbols.js?v=20260925a"></script>
-<script src="main.js?v=20260925a"></script>
-<script src="drawing.js?v=20260925a"></script>
-<script src="features.js?v=20260925a"></script>
+<script src="scanner-symbols.js?v=20260925b"></script>
+<script src="main.js?v=20260925b"></script>
+<script src="drawing.js?v=20260925b"></script>
+<script src="features.js?v=20260925b"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">

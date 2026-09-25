@@ -763,10 +763,10 @@ function initChart() {
 
   chartInstance = LightweightCharts.createChart(mainEl, {
     autoSize: true,
-    layout: { background: { color: '#0f1117' }, textColor: '#8899aa', fontSize: 8 },
+    layout: { background: { color: '#0f1117' }, textColor: '#8899aa', fontSize: 9.6 },
     grid:   { vertLines: { color: 'transparent' }, horzLines: { color: 'transparent' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-    rightPriceScale: { borderColor: '#1e2533', autoScale: true, entireTextOnly: true, minimumWidth: 46 },
+    rightPriceScale: { borderColor: '#1e2533', autoScale: true, entireTextOnly: true, minimumWidth: 55 },
     timeScale: { borderColor: '#1e2533', timeVisible: true, secondsVisible: false },
     handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
     handleScale: { mouseWheel: false, pinch: true, axisPressedMouseMove: { time: true, price: true } },
@@ -845,21 +845,33 @@ function initPriceAxisScroll() {
     var rect = chartEl.getBoundingClientRect();
     var xFromRight = rect.right - e.clientX;
 
-    // Ctrl + scroll = zoom in/out
+    // Ctrl + scroll = zoom in/out — anchored to the mouse cursor's logical position
+    // so the point under the cursor stays fixed (stable, no horizontal/vertical drift).
     if (e.ctrlKey) {
       var ts = chartInstance.timeScale();
       var range = ts.getVisibleLogicalRange();
       if (!range) return;
-      var center = (range.from + range.to) / 2;
       var span = range.to - range.from;
-      var factor = e.deltaY > 0 ? 1.15 : 0.87; // zoom out / zoom in
+      if (!(span > 0)) return;
+      var mouseX = e.clientX - rect.left;
+      var logical = ts.coordinateToLogical(mouseX);
+      var anchor = (logical === null || logical === undefined || isNaN(logical)) ? (range.from + range.to) / 2 : logical;
+      // Exact reciprocal factors → zooming in then out returns to the identical range (no drift).
+      var ZOOM_STEP = 1.15;
+      var factor = e.deltaY > 0 ? ZOOM_STEP : (1 / ZOOM_STEP); // scroll down = contract(zoom out), scroll up = expand(zoom in)
       var newSpan = span * factor;
-      ts.setVisibleLogicalRange({ from: center - newSpan / 2, to: center + newSpan / 2 });
+      // Clamp so it can never "over-approach" (too few bars) or explode unbounded.
+      var MIN_SPAN = 5, MAX_SPAN = 3000;
+      newSpan = Math.max(MIN_SPAN, Math.min(MAX_SPAN, newSpan));
+      var leftRatio = (anchor - range.from) / span;
+      var newFrom = anchor - leftRatio * newSpan;
+      var newTo = newFrom + newSpan;
+      ts.setVisibleLogicalRange({ from: newFrom, to: newTo });
       return;
     }
 
-    // On price axis (right 65px) — vertical zoom (stretch/compress prices)
-    if (xFromRight <= 65) {
+    // On price axis (right ~78px) — vertical zoom (stretch/compress prices)
+    if (xFromRight <= 78) {
       var dir = e.deltaY > 0 ? 1 : -1;
       var step = 0.009; // 70% slower than original 0.03
       _priceMarginTop    = Math.max(0.01, Math.min(0.88, _priceMarginTop    + dir * step));
@@ -893,7 +905,7 @@ function initChartVerticalPan() {
     if (e.button !== 0) return;
     var rect = chartEl.getBoundingClientRect();
     // Ignore clicks on the price axis itself
-    if (rect.right - e.clientX <= 65) return;
+    if (rect.right - e.clientX <= 78) return;
     dragging = true;
     lastY = e.clientY;
   });
