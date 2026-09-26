@@ -26,33 +26,70 @@
   var HANDLE = 5;            // half-size of a handle square in px
   var HIT = 7;               // hit tolerance in px
 
+  // ---- SVG icon set (TradingView-style line art, 24x24, uses currentColor) ----
+  function svg(inner) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+      'stroke-linecap="round" stroke-linejoin="round" width="20" height="20">' + inner + '</svg>';
+  }
+  var ICONS = {
+    off:     svg('<path d="M12 3v5M12 16v5M3 12h5M16 12h5"/><circle cx="12" cy="12" r="2.2"/>'),
+    select:  svg('<path d="M5 3l5.5 14 2.3-5.9L18.7 9z"/>'),
+    trend:   svg('<circle cx="5.5" cy="18.5" r="1.7"/><circle cx="18.5" cy="5.5" r="1.7"/><path d="M6.9 17.1 17.1 6.9"/>'),
+    hline:   svg('<circle cx="4.5" cy="12" r="1.6"/><circle cx="19.5" cy="12" r="1.6"/><path d="M7 12h10"/>'),
+    vline:   svg('<circle cx="12" cy="4.5" r="1.6"/><circle cx="12" cy="19.5" r="1.6"/><path d="M12 7v10"/>'),
+    ray:     svg('<circle cx="4.5" cy="19.5" r="1.6"/><path d="M6 18 19 5"/><path d="M14.5 5H19v4.5"/>'),
+    rect:    svg('<rect x="4" y="6.5" width="16" height="11" rx="1"/>'),
+    ellipse: svg('<ellipse cx="12" cy="12" rx="8" ry="6.5"/>'),
+    arrow:   svg('<path d="M5 19 18.5 5.5"/><path d="M10.5 5.5H18.5V13.5"/>'),
+    text:    svg('<path d="M5 6.5V5h14v1.5M12 5v14M9.5 19h5"/>'),
+    brush:   svg('<path d="M4 20c0-2 1-3 3-3 1.5 0 2 1 2 2 0 1.4-1.6 1.8-3 1.8"/><path d="M9 17 18.6 7.4a1.7 1.7 0 0 0-2.4-2.4L6.6 14.6"/>'),
+    fib:     svg('<path d="M4 5h16M4 19h16"/><path d="M4 9.5h16M4 14.5h16" opacity=".55"/><path d="M4 12h16" stroke-dasharray="2.2 2.2"/>'),
+    gann:    svg('<path d="M4.5 19.5 20 19.5M4.5 19.5 20 13M4.5 19.5 20 6.5M4.5 19.5 13 4M4.5 19.5 4.5 4"/>'),
+    gannbox: svg('<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 20 20 4" opacity=".7"/><path d="M12 4v16M4 12h16" opacity=".45"/>'),
+    gannsq:  svg('<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 4 20 20M20 4 4 20" opacity=".7"/>'),
+    gannfix: svg('<circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16M6.3 6.3 17.7 17.7M17.7 6.3 6.3 17.7" opacity=".55"/>'),
+    long:    svg('<rect x="4" y="15" width="16" height="5" rx="1"/><path d="M12 12V4M8.5 7.5 12 4l3.5 3.5"/>'),
+    short:   svg('<rect x="4" y="4" width="16" height="5" rx="1"/><path d="M12 12v8M8.5 16.5 12 20l3.5-3.5"/>'),
+    clear:   svg('<path d="M5 7h14M9.5 7V4.8h5V7M7 7l1 12.2h8L17 7"/>'),
+  };
+
   // ---- tool definitions for the toolbar ----
   // Grouped + separated (thin divider lines) to match the TradingView-style
   // vertical drawing toolbar layout: cursor modes / line tools / shapes /
-  // text & freehand / fibonacci / trade rulers / clear-all at the bottom.
+  // text & freehand / fibonacci / gann tools / trade rulers / clear-all.
   var TOOLS = [
-    { id: 'off',     icon: '⌖',  tip: 'ניווט בגרף' },
-    { id: 'select',  icon: '•',  tip: 'בחירה / עריכה' },
+    { id: 'off',      icon: ICONS.off,     tip: 'ניווט בגרף' },
+    { id: 'select',   icon: ICONS.select,  tip: 'בחירה / עריכה' },
     { sep: true },
-    { id: 'trend',   icon: '╱',  tip: 'קו מגמה' },
-    { id: 'hline',   icon: '─',  tip: 'קו אופקי' },
-    { id: 'vline',   icon: '│',  tip: 'קו אנכי' },
-    { id: 'ray',     icon: '⟶',  tip: 'קרן' },
+    { id: 'trend',    icon: ICONS.trend,   tip: 'קו מגמה' },
+    { id: 'hline',    icon: ICONS.hline,   tip: 'קו אופקי' },
+    { id: 'vline',    icon: ICONS.vline,   tip: 'קו אנכי' },
+    { id: 'ray',      icon: ICONS.ray,     tip: 'קרן' },
     { sep: true },
-    { id: 'rect',    icon: '▭',  tip: 'מלבן' },
-    { id: 'ellipse', icon: '◯',  tip: 'עיגול / אליפסה' },
-    { id: 'arrow',   icon: '↗',  tip: 'חץ' },
+    { id: 'rect',     icon: ICONS.rect,    tip: 'מלבן' },
+    { id: 'ellipse',  icon: ICONS.ellipse, tip: 'עיגול / אליפסה' },
+    { id: 'arrow',    icon: ICONS.arrow,   tip: 'חץ' },
     { sep: true },
-    { id: 'text',    icon: 'T',  tip: 'טקסט' },
-    { id: 'brush',   icon: '✎',  tip: 'ציור חופשי' },
+    { id: 'text',     icon: ICONS.text,    tip: 'טקסט' },
+    { id: 'brush',    icon: ICONS.brush,   tip: 'ציור חופשי' },
     { sep: true },
-    { id: 'fib',     icon: 'F',  tip: 'פיבונאצ׳י' },
+    { id: 'fib',      icon: ICONS.fib,     tip: 'פיבונאצ׳י' },
     { sep: true },
-    { id: 'long',    icon: '▲',  tip: 'סרגל עסקה לונג' },
-    { id: 'short',   icon: '▼',  tip: 'סרגל עסקה שורט' },
+    { id: 'gann',     icon: ICONS.gann,    tip: 'מניפת גאן (Gann Fan)' },
+    { id: 'gannbox',  icon: ICONS.gannbox, tip: 'תיבת גאן (Gann Box)' },
+    { id: 'gannsq',   icon: ICONS.gannsq,  tip: 'ריבוע גאן (Gann Square)' },
+    { id: 'gannfix',  icon: ICONS.gannfix, tip: 'ריבוע גאן קבוע (Square Fixed)' },
     { sep: true },
-    { id: 'clear',   icon: '🗑', tip: 'מחק הכל' },
+    { id: 'long',     icon: ICONS.long,    tip: 'סרגל עסקה לונג' },
+    { id: 'short',    icon: ICONS.short,   tip: 'סרגל עסקה שורט' },
+    { sep: true },
+    { id: 'clear',    icon: ICONS.clear,   tip: 'מחק הכל' },
   ];
+
+  // Gann fan angles as [time, price] ratios relative to the 1x1 line
+  var GANN_RATIOS = [[1,8],[1,4],[1,3],[1,2],[1,1],[2,1],[3,1],[4,1],[8,1]];
+  // Gann box/square internal grid levels
+  var GANN_LEVELS = [0, 0.25, 0.382, 0.5, 0.618, 0.75, 1];
 
   var FIB_LEVELS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
 
@@ -98,7 +135,19 @@
     toolbar = document.createElement('div');
     toolbar.id = 'drawToolbar';
     toolbar.style.display = 'flex';
-    toolbar.innerHTML = TOOLS.map(function (t) {
+    var headHtml =
+      '<div class="dt-head">' +
+        '<button class="dt-ctl dt-grip" title="גרור סרגל (מצב צף)">' +
+          svg('<circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/>') +
+        '</button>' +
+        '<button class="dt-ctl dt-float" title="סרגל צף / מעוגן">' +
+          svg('<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6"/>') +
+        '</button>' +
+        '<button class="dt-ctl dt-hide" title="הסתר סרגל">' +
+          svg('<path d="M6 6 18 18M18 6 6 18"/>') +
+        '</button>' +
+      '</div>';
+    toolbar.innerHTML = headHtml + TOOLS.map(function (t) {
       if (t.sep) return '<span class="dt-sep"></span>';
       return '<button class="dt-btn" data-tool="' + t.id + '" title="' + t.tip + '">' +
         '<span class="dt-ic">' + t.icon + '</span><span class="dt-tip">' + t.tip + '</span></button>';
@@ -108,6 +157,10 @@
       var b = e.target.closest('.dt-btn'); if (!b) return;
       pickTool(b.getAttribute('data-tool'));
     });
+    // Header controls: float toggle, hide, and drag handle
+    toolbar.querySelector('.dt-float').addEventListener('click', function () { toggleFloating(); });
+    toolbar.querySelector('.dt-hide').addEventListener('click', function () { hideToolbar(); });
+    initToolbarDrag();
 
     actionBar = document.createElement('div');
     actionBar.id = 'drawActionBar';
@@ -192,6 +245,112 @@
   function rafLoop() {
     if (drawPending) { drawPending = false; draw(); }
     requestAnimationFrame(rafLoop);
+  }
+
+  // ===== floating / draggable / hideable toolbar =====
+  var floating = false;
+  var showLauncher = null;
+
+  function isFloating() { return floating; }
+
+  function toggleFloating() {
+    if (!toolbar) return;
+    floating = !floating;
+    if (floating) {
+      // Detach from the fixed left rail → free-floating movable panel.
+      document.body.classList.add('draw-float');
+      toolbar.classList.add('floating');
+      var savedPos = null;
+      try { savedPos = JSON.parse(localStorage.getItem('nt_drawtb_pos') || 'null'); } catch (e) {}
+      var left = savedPos && savedPos.left != null ? savedPos.left : 70;
+      var top  = savedPos && savedPos.top  != null ? savedPos.top  : 90;
+      left = Math.max(4, Math.min(window.innerWidth - 60, left));
+      top  = Math.max(48, Math.min(window.innerHeight - 80, top));
+      toolbar.style.left = left + 'px';
+      toolbar.style.top = top + 'px';
+    } else {
+      document.body.classList.remove('draw-float');
+      toolbar.classList.remove('floating');
+      toolbar.style.left = '';
+      toolbar.style.top = '';
+    }
+    try { localStorage.setItem('nt_drawtb_float', floating ? '1' : '0'); } catch (e) {}
+    setActiveBtn(mode);
+  }
+
+  function hideToolbar() {
+    if (!toolbar) return;
+    toolbar.style.display = 'none';
+    document.body.classList.add('draw-hidden');
+    ensureLauncher();
+    showLauncher.style.display = 'flex';
+    try { localStorage.setItem('nt_drawtb_hidden', '1'); } catch (e) {}
+  }
+
+  function showToolbar() {
+    if (!toolbar) return;
+    toolbar.style.display = 'flex';
+    document.body.classList.remove('draw-hidden');
+    if (showLauncher) showLauncher.style.display = 'none';
+    try { localStorage.setItem('nt_drawtb_hidden', '0'); } catch (e) {}
+  }
+
+  function ensureLauncher() {
+    if (showLauncher) return;
+    var b = document.createElement('button');
+    b.id = 'drawToolLauncher';
+    b.title = 'הצג סרגל כלים';
+    b.innerHTML = svg('<path d="M4 20l3-.8L18.7 7.5a1.8 1.8 0 0 0-2.5-2.5L4.6 16.8z"/><path d="M14.5 6.8l2.7 2.7"/>');
+    b.style.display = 'none';
+    b.addEventListener('click', showToolbar);
+    document.body.appendChild(b);
+    showLauncher = b;
+  }
+
+  function initToolbarDrag() {
+    var grip = toolbar.querySelector('.dt-grip');
+    if (!grip) return;
+    var dragging = false, offX = 0, offY = 0;
+    function start(e) {
+      // Dragging only makes sense in floating mode; a single click enables it.
+      if (!floating) { toggleFloating(); }
+      dragging = true;
+      var cx = e.touches ? e.touches[0].clientX : e.clientX;
+      var cy = e.touches ? e.touches[0].clientY : e.clientY;
+      var r = toolbar.getBoundingClientRect();
+      offX = cx - r.left; offY = cy - r.top;
+      e.preventDefault();
+    }
+    function move(e) {
+      if (!dragging) return;
+      var cx = e.touches ? e.touches[0].clientX : e.clientX;
+      var cy = e.touches ? e.touches[0].clientY : e.clientY;
+      var left = Math.max(4, Math.min(window.innerWidth - 54, cx - offX));
+      var top  = Math.max(46, Math.min(window.innerHeight - 60, cy - offY));
+      toolbar.style.left = left + 'px';
+      toolbar.style.top = top + 'px';
+    }
+    function end() {
+      if (!dragging) return;
+      dragging = false;
+      try {
+        localStorage.setItem('nt_drawtb_pos', JSON.stringify({
+          left: parseInt(toolbar.style.left, 10), top: parseInt(toolbar.style.top, 10)
+        }));
+      } catch (e) {}
+    }
+    grip.addEventListener('mousedown', start);
+    grip.addEventListener('touchstart', start, { passive: false });
+    window.addEventListener('mousemove', move);
+    window.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('mouseup', end);
+    window.addEventListener('touchend', end);
+
+    // Restore persisted float / hidden state
+    try {
+      if (localStorage.getItem('nt_drawtb_float') === '1') toggleFloating();
+      if (localStorage.getItem('nt_drawtb_hidden') === '1') hideToolbar();
+    } catch (e) {}
   }
 
   // ===== tool selection =====
@@ -328,10 +487,77 @@
         ctx.fillText((lv * 100).toFixed(1) + '%  ' + (pr != null ? fmtPrice(pr) : ''), x1 + 4, yy - 2);
       });
       if (selected) { handleAt(fa.x, fa.y); handleAt(fb.x, fb.y); }
+    } else if (s.type === 'gann') {
+      drawGannFan(s, selected);
+    } else if (s.type === 'gannbox' || s.type === 'gannsq' || s.type === 'gannfix') {
+      drawGannBox(s, selected);
     } else if (s.type === 'position') {
       drawPositionTV(s, selected);
     }
     ctx.restore();
+  }
+
+  // ===== Gann Fan — lines radiating from pivot a at Gann angles (1x1 defined by a→b) =====
+  function drawGannFan(s, selected) {
+    var a = pt(s.a), b = pt(s.b); if (!a || !b) return;
+    var W = canvas.clientWidth, H = canvas.clientHeight;
+    var bdx = b.x - a.x, bdy = b.y - a.y;
+    if (bdx === 0 && bdy === 0) return;
+    GANN_RATIOS.forEach(function (r) {
+      var dirx = bdx * r[0], diry = bdy * r[1];
+      if (dirx === 0 && diry === 0) return;
+      var end = extend(a, { x: a.x + dirx, y: a.y + diry }, W, H);
+      var is11 = (r[0] === 1 && r[1] === 1);
+      ctx.globalAlpha = is11 ? 1 : 0.5;
+      ctx.lineWidth = is11 ? (s.width || 2) + 0.6 : (s.width || 2);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(end.x, end.y); ctx.stroke();
+      // ratio label near the pivot
+      if (Math.abs(dirx) > 24 || Math.abs(diry) > 24) {
+        var lx = a.x + dirx * 0.18, ly = a.y + diry * 0.18;
+        ctx.globalAlpha = 0.8; ctx.font = '600 9px Heebo, sans-serif';
+        ctx.textBaseline = 'middle'; ctx.fillText(r[1] + 'x' + r[0], lx, ly);
+      }
+    });
+    ctx.globalAlpha = 1;
+    if (selected) { handleAt(a.x, a.y); handleAt(b.x, b.y); }
+  }
+
+  // ===== Gann Box / Square / Square-Fixed — grid + diagonals across the a→b box =====
+  function drawGannBox(s, selected) {
+    var a = pt(s.a), b = pt(s.b); if (!a || !b) return;
+    var x0 = Math.min(a.x, b.x), y0 = Math.min(a.y, b.y);
+    var x1 = Math.max(a.x, b.x), y1 = Math.max(a.y, b.y);
+    var w = x1 - x0, h = y1 - y0;
+    if (w < 2 || h < 2) { if (selected) { handleAt(a.x, a.y); handleAt(b.x, b.y); } return; }
+
+    // outer border
+    ctx.globalAlpha = 1; ctx.lineWidth = s.width || 2;
+    ctx.strokeRect(x0, y0, w, h);
+
+    // internal grid at Gann levels
+    ctx.globalAlpha = 0.28; ctx.lineWidth = 1;
+    GANN_LEVELS.forEach(function (lv) {
+      if (lv === 0 || lv === 1) return;
+      var gx = x0 + w * lv, gy = y0 + h * lv;
+      ctx.beginPath(); ctx.moveTo(gx, y0); ctx.lineTo(gx, y1); ctx.stroke(); // vertical
+      ctx.beginPath(); ctx.moveTo(x0, gy); ctx.lineTo(x1, gy); ctx.stroke(); // horizontal
+    });
+
+    // diagonals
+    ctx.globalAlpha = 0.7; ctx.lineWidth = (s.width || 2);
+    ctx.beginPath(); ctx.moveTo(x0, y1); ctx.lineTo(x1, y0); ctx.stroke(); // ↗ 1x1
+    if (s.type === 'gannsq' || s.type === 'gannfix') {
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); // ↘
+    }
+    // square-fixed adds an inscribed ellipse (circle-in-square Gann geometry)
+    if (s.type === 'gannfix') {
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      ctx.ellipse((x0 + x1) / 2, (y0 + y1) / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    if (selected) { handleAt(a.x, a.y); handleAt(b.x, b.y); handleAt(a.x, b.y); handleAt(b.x, a.y); }
   }
 
   // ===== TradingView-style Position Tool =====
@@ -799,6 +1025,23 @@
       }
       return false;
     }
+    if (s.type === 'gann') {
+      var gbdx = b.x - a.x, gbdy = b.y - a.y;
+      if (gbdx === 0 && gbdy === 0) return false;
+      for (var gi = 0; gi < GANN_RATIOS.length; gi++) {
+        var gr = GANN_RATIOS[gi];
+        var gend = extend(a, { x: a.x + gbdx * gr[0], y: a.y + gbdy * gr[1] }, canvas.clientWidth, canvas.clientHeight);
+        if (distToSeg(px, a, gend) <= HIT) return true;
+      }
+      return false;
+    }
+    if (s.type === 'gannbox' || s.type === 'gannsq' || s.type === 'gannfix') {
+      var gx0 = Math.min(a.x, b.x), gy0 = Math.min(a.y, b.y), gx1 = Math.max(a.x, b.x), gy1 = Math.max(a.y, b.y);
+      var gNearV = (Math.abs(px.x - gx0) <= HIT || Math.abs(px.x - gx1) <= HIT) && px.y >= gy0 - HIT && px.y <= gy1 + HIT;
+      var gNearH = (Math.abs(px.y - gy0) <= HIT || Math.abs(px.y - gy1) <= HIT) && px.x >= gx0 - HIT && px.x <= gx1 + HIT;
+      var gInside = px.x >= gx0 && px.x <= gx1 && px.y >= gy0 && px.y <= gy1;
+      return gNearV || gNearH || gInside;
+    }
     return false;
   }
   function handleHit(s, px) {
@@ -831,7 +1074,7 @@
     var a = pt(s.a), b = pt(s.b); if (!a || !b) return out;
     out.push({ x: a.x, y: a.y, k: 'a' });
     out.push({ x: b.x, y: b.y, k: 'b' });
-    if (s.type === 'rect') { out.push({ x: a.x, y: b.y, k: 'ab' }); out.push({ x: b.x, y: a.y, k: 'ba' }); }
+    if (s.type === 'rect' || s.type === 'gannbox' || s.type === 'gannsq' || s.type === 'gannfix') { out.push({ x: a.x, y: b.y, k: 'ab' }); out.push({ x: b.x, y: a.y, k: 'ba' }); }
     return out;
   }
   function distToSeg(p, a, b) {
@@ -1289,6 +1532,9 @@
     addPositionAtPrice: addPositionAtPrice,
     addHLine: addHLine,
     shapeCount: shapeCount,
-    clearAllShapes: clearAllShapes
+    clearAllShapes: clearAllShapes,
+    toggleFloating: function () { ensureDom(); toggleFloating(); },
+    showToolbar: function () { ensureDom(); showToolbar(); },
+    hideToolbar: function () { ensureDom(); hideToolbar(); }
   };
 })();

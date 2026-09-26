@@ -1016,14 +1016,31 @@
       padding:6px 3px; align-items:center; overflow-y:auto;
     }
     .layout { padding-left:47px; }
+    /* Header with float / hide / drag controls */
+    .dt-head {
+      display:flex; flex-direction:column; align-items:center; gap:1px;
+      width:100%; padding-bottom:3px; margin-bottom:2px;
+      border-bottom:1px solid var(--border); flex-shrink:0;
+    }
+    .dt-ctl {
+      width:30px; height:22px; display:flex; align-items:center; justify-content:center;
+      background:transparent; border:none; border-radius:5px; color:var(--text-muted);
+      cursor:pointer; transition:background .12s,color .12s;
+    }
+    .dt-ctl:hover { background:var(--surface2); color:var(--accent); }
+    .dt-ctl svg { width:16px; height:16px; }
+    .dt-grip { cursor:grab; }
+    .dt-grip:active { cursor:grabbing; }
     .dt-btn {
       width:35px; height:35px; display:flex; align-items:center; justify-content:center;
       background:transparent; border:1px solid transparent; border-radius:7px; color:var(--text-muted);
-      font-size:1.76rem; cursor:pointer; position:relative; transition:background .12s,color .12s,border-color .12s;
+      cursor:pointer; position:relative; transition:background .12s,color .12s,border-color .12s;
     }
+    .dt-btn .dt-ic { display:flex; align-items:center; justify-content:center; }
+    .dt-btn .dt-ic svg { width:21px; height:21px; display:block; }
     .dt-btn:hover { background:var(--surface2); color:var(--accent); }
     .dt-btn.active { background:rgba(41,98,255,.18); border-color:rgba(41,98,255,.55); color:var(--accent); }
-    /* Divider line between logical tool groups (cursor / lines / shapes / text / fib / trade / clear) */
+    /* Divider line between logical tool groups (cursor / lines / shapes / text / fib / gann / trade / clear) */
     .dt-sep { width:60%; height:1px; background:var(--border); margin:4px 0; flex-shrink:0; pointer-events:none; }
     .dt-tip {
       position:absolute; left:43px; top:50%; transform:translateY(-50%);
@@ -1032,6 +1049,26 @@
       opacity:0; pointer-events:none; transition:opacity .12s; z-index:20;
     }
     .dt-btn:hover .dt-tip { opacity:1; }
+    /* ---- Floating / draggable toolbar mode ---- */
+    #drawToolbar.floating {
+      top:auto; bottom:auto; left:70px; height:auto; max-height:calc(100vh - 90px);
+      border:1px solid var(--border); border-right:1px solid var(--border);
+      border-radius:12px; box-shadow:0 10px 34px rgba(0,0,0,.55);
+      padding:5px 4px; z-index:1500;
+    }
+    #drawToolbar.floating .dt-head { cursor:grab; }
+    body.draw-float .layout { padding-left:0 !important; }
+    /* Launcher button shown when the toolbar is hidden */
+    #drawToolLauncher {
+      position:fixed; left:10px; top:90px; z-index:1500;
+      width:38px; height:38px; align-items:center; justify-content:center;
+      background:var(--surface); border:1px solid var(--border); border-radius:10px;
+      color:var(--accent); cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,.5);
+      transition:border-color .15s, transform .12s;
+    }
+    #drawToolLauncher:hover { border-color:var(--accent); transform:scale(1.06); }
+    #drawToolLauncher svg { width:20px; height:20px; }
+    body.draw-hidden .layout { padding-left:0 !important; }
     #drawActionBar {
       position:absolute; z-index:13; display:flex; align-items:center; gap:4px;
       background:rgba(19,23,34,.97); border:1px solid var(--border); border-radius:9px;
@@ -1348,7 +1385,11 @@
         justify-content:flex-start !important;
       }
       #drawToolbar .dt-btn { width:41px; height:41px; flex-shrink:0; }
+      #drawToolbar .dt-btn .dt-ic svg { width:22px; height:22px; }
       #drawToolbar .dt-tip { display:none !important; }
+      /* Header lays out as a row too on mobile; keep controls compact */
+      #drawToolbar .dt-head { flex-direction:row !important; border-bottom:none !important; border-right:1px solid var(--border); padding:0 4px 0 0; margin:0 2px 0 0; }
+      #drawToolbar .dt-ctl { width:26px; height:34px; }
       /* Dividers become vertical bars when the toolbar is laid out as a row */
       #drawToolbar .dt-sep { width:1px; height:60%; margin:0 3px; }
 
@@ -1771,10 +1812,10 @@
     </main>
   </div>
 </div>
-<script src="scanner-symbols.js?v=20260927d"></script>
-<script src="main.js?v=20260927d"></script>
-<script src="drawing.js?v=20260927d"></script>
-<script src="features.js?v=20260927d"></script>
+<script src="scanner-symbols.js?v=20260927e"></script>
+<script src="main.js?v=20260927e"></script>
+<script src="drawing.js?v=20260927e"></script>
+<script src="features.js?v=20260927e"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
