@@ -75,15 +75,20 @@
     { sep: true },
     { id: 'fib',      icon: ICONS.fib,     tip: 'פיבונאצ׳י' },
     { sep: true },
-    { id: 'gann',     icon: ICONS.gann,    tip: 'מניפת גאן (Gann Fan)' },
-    { id: 'gannbox',  icon: ICONS.gannbox, tip: 'תיבת גאן (Gann Box)' },
-    { id: 'gannsq',   icon: ICONS.gannsq,  tip: 'ריבוע גאן (Gann Square)' },
-    { id: 'gannfix',  icon: ICONS.gannfix, tip: 'ריבוע גאן קבוע (Square Fixed)' },
+    { flyout: 'gann', icon: ICONS.gann,    tip: 'כלי גאן (Gann)' },
     { sep: true },
     { id: 'long',     icon: ICONS.long,    tip: 'סרגל עסקה לונג' },
     { id: 'short',    icon: ICONS.short,   tip: 'סרגל עסקה שורט' },
     { sep: true },
     { id: 'clear',    icon: ICONS.clear,   tip: 'מחק הכל' },
+  ];
+
+  // Sub-tools shown inside the Gann flyout menu (single toolbar button → popout list)
+  var GANN_TOOLS = [
+    { id: 'gann',    icon: ICONS.gann,    tip: 'מניפת גאן (Gann Fan)' },
+    { id: 'gannbox', icon: ICONS.gannbox, tip: 'תיבת גאן (Gann Box)' },
+    { id: 'gannsq',  icon: ICONS.gannsq,  tip: 'ריבוע גאן (Gann Square)' },
+    { id: 'gannfix', icon: ICONS.gannfix, tip: 'ריבוע גאן קבוע (Square Fixed)' },
   ];
 
   // Gann fan angles as [time, price] ratios relative to the 1x1 line
@@ -149,13 +154,34 @@
       '</div>';
     toolbar.innerHTML = headHtml + TOOLS.map(function (t) {
       if (t.sep) return '<span class="dt-sep"></span>';
+      if (t.flyout) {
+        // Single button that opens a popout menu with all sub-tools (e.g. Gann)
+        var items = (t.flyout === 'gann' ? GANN_TOOLS : []);
+        var sub = items.map(function (it) {
+          return '<button class="dt-btn dt-sub" data-tool="' + it.id + '" title="' + it.tip + '">' +
+            '<span class="dt-ic">' + it.icon + '</span>' +
+            '<span class="dt-sublbl">' + it.tip + '</span></button>';
+        }).join('');
+        return '<div class="dt-group" data-flyout="' + t.flyout + '">' +
+            '<button class="dt-btn dt-groupbtn" data-group="' + t.flyout + '" title="' + t.tip + '">' +
+              '<span class="dt-ic">' + t.icon + '</span>' +
+              '<span class="dt-arrow" aria-hidden="true"></span>' +
+              '<span class="dt-tip">' + t.tip + '</span>' +
+            '</button>' +
+            '<div class="dt-flyout">' + sub + '</div>' +
+          '</div>';
+      }
       return '<button class="dt-btn" data-tool="' + t.id + '" title="' + t.tip + '">' +
         '<span class="dt-ic">' + t.icon + '</span><span class="dt-tip">' + t.tip + '</span></button>';
     }).join('');
     wrap.appendChild(toolbar);
     toolbar.addEventListener('click', function (e) {
       var b = e.target.closest('.dt-btn'); if (!b) return;
-      pickTool(b.getAttribute('data-tool'));
+      var tool = b.getAttribute('data-tool');
+      if (tool) { pickTool(tool); return; }
+      // Group button itself: activate the first sub-tool (and the flyout stays available on hover)
+      var grp = b.getAttribute('data-group');
+      if (grp === 'gann' && GANN_TOOLS.length) pickTool(GANN_TOOLS[0].id);
     });
     // Header controls: float toggle, hide, and drag handle
     toolbar.querySelector('.dt-float').addEventListener('click', function () { toggleFloating(); });
@@ -376,6 +402,10 @@
     toolbar.querySelectorAll('.dt-btn').forEach(function (b) {
       b.classList.toggle('active', b.getAttribute('data-tool') === tool);
     });
+    // Highlight the Gann group button when any of its sub-tools is active
+    var isGann = GANN_TOOLS.some(function (it) { return it.id === tool; });
+    var grpBtn = toolbar.querySelector('.dt-groupbtn[data-group="gann"]');
+    if (grpBtn) grpBtn.classList.toggle('active', isGann);
   }
 
   // ===== public toggle (called from icon toolbar) =====

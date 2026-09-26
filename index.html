@@ -1049,7 +1049,32 @@
       opacity:0; pointer-events:none; transition:opacity .12s; z-index:20;
     }
     .dt-btn:hover .dt-tip { opacity:1; }
-    /* ---- Floating / draggable toolbar mode ---- */
+    /* ---- Gann group button + flyout submenu ---- */
+    .dt-group { position:relative; display:flex; align-items:center; justify-content:center; }
+    .dt-groupbtn .dt-arrow {
+      position:absolute; right:2px; bottom:2px; width:0; height:0;
+      border-left:4px solid transparent; border-bottom:5px solid currentColor;
+      opacity:.45; transition:opacity .12s, transform .12s;
+    }
+    .dt-group:hover .dt-groupbtn .dt-arrow { opacity:1; transform:scale(1.35); }
+    .dt-flyout {
+      position:absolute; left:43px; top:50%; transform:translateY(-50%) translateX(-6px);
+      display:flex; flex-direction:column; gap:3px; padding:6px;
+      background:var(--surface); border:1px solid var(--border); border-radius:10px;
+      box-shadow:0 10px 30px rgba(0,0,0,.55); z-index:60;
+      opacity:0; visibility:hidden; pointer-events:none;
+      transition:opacity .14s, transform .14s, visibility .14s;
+    }
+    .dt-group:hover .dt-flyout {
+      opacity:1; visibility:visible; pointer-events:auto; transform:translateY(-50%) translateX(0);
+    }
+    .dt-flyout .dt-sub {
+      width:auto; height:34px; justify-content:flex-start; gap:8px;
+      padding:0 10px 0 8px; white-space:nowrap;
+    }
+    .dt-flyout .dt-sub .dt-sublbl { font-size:.72rem; color:var(--text); }
+    .dt-flyout .dt-sub:hover .dt-sublbl { color:var(--accent); }
+
     #drawToolbar.floating {
       top:auto; bottom:auto; left:70px; height:auto; max-height:calc(100vh - 90px);
       border:1px solid var(--border); border-right:1px solid var(--border);
@@ -1392,6 +1417,16 @@
       #drawToolbar .dt-ctl { width:26px; height:34px; }
       /* Dividers become vertical bars when the toolbar is laid out as a row */
       #drawToolbar .dt-sep { width:1px; height:60%; margin:0 3px; }
+      /* Gann flyout opens UPWARD above the bottom toolbar on mobile */
+      #drawToolbar .dt-flyout {
+        left:50%; top:auto; bottom:48px;
+        transform:translateX(-50%) translateY(6px);
+      }
+      #drawToolbar .dt-group:hover .dt-flyout {
+        transform:translateX(-50%) translateY(0);
+      }
+      #drawToolbar .dt-flyout .dt-sub { height:38px; }
+
 
       /* RIGHT icon-toolbar → stays on RIGHT, vertical, pushes chart left */
       .icon-toolbar {
@@ -1812,10 +1847,10 @@
     </main>
   </div>
 </div>
-<script src="scanner-symbols.js?v=20260927e"></script>
-<script src="main.js?v=20260927e"></script>
-<script src="drawing.js?v=20260927e"></script>
-<script src="features.js?v=20260927e"></script>
+<script src="scanner-symbols.js?v=20260927f"></script>
+<script src="main.js?v=20260927f"></script>
+<script src="drawing.js?v=20260927f"></script>
+<script src="features.js?v=20260927f"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
