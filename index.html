@@ -45,10 +45,10 @@
     body { font-family:'Heebo',sans-serif; background:var(--bg); color:var(--text); font-weight:600; min-height:100vh; overflow-x:hidden; }
 
     /* AUTH */
-    #authOverlay { position:fixed; inset:0; background:var(--bg) url('bull-bear-bg.jpeg?v=1') center top / contain no-repeat fixed; z-index:9999; display:flex; align-items:center; justify-content:center; }
-    #authOverlay::before { content:''; position:absolute; inset:0; background:linear-gradient(180deg,rgba(4,6,12,.35),rgba(4,6,12,.5)); pointer-events:none; }
+    #authOverlay { position:fixed; inset:0; background:var(--bg) url('bull-bear-bg.jpeg?v=1') center center / cover no-repeat fixed; z-index:9999; display:flex; align-items:center; justify-content:center; }
+    #authOverlay::before { content:''; position:absolute; inset:0; background:linear-gradient(180deg,rgba(4,6,12,.22),rgba(4,6,12,.34)); pointer-events:none; }
     .auth-glow { position:absolute; width:600px; height:600px; background:radial-gradient(circle,rgba(41,98,255,.15) 0%,transparent 70%); top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; }
-    .auth-card { position:relative; background:rgba(19,23,34,.62); backdrop-filter:blur(9px); -webkit-backdrop-filter:blur(9px); border:1px solid var(--border); border-radius:20px; padding:2.5rem 2.25rem; width:100%; max-width:420px; box-shadow:0 25px 60px rgba(0,0,0,.5); }
+    .auth-card { position:relative; background:rgba(19,23,34,.40); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); border:1px solid rgba(255,255,255,.14); border-radius:20px; padding:2.5rem 2.25rem; width:100%; max-width:420px; box-shadow:0 25px 60px rgba(0,0,0,.5); }
     .auth-logo { text-align:center; font-size:2rem; font-weight:700; color:#2962ff; margin-bottom:.25rem; letter-spacing:-1px; }
     .auth-logo span { color:var(--gold); }
     .auth-tagline { text-align:center; font-size:.8rem; color:var(--text-muted); margin-bottom:2rem; }

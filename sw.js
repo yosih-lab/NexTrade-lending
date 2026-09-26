@@ -1,5 +1,5 @@
 // NexTrade Service Worker — PWA offline support
-var CACHE = 'nextrade-v32';
+var CACHE = 'nextrade-v33';
 var STATIC = [
   '/',
   '/index.html',
