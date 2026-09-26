@@ -171,7 +171,7 @@
     .status-dot { width:7px; height:7px; border-radius:50%; background:var(--red); }
     .status-dot.open { background:var(--green); animation:blink 2s infinite; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-    .layout { display:flex; flex-direction:row; height:calc(100vh - 42px); padding-right:45px; }
+    .layout { display:flex; flex-direction:row; height:calc(100vh - 42px); padding-right:50px; }
     .sidebar {
       width:var(--sidebar-w);
       flex:0 0 var(--sidebar-w);
@@ -347,12 +347,12 @@
     /* Stock info overlay — removed duplicate (see below in CHART WRAP section) */
     /* TIMEFRAME TOOLBAR */
     .tf-toolbar { display:flex; gap:.22rem; align-items:center; flex:1; min-width:0; overflow:visible; position:relative; z-index:60; }
-    .tf-btn { background:transparent; border:1px solid transparent; color:var(--text-muted); border-radius:5px; padding:.186rem .559rem; font-size:.92rem; font-weight:700; font-family:'Heebo',sans-serif; cursor:pointer; transition:all .15s; letter-spacing:.3px; white-space:nowrap; }
+    .tf-btn { background:transparent; border:1px solid transparent; color:var(--text-muted); border-radius:5px; padding:.205rem .615rem; font-size:1.01rem; font-weight:700; font-family:'Heebo',sans-serif; cursor:pointer; transition:all .15s; letter-spacing:.3px; white-space:nowrap; }
     .tf-btn:hover { border-color:var(--accent); color:var(--accent); }
     .tf-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
     .tf-sep { width:1px; height:11px; background:var(--border); margin:0 .1rem; }
     .tase-badge { font-size:.64rem; padding:.1rem .36rem; border-radius:4px; background:var(--surface); border:1px solid var(--border); color:var(--text-muted); white-space:nowrap; margin-right:auto; margin-left:0; display:none; }
-    .tase-dot { width:12px; height:12px; border-radius:50%; background:var(--red); flex-shrink:0; }
+    .tase-dot { width:13px; height:13px; border-radius:50%; background:var(--red); flex-shrink:0; }
     .tase-dot.open { background:var(--green); animation:blink 2s infinite; }
     .tase-dot.closed { background:var(--red); }
     .tase-dot.pre { background:var(--gold); }
@@ -360,7 +360,7 @@
     .chart-type-btn {
       display:flex; align-items:center; gap:.26rem;
       background:rgba(245,166,35,.08); border:1px solid rgba(245,166,35,.45);
-      color:var(--gold); border-radius:7px; padding:.186rem .452rem; font-size:.88rem; font-weight:800;
+      color:var(--gold); border-radius:7px; padding:.205rem .497rem; font-size:.97rem; font-weight:800;
       cursor:pointer; white-space:nowrap;
     }
     .chart-type-btn:hover { background:rgba(245,166,35,.14); }
@@ -373,11 +373,11 @@
     .chart-type-opt {
       width:100%; display:flex; align-items:center; gap:.34rem;
       background:transparent; color:var(--text); border:1px solid transparent; border-radius:8px;
-      padding:.363rem .452rem; font-size:.77rem; cursor:pointer; text-align:right;
+      padding:.40rem .497rem; font-size:.85rem; cursor:pointer; text-align:right;
     }
     .chart-type-opt:hover { border-color:rgba(245,166,35,.38); color:var(--gold); background:rgba(245,166,35,.05); }
     .chart-type-opt.active { border-color:rgba(245,166,35,.55); color:var(--gold); background:rgba(245,166,35,.08); }
-    .chart-icon-gold { color:var(--gold); font-size:1.08rem; }
+    .chart-icon-gold { color:var(--gold); font-size:1.19rem; }
     .tase-badge.open   { border-color:rgba(38,166,154,.5); color:var(--green); background:rgba(38,166,154,.08); }
     .tase-badge.closed { border-color:rgba(239,83,80,.4);  color:var(--red);   background:rgba(239,83,80,.07); }
     .tase-badge.pre    { border-color:rgba(245,166,35,.5);  color:var(--gold);  background:rgba(245,166,35,.07); }
@@ -585,7 +585,7 @@
       right:0;
       top:42px;            /* below ticker(42px) */
       bottom:0;
-      width:45px;
+      width:50px;
       z-index:200;
       display:flex;
       flex-direction:column;
@@ -598,15 +598,15 @@
       box-shadow:-2px 0 10px rgba(0,0,0,.28);
     }
     .ib{
-      width:40px;
-      height:40px;
+      width:44px;
+      height:44px;
       display:flex;
       align-items:center;
       justify-content:center;
       border-radius:8px;
       cursor:pointer;
       color:var(--text-muted);
-      font-size:1.76rem;
+      font-size:1.94rem;
       transition:background .15s,color .15s;
       position:relative;
       border:none;
@@ -616,8 +616,8 @@
     .ib.active{background:rgba(41,98,255,.12);color:var(--accent)}
     /* Hamburger button — bigger, always highlighted at top */
     .ib-hamburger{
-      width:40px;
-      height:47px;
+      width:44px;
+      height:52px;
       margin-bottom:4px;
       display:flex;
       flex-direction:column;
@@ -633,7 +633,7 @@
     }
     .ib-hamburger span{
       display:block;
-      width:26px;
+      width:29px;
       height:2px;
       background:var(--text-muted);
       border-radius:2px;
@@ -663,17 +663,17 @@
     .ib-sep{width:18px;height:1px;background:var(--border);margin:2px 0;pointer-events:none}
     /* Topbar bell button */
     .topbar-bell {
-      background:transparent; border:none; font-size:.92rem; cursor:pointer; position:relative;
-      display:flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%;
+      background:transparent; border:none; font-size:1.01rem; cursor:pointer; position:relative;
+      display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%;
       transition:background .15s;
     }
     .topbar-bell:hover { background:var(--surface2); }
     /* Alert badge on bell icon */
     .alert-badge {
       position:absolute; top:0px; right:0px;
-      min-width:12px; height:12px;
+      min-width:13px; height:13px;
       background:#ef5350; color:#fff;
-      font-size:.47rem; font-weight:900;
+      font-size:.52rem; font-weight:900;
       border-radius:50%; padding:0 3px;
       display:flex; align-items:center; justify-content:center;
       line-height:1; pointer-events:none;
@@ -1010,21 +1010,21 @@
     }
     /* ===== DRAWING / ANALYSIS TOOLS — permanent left panel ===== */
     #drawToolbar {
-      position:fixed; top:42px; left:0; bottom:0; width:43px;
+      position:fixed; top:42px; left:0; bottom:0; width:47px;
       z-index:200; display:flex !important; flex-direction:column; gap:2px;
       background:var(--surface); border-right:1px solid var(--border);
       padding:6px 3px; align-items:center; overflow-y:auto;
     }
-    .layout { padding-left:43px; }
+    .layout { padding-left:47px; }
     .dt-btn {
-      width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+      width:35px; height:35px; display:flex; align-items:center; justify-content:center;
       background:transparent; border:none; border-radius:7px; color:var(--text-muted);
-      font-size:1.6rem; cursor:pointer; position:relative; transition:background .12s,color .12s;
+      font-size:1.76rem; cursor:pointer; position:relative; transition:background .12s,color .12s;
     }
     .dt-btn:hover { background:var(--surface2); color:var(--accent); }
     .dt-btn.active { background:rgba(41,98,255,.18); color:var(--accent); }
     .dt-tip {
-      position:absolute; left:39px; top:50%; transform:translateY(-50%);
+      position:absolute; left:43px; top:50%; transform:translateY(-50%);
       background:var(--surface2); border:1px solid var(--border); border-radius:6px;
       padding:.18rem .5rem; font-size:.68rem; white-space:nowrap; color:var(--text);
       opacity:0; pointer-events:none; transition:opacity .12s; z-index:20;
@@ -1337,7 +1337,7 @@
       #drawToolbar {
         display:flex !important;
         position:fixed !important; bottom:0 !important; left:0 !important; right:0 !important;
-        top:auto !important; width:100% !important; height:48px !important;
+        top:auto !important; width:100% !important; height:53px !important;
         flex-direction:row !important; gap:1px !important;
         background:var(--surface) !important; border-top:1px solid var(--border) !important;
         border-right:none !important;
@@ -1345,15 +1345,15 @@
         overflow-x:auto !important; z-index:998 !important;
         justify-content:flex-start !important;
       }
-      #drawToolbar .dt-btn { width:37px; height:37px; flex-shrink:0; }
+      #drawToolbar .dt-btn { width:41px; height:41px; flex-shrink:0; }
       #drawToolbar .dt-tip { display:none !important; }
 
       /* RIGHT icon-toolbar → stays on RIGHT, vertical, pushes chart left */
       .icon-toolbar {
         position:fixed !important;
-        right:0 !important; top:78px !important; bottom:48px !important;
+        right:0 !important; top:78px !important; bottom:53px !important;
         left:auto !important;
-        width:37px !important; height:auto !important;
+        width:41px !important; height:auto !important;
         flex-direction:column !important;
         justify-content:flex-start !important;
         align-items:center !important;
@@ -1365,16 +1365,16 @@
         gap:2px !important;
         background:var(--surface) !important;
       }
-      .ib { width:30px; height:30px; font-size:.88rem; flex-shrink:0; }
-      .ib-hamburger { width:30px; height:30px; margin-bottom:2px; flex-shrink:0; }
+      .ib { width:33px; height:33px; font-size:.97rem; flex-shrink:0; }
+      .ib-hamburger { width:33px; height:33px; margin-bottom:2px; flex-shrink:0; }
       .ib-sep { width:80%; height:1px !important; background:var(--border); margin:2px 0; }
       .ib-tip, .ib-hamburger .ib-tip { display:none !important; }
 
-      /* Layout: adjusted — chart pushed left by 37px toolbar, bottom by 48px draw bar */
+      /* Layout: adjusted — chart pushed left by 41px toolbar, bottom by 53px draw bar */
       .layout {
         position:fixed !important;
-        top:78px !important; bottom:48px !important;
-        left:0 !important; right:37px !important;
+        top:78px !important; bottom:53px !important;
+        left:0 !important; right:41px !important;
         width:auto !important; height:auto !important;
         padding-right:0 !important; padding-left:0 !important;
         display:block !important; overflow:hidden !important;
@@ -1382,15 +1382,15 @@
 
       /* Panels: full-width on mobile, right of toolbar */
       .ib-panel, .ib-panel-wide {
-        right:37px !important; left:0 !important;
-        bottom:48px !important; top:78px !important;
+        right:41px !important; left:0 !important;
+        bottom:53px !important; top:78px !important;
         width:auto !important;
-        max-height:calc(100vh - 126px) !important;
+        max-height:calc(100vh - 131px) !important;
         border-radius:0 !important;
       }
 
       /* Popups */
-      #portfolioPopup,#alertPopup,#newsPopup { width:calc(100vw - 37px); right:37px; left:0; bottom:48px; top:78px; border-radius:0; }
+      #portfolioPopup,#alertPopup,#newsPopup { width:calc(100vw - 41px); right:41px; left:0; bottom:53px; top:78px; border-radius:0; }
       #newsPopup { left:0; transform:none; }
       #newsPopup.open { transform:none; }
 
@@ -1767,10 +1767,10 @@
     </main>
   </div>
 </div>
-<script src="scanner-symbols.js?v=20260927a"></script>
-<script src="main.js?v=20260927a"></script>
-<script src="drawing.js?v=20260927a"></script>
-<script src="features.js?v=20260927a"></script>
+<script src="scanner-symbols.js?v=20260927b"></script>
+<script src="main.js?v=20260927b"></script>
+<script src="drawing.js?v=20260927b"></script>
+<script src="features.js?v=20260927b"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
