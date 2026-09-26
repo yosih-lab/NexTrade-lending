@@ -8,7 +8,7 @@
     *{box-sizing:border-box;margin:0;padding:0}
     body{
       font-family:Heebo,sans-serif;
-      background:#04060c url('bull-bear-bg.jpeg') center center / cover no-repeat fixed;
+      background:#04060c url('bull-bear-bg.jpeg?v=1') center center / cover no-repeat fixed;
       color:#fff;
       min-height:100vh;
       display:flex;
@@ -17,12 +17,12 @@
       direction:rtl;
       position:relative;
     }
-    /* Dark overlay so the login card stays readable over the image */
+    /* Light overlay so the image is clearly visible while text stays readable */
     body::before{
       content:'';
       position:fixed;
       inset:0;
-      background:linear-gradient(180deg,rgba(4,6,12,.72),rgba(4,6,12,.82));
+      background:linear-gradient(180deg,rgba(4,6,12,.30),rgba(4,6,12,.45));
       z-index:0;
       pointer-events:none;
     }
