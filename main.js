@@ -763,10 +763,10 @@ function initChart() {
 
   chartInstance = LightweightCharts.createChart(mainEl, {
     autoSize: true,
-    layout: { background: { color: '#0f1117' }, textColor: '#8899aa', fontSize: 9.6 },
+    layout: { background: { color: '#0f1117' }, textColor: '#8899aa', fontSize: 11.5 },
     grid:   { vertLines: { color: 'transparent' }, horzLines: { color: 'transparent' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-    rightPriceScale: { borderColor: '#1e2533', autoScale: true, entireTextOnly: true, minimumWidth: 55 },
+    rightPriceScale: { borderColor: '#1e2533', autoScale: true, entireTextOnly: true, minimumWidth: 66 },
     timeScale: { borderColor: '#1e2533', timeVisible: true, secondsVisible: false },
     handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
     handleScale: { mouseWheel: false, pinch: true, axisPressedMouseMove: { time: true, price: true } },
@@ -856,9 +856,9 @@ function initPriceAxisScroll() {
         if (!range) return;
         var span = range.to - range.from;
         if (!(span > 0)) return;
-        // Fraction of the plot width (excludes the ~78px price-scale strip on the right)
+        // Fraction of the plot width (excludes the ~94px price-scale strip on the right)
         // where the cursor sits, used to keep that same point fixed while zooming.
-        var plotWidth = Math.max(1, rect.width - 78);
+        var plotWidth = Math.max(1, rect.width - 94);
         var mouseX = e.clientX - rect.left;
         var frac = Math.max(0, Math.min(1, mouseX / plotWidth));
         var anchor = range.from + frac * span;
@@ -886,8 +886,8 @@ function initPriceAxisScroll() {
       return;
     }
 
-    // On price axis (right ~78px) — vertical zoom (stretch/compress prices)
-    if (xFromRight <= 78) {
+    // On price axis (right ~94px) — vertical zoom (stretch/compress prices)
+    if (xFromRight <= 94) {
       var dir = e.deltaY > 0 ? 1 : -1;
       var step = 0.009; // 70% slower than original 0.03
       _priceMarginTop    = Math.max(0.01, Math.min(0.88, _priceMarginTop    + dir * step));
@@ -921,7 +921,7 @@ function initChartVerticalPan() {
     if (e.button !== 0) return;
     var rect = chartEl.getBoundingClientRect();
     // Ignore clicks on the price axis itself
-    if (rect.right - e.clientX <= 78) return;
+    if (rect.right - e.clientX <= 94) return;
     dragging = true;
     lastY = e.clientY;
   });
