@@ -27,21 +27,30 @@
   var HIT = 7;               // hit tolerance in px
 
   // ---- tool definitions for the toolbar ----
+  // Grouped + separated (thin divider lines) to match the TradingView-style
+  // vertical drawing toolbar layout: cursor modes / line tools / shapes /
+  // text & freehand / fibonacci / trade rulers / clear-all at the bottom.
   var TOOLS = [
-    { id: 'off',     icon: '🖐', tip: 'ניווט בגרף' },
-    { id: 'select',  icon: '⌖',  tip: 'בחירה / עריכה' },
+    { id: 'off',     icon: '⌖',  tip: 'ניווט בגרף' },
+    { id: 'select',  icon: '•',  tip: 'בחירה / עריכה' },
+    { sep: true },
     { id: 'trend',   icon: '╱',  tip: 'קו מגמה' },
     { id: 'hline',   icon: '─',  tip: 'קו אופקי' },
     { id: 'vline',   icon: '│',  tip: 'קו אנכי' },
     { id: 'ray',     icon: '⟶',  tip: 'קרן' },
+    { sep: true },
     { id: 'rect',    icon: '▭',  tip: 'מלבן' },
     { id: 'ellipse', icon: '◯',  tip: 'עיגול / אליפסה' },
     { id: 'arrow',   icon: '↗',  tip: 'חץ' },
+    { sep: true },
     { id: 'text',    icon: 'T',  tip: 'טקסט' },
     { id: 'brush',   icon: '✎',  tip: 'ציור חופשי' },
+    { sep: true },
     { id: 'fib',     icon: 'F',  tip: 'פיבונאצ׳י' },
+    { sep: true },
     { id: 'long',    icon: '▲',  tip: 'סרגל עסקה לונג' },
     { id: 'short',   icon: '▼',  tip: 'סרגל עסקה שורט' },
+    { sep: true },
     { id: 'clear',   icon: '🗑', tip: 'מחק הכל' },
   ];
 
@@ -90,6 +99,7 @@
     toolbar.id = 'drawToolbar';
     toolbar.style.display = 'flex';
     toolbar.innerHTML = TOOLS.map(function (t) {
+      if (t.sep) return '<span class="dt-sep"></span>';
       return '<button class="dt-btn" data-tool="' + t.id + '" title="' + t.tip + '">' +
         '<span class="dt-ic">' + t.icon + '</span><span class="dt-tip">' + t.tip + '</span></button>';
     }).join('');

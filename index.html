@@ -1018,11 +1018,13 @@
     .layout { padding-left:47px; }
     .dt-btn {
       width:35px; height:35px; display:flex; align-items:center; justify-content:center;
-      background:transparent; border:none; border-radius:7px; color:var(--text-muted);
-      font-size:1.76rem; cursor:pointer; position:relative; transition:background .12s,color .12s;
+      background:transparent; border:1px solid transparent; border-radius:7px; color:var(--text-muted);
+      font-size:1.76rem; cursor:pointer; position:relative; transition:background .12s,color .12s,border-color .12s;
     }
     .dt-btn:hover { background:var(--surface2); color:var(--accent); }
-    .dt-btn.active { background:rgba(41,98,255,.18); color:var(--accent); }
+    .dt-btn.active { background:rgba(41,98,255,.18); border-color:rgba(41,98,255,.55); color:var(--accent); }
+    /* Divider line between logical tool groups (cursor / lines / shapes / text / fib / trade / clear) */
+    .dt-sep { width:60%; height:1px; background:var(--border); margin:4px 0; flex-shrink:0; pointer-events:none; }
     .dt-tip {
       position:absolute; left:43px; top:50%; transform:translateY(-50%);
       background:var(--surface2); border:1px solid var(--border); border-radius:6px;
@@ -1347,6 +1349,8 @@
       }
       #drawToolbar .dt-btn { width:41px; height:41px; flex-shrink:0; }
       #drawToolbar .dt-tip { display:none !important; }
+      /* Dividers become vertical bars when the toolbar is laid out as a row */
+      #drawToolbar .dt-sep { width:1px; height:60%; margin:0 3px; }
 
       /* RIGHT icon-toolbar → stays on RIGHT, vertical, pushes chart left */
       .icon-toolbar {
@@ -1767,10 +1771,10 @@
     </main>
   </div>
 </div>
-<script src="scanner-symbols.js?v=20260927c"></script>
-<script src="main.js?v=20260927c"></script>
-<script src="drawing.js?v=20260927c"></script>
-<script src="features.js?v=20260927c"></script>
+<script src="scanner-symbols.js?v=20260927d"></script>
+<script src="main.js?v=20260927d"></script>
+<script src="drawing.js?v=20260927d"></script>
+<script src="features.js?v=20260927d"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
