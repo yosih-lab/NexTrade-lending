@@ -8,22 +8,36 @@
     *{box-sizing:border-box;margin:0;padding:0}
     body{
       font-family:Heebo,sans-serif;
-      background:#04060c;
+      background:#04060c url('bull-bear-bg.jpg') center center / cover no-repeat fixed;
       color:#fff;
       min-height:100vh;
       display:flex;
       align-items:center;
       justify-content:center;
       direction:rtl;
+      position:relative;
+    }
+    /* Dark overlay so the login card stays readable over the image */
+    body::before{
+      content:'';
+      position:fixed;
+      inset:0;
+      background:linear-gradient(180deg,rgba(4,6,12,.72),rgba(4,6,12,.82));
+      z-index:0;
+      pointer-events:none;
     }
     .card{
-      background:#0a0d16;
+      background:rgba(10,13,22,.82);
+      backdrop-filter:blur(8px);
+      -webkit-backdrop-filter:blur(8px);
       border:1px solid #1e2637;
       border-radius:16px;
       padding:2.5rem 2rem;
       width:100%;
       max-width:400px;
       box-shadow:0 8px 40px rgba(0,0,0,.6);
+      position:relative;
+      z-index:1;
     }
     .logo{
       text-align:center;
