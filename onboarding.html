@@ -251,6 +251,11 @@ var ONBOARDING_STEPS = [
     bot: "שאלה אחרונה — האם אתה מבין שמסחר בשוק ההון כרוך בסיכון, ושאין ערבות לרווחים?",
     options: ["כן, אני מבין ומקבל את הסיכון", "אני מבין אבל רוצה ללמוד יותר"],
     key: "disclaimer"
+  },
+  {
+    bot: "איך תרצה להשתמש ב-NexTrade?",
+    options: ["🔔 קבל איתותים — תגיד לי מתי לקנות, איפה הסטופ, ומתי לצאת", "📊 נתח בעצמי — אני רוצה כלים מתקדמים לניתוח טכני"],
+    key: "usageMode"
   }
 ];
 
@@ -372,6 +377,10 @@ function completeOnboarding() {
   // Save answers
   localStorage.setItem('nt_onboarding', JSON.stringify(answers));
   localStorage.setItem('nt_onboarding_done', 'true');
+
+  // Derive the preferred usage mode: 'signals' (signal feed) or 'analysis' (full charts)
+  var mode = (answers.usageMode && answers.usageMode.indexOf('נתח בעצמי') !== -1) ? 'analysis' : 'signals';
+  localStorage.setItem('nt_user_mode', mode);
   
   addBotMessage("תודה רבה! 🎉\nסיימנו את תהליך ההכרות.\nעל סמך התשובות שלך, נתאים את השירות בצורה הטובה ביותר.");
   

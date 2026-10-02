@@ -186,6 +186,8 @@ function loginSuccess(user) {
   if (window.__ntInitDone) return;
   window.__ntInitDone = true;
   setTimeout(function() { init(); }, 60);
+  // Show the Signal Feed (Mode A) if that's the user's preferred mode
+  setTimeout(function() { if (window.NTSignals) window.NTSignals.onAppReady(); }, 200);
 }
 
 function handleLogout() {
