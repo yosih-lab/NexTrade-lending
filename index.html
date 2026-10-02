@@ -1594,11 +1594,55 @@
     .tr-close-btn { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:.35rem .6rem; font-size:.74rem; font-weight:700; cursor:pointer; font-family:Heebo,sans-serif; }
     .tr-close-btn:hover { border-color:var(--red); color:var(--red); }
     .sf-rows-head { display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr 1fr auto; gap:.6rem; padding:0 .9rem .4rem; font-size:.68rem; color:var(--text-muted); font-weight:700; }
+    /* iOS safe-area insets (notch / home indicator) for the Signal Feed */
+    #signalFeed { padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
+    .sf-top { padding-right:calc(1.1rem + env(safe-area-inset-right)); padding-left:calc(1.1rem + env(safe-area-inset-left)); }
+    .sf-body { -webkit-overflow-scrolling:touch; overscroll-behavior:contain; padding-bottom:calc(1rem + env(safe-area-inset-bottom)); }
+    /* Tablets / small laptops */
+    @media (max-width:860px) {
+      .sf-grid { grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:.8rem; }
+    }
+    /* Phones (Android + iPhone) */
     @media (max-width:640px) {
+      /* Compact the topbar "Signals" button to an icon so it doesn't crowd the bar */
+      .topbar-modebtn { font-size:0; padding:.32rem .5rem; margin-left:.25rem; }
+      .topbar-modebtn::before { content:'🔔'; font-size:.95rem; }
+      .sf-top { flex-wrap:wrap; gap:.5rem .6rem; padding:.6rem .9rem; }
+      .sf-logo { font-size:1.1rem; }
+      .sf-userbox { font-size:.74rem; order:2; margin-right:auto; }
+      .sf-modetoggle { margin:0; order:3; width:100%; justify-content:center; }
+      .sf-mode { flex:1; text-align:center; padding:.5rem .4rem; font-size:.8rem; }
+      .sf-tabs { padding:.5rem .6rem 0; gap:.15rem; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+      .sf-tab { padding:.55rem .7rem; font-size:.82rem; white-space:nowrap; }
+      .sf-body { padding:.7rem; }
+      .sf-grid { grid-template-columns:1fr; gap:.8rem; max-width:560px; }
+      /* Signal card tuned for touch */
+      .sig-card { padding:.9rem 1rem; gap:.7rem; border-radius:12px; }
+      .sig-sym { font-size:1.25rem; }
+      .sig-lvl { padding:.55rem .3rem; }
+      .sig-lvl-val { font-size:1.1rem; }
+      .sig-btn { padding:.7rem; font-size:.88rem; }
+      .sig-thumb { height:52px; }
+      /* Stats + trades stack */
+      .sf-stats { gap:.6rem; }
+      .sf-stat { min-width:calc(50% - .3rem); flex:1 1 calc(50% - .3rem); padding:.7rem .8rem; }
+      .sf-stat-val { font-size:1.2rem; }
       .sf-rows-head { display:none; }
-      .trade-row { grid-template-columns:1fr 1fr; }
-      .sf-top { flex-wrap:wrap; gap:.6rem; }
-      .sf-modetoggle { margin:0; order:3; width:100%; }
+      /* Card-style trade rows on phones */
+      .trade-row {
+        grid-template-columns:1fr 1fr; gap:.5rem .8rem; padding:.8rem .9rem;
+        position:relative;
+      }
+      .trade-row > div:first-child { grid-column:1 / -1; display:flex; align-items:center; gap:.5rem; }
+      .trade-row .tr-dir { margin-top:0; }
+      .trade-row > div:last-child { grid-column:1 / -1; }
+      .tr-close-btn { width:100%; padding:.55rem; font-size:.82rem; }
+    }
+    /* Very small phones (iPhone SE, older Android) */
+    @media (max-width:360px) {
+      .sig-levels { gap:.35rem; }
+      .sig-lvl-val { font-size:1rem; }
+      .sf-stat { min-width:100%; flex-basis:100%; }
     }
   </style>
 </head>
@@ -1980,11 +2024,11 @@
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20260927g"></script>
-<script src="main.js?v=20260927g"></script>
-<script src="drawing.js?v=20260927g"></script>
-<script src="features.js?v=20260927g"></script>
-<script src="signals.js?v=20260927g"></script>
+<script src="scanner-symbols.js?v=20260927h"></script>
+<script src="main.js?v=20260927h"></script>
+<script src="drawing.js?v=20260927h"></script>
+<script src="features.js?v=20260927h"></script>
+<script src="signals.js?v=20260927h"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
