@@ -460,12 +460,215 @@ function renderMAPanel() {
       + '<button class="ma-toggle' + (on ? ' on' : '') + '" onclick="toggleMA(' + cfg.period + ')"></button>'
       + '</div>';
   }).join('');
-  list.innerHTML = volRow + maRows;
+  list.innerHTML = volRow + maRows + renderIndicatorRows();
 }
 
 // ============================================
-//   TASE MARKET HOURS (Israel time UTC+3)
+//   TECHNICAL INDICATORS ENGINE
+//   Standard, public-domain indicator math (SMA/EMA/BB/VWAP/RSI/MACD/ATR/CCI/Zigzag).
+//   Each line gets its own color; overlays share the main price scale, oscillators
+//   use a dedicated bottom scale — so their colored last-value labels show on the
+//   right vertical axis (like TradingView).
+//   NOTE: proprietary/community TradingView scripts (e.g. "Pro Dashboard", "D9",
+//   "Moon phases") are copyrighted and are NOT copied here.
 // ============================================
+var indActive = {};   // id -> bool
+var indSeries = {};    // id -> [series,...]
+var _oscScaleReady = false;
+
+function computeEMA(bars, period) {
+  if (bars.length < period) return [];
+  var k = 2 / (period + 1), out = [], ema = null, seed = 0;
+  for (var i = 0; i < bars.length; i++) {
+    var c = bars[i].close;
+    if (i < period) { seed += c; if (i === period - 1) { ema = seed / period; out.push({ time: bars[i].time, value: +ema.toFixed(4) }); } continue; }
+    ema = c * k + ema * (1 - k);
+    out.push({ time: bars[i].time, value: +ema.toFixed(4) });
+  }
+  return out;
+}
+
+function computeBB(bars, period, mult) {
+  var up = [], mid = [], lo = [];
+  for (var i = period - 1; i < bars.length; i++) {
+    var sum = 0, j;
+    for (j = i - period + 1; j <= i; j++) sum += bars[j].close;
+    var m = sum / period, sq = 0;
+    for (j = i - period + 1; j <= i; j++) sq += Math.pow(bars[j].close - m, 2);
+    var sd = Math.sqrt(sq / period);
+    mid.push({ time: bars[i].time, value: +m.toFixed(4) });
+    up.push({ time: bars[i].time, value: +(m + mult * sd).toFixed(4) });
+    lo.push({ time: bars[i].time, value: +(m - mult * sd).toFixed(4) });
+  }
+  return [up, mid, lo];
+}
+
+function computeVWAP(bars) {
+  var out = [], cumPV = 0, cumV = 0;
+  for (var i = 0; i < bars.length; i++) {
+    var tp = (bars[i].high + bars[i].low + bars[i].close) / 3;
+    var v = bars[i].volume || 0;
+    cumPV += tp * v; cumV += v;
+    if (cumV > 0) out.push({ time: bars[i].time, value: +(cumPV / cumV).toFixed(4) });
+  }
+  return out;
+}
+
+function computeRSI(bars, period) {
+  if (bars.length < period + 1) return [];
+  var out = [], gain = 0, loss = 0, i;
+  for (i = 1; i <= period; i++) {
+    var d = bars[i].close - bars[i - 1].close;
+    if (d >= 0) gain += d; else loss -= d;
+  }
+  var ag = gain / period, al = loss / period;
+  out.push({ time: bars[period].time, value: +(100 - 100 / (1 + (al === 0 ? 100 : ag / al))).toFixed(2) });
+  for (i = period + 1; i < bars.length; i++) {
+    var ch = bars[i].close - bars[i - 1].close;
+    var g = ch > 0 ? ch : 0, l = ch < 0 ? -ch : 0;
+    ag = (ag * (period - 1) + g) / period;
+    al = (al * (period - 1) + l) / period;
+    out.push({ time: bars[i].time, value: +(100 - 100 / (1 + (al === 0 ? 100 : ag / al))).toFixed(2) });
+  }
+  return out;
+}
+
+function computeMACD(bars, fast, slow, signal) {
+  var emaF = computeEMA(bars, fast), emaS = computeEMA(bars, slow);
+  var mapF = {}; emaF.forEach(function(p) { mapF[p.time] = p.value; });
+  var macd = [];
+  emaS.forEach(function(p) { if (mapF[p.time] != null) macd.push({ time: p.time, value: +(mapF[p.time] - p.value).toFixed(4) }); });
+  // signal = EMA(signal) of macd line
+  var k = 2 / (signal + 1), sig = [], e = null, seed = 0;
+  for (var i = 0; i < macd.length; i++) {
+    if (i < signal) { seed += macd[i].value; if (i === signal - 1) { e = seed / signal; sig.push({ time: macd[i].time, value: +e.toFixed(4) }); } continue; }
+    e = macd[i].value * k + e * (1 - k);
+    sig.push({ time: macd[i].time, value: +e.toFixed(4) });
+  }
+  return [macd, sig];
+}
+
+function computeATR(bars, period) {
+  if (bars.length < period + 1) return [];
+  var trs = [], i;
+  for (i = 1; i < bars.length; i++) {
+    var tr = Math.max(
+      bars[i].high - bars[i].low,
+      Math.abs(bars[i].high - bars[i - 1].close),
+      Math.abs(bars[i].low - bars[i - 1].close)
+    );
+    trs.push({ time: bars[i].time, tr: tr });
+  }
+  var out = [], atr = 0;
+  for (i = 0; i < period; i++) atr += trs[i].tr;
+  atr /= period;
+  out.push({ time: trs[period - 1].time, value: +atr.toFixed(4) });
+  for (i = period; i < trs.length; i++) {
+    atr = (atr * (period - 1) + trs[i].tr) / period;
+    out.push({ time: trs[i].time, value: +atr.toFixed(4) });
+  }
+  return out;
+}
+
+function computeCCI(bars, period) {
+  var out = [];
+  for (var i = period - 1; i < bars.length; i++) {
+    var sum = 0, j, tps = [];
+    for (j = i - period + 1; j <= i; j++) { var tp = (bars[j].high + bars[j].low + bars[j].close) / 3; tps.push(tp); sum += tp; }
+    var mean = sum / period, md = 0;
+    for (j = 0; j < tps.length; j++) md += Math.abs(tps[j] - mean);
+    md /= period;
+    var tpNow = (bars[i].high + bars[i].low + bars[i].close) / 3;
+    var cci = md === 0 ? 0 : (tpNow - mean) / (0.015 * md);
+    out.push({ time: bars[i].time, value: +cci.toFixed(2) });
+  }
+  return out;
+}
+
+var INDICATORS = [
+  { id: 'sma20', label: 'SMA 20',               kind: 'overlay', colors: ['#00BCD4'],          compute: function(b){ return [computeMA(b, 20)]; } },
+  { id: 'ema20', label: 'EMA 20',               kind: 'overlay', colors: ['#FFD54F'],          compute: function(b){ return [computeEMA(b, 20)]; } },
+  { id: 'bb',    label: 'Bollinger Bands 20,2', kind: 'overlay', colors: ['#26C6DA','#90A4AE','#26C6DA'], compute: function(b){ return computeBB(b, 20, 2); } },
+  { id: 'vwap',  label: 'VWAP',                 kind: 'overlay', colors: ['#AB47BC'],          compute: function(b){ return [computeVWAP(b)]; } },
+  { id: 'rsi',   label: 'RSI 14',               kind: 'osc',     colors: ['#F06595'],          compute: function(b){ return [computeRSI(b, 14)]; } },
+  { id: 'macd',  label: 'MACD 12,26,9',         kind: 'osc',     colors: ['#2962ff','#FF9800'], compute: function(b){ return computeMACD(b, 12, 26, 9); } },
+  { id: 'atr',   label: 'ATR 14',               kind: 'osc',     colors: ['#8D6E63'],          compute: function(b){ return [computeATR(b, 14)]; } },
+  { id: 'cci',   label: 'CCI 20',               kind: 'osc',     colors: ['#66BB6A'],          compute: function(b){ return [computeCCI(b, 20)]; } },
+];
+
+function indCfg(id) { return INDICATORS.find(function(c){ return c.id === id; }); }
+
+function ensureOscScale() {
+  if (_oscScaleReady || !chartInstance) return;
+  try {
+    chartInstance.priceScale('osc').applyOptions({ scaleMargins: { top: 0.78, bottom: 0 }, borderColor: '#1e2533' });
+    _oscScaleReady = true;
+  } catch (e) {}
+}
+
+function createIndSeries(cfg) {
+  var arr = [];
+  cfg.colors.forEach(function(col) {
+    var opts = { color: col, lineWidth: 2, lastValueVisible: true, priceLineVisible: false, crosshairMarkerVisible: false };
+    if (cfg.kind === 'osc') { opts.priceScaleId = 'osc'; opts.lineWidth = 1; }
+    arr.push(chartInstance.addLineSeries(opts));
+  });
+  return arr;
+}
+
+function renderIndicators(bars) {
+  if (!chartInstance || !bars || !bars.length) return;
+  ensureOscScale();
+  INDICATORS.forEach(function(cfg) {
+    if (!indActive[cfg.id]) return;
+    if (!indSeries[cfg.id]) indSeries[cfg.id] = createIndSeries(cfg);
+    var datasets = cfg.compute(bars);
+    datasets.forEach(function(d, idx) { if (indSeries[cfg.id][idx]) indSeries[cfg.id][idx].setData(d); });
+  });
+}
+
+function clearIndicatorSeries() {
+  if (!chartInstance) return;
+  Object.keys(indSeries).forEach(function(id) {
+    indSeries[id].forEach(function(s) { try { chartInstance.removeSeries(s); } catch (e) {} });
+    delete indSeries[id];
+  });
+}
+
+function toggleIndicator(id) {
+  var cfg = indCfg(id); if (!cfg) return;
+  if (indActive[id]) {
+    indActive[id] = false;
+    if (indSeries[id]) { indSeries[id].forEach(function(s){ try { chartInstance.removeSeries(s); } catch(e){} }); delete indSeries[id]; }
+  } else {
+    indActive[id] = true;
+    if (lastBars && lastBars.length) {
+      ensureOscScale();
+      indSeries[id] = createIndSeries(cfg);
+      var datasets = cfg.compute(lastBars);
+      datasets.forEach(function(d, idx){ if (indSeries[id][idx]) indSeries[id][idx].setData(d); });
+    }
+  }
+  renderMAPanel();
+}
+
+function renderIndicatorRows() {
+  var overlay = INDICATORS.filter(function(c){ return c.kind === 'overlay'; });
+  var osc = INDICATORS.filter(function(c){ return c.kind === 'osc'; });
+  function row(cfg) {
+    var on = !!indActive[cfg.id];
+    var sw = cfg.colors.length > 1
+      ? '<span class="ma-swatch" style="background:linear-gradient(90deg,' + cfg.colors.join(',') + ')"></span>'
+      : '<span class="ma-swatch" style="background:' + cfg.colors[0] + '"></span>';
+    return '<div class="ma-item">' + sw
+      + '<span class="ma-label">' + cfg.label + '</span>'
+      + '<button class="ma-toggle' + (on ? ' on' : '') + '" onclick="toggleIndicator(\'' + cfg.id + '\')"></button>'
+      + '</div>';
+  }
+  return '<div class="ind-head">אינדיקטורים על הגרף</div>' + overlay.map(row).join('')
+    + '<div class="ind-head">אוסצילטורים (סקאלה תחתונה)</div>' + osc.map(row).join('');
+}
+
 function getTASEStatus() {
   var now = new Date();
   // Convert to Israel time (UTC+3)
@@ -1020,6 +1223,68 @@ function _saveBgPref() {
   localStorage.setItem('nt_chartBg', JSON.stringify({ mode: _ctxBgMode, solid: _ctxBgSolid, top: _ctxBgGradTop, bot: _ctxBgGradBot }));
 }
 
+// ============================================
+//   CHART WATERMARK (symbol name behind chart)
+// ============================================
+var _wmVisible = true;
+var _wmStrength = 'medium';
+var _WM_STRENGTH = {
+  weak:   { alpha: 0.05, fontSize: 56 },
+  medium: { alpha: 0.11, fontSize: 76 },
+  strong: { alpha: 0.20, fontSize: 96 }
+};
+(function loadWmPref() {
+  try {
+    var s = JSON.parse(localStorage.getItem('nt_watermark'));
+    if (s) {
+      if (typeof s.visible === 'boolean') _wmVisible = s.visible;
+      if (s.strength && _WM_STRENGTH[s.strength]) _wmStrength = s.strength;
+    }
+  } catch(e) {}
+})();
+function _saveWmPref() {
+  localStorage.setItem('nt_watermark', JSON.stringify({ visible: _wmVisible, strength: _wmStrength }));
+}
+function applyWatermark() {
+  if (!chartInstance) return;
+  var cfg = _WM_STRENGTH[_wmStrength] || _WM_STRENGTH.medium;
+  var txt = (currentSymbol || '').replace('.TA', '');
+  try {
+    chartInstance.applyOptions({
+      watermark: {
+        visible: _wmVisible && !!txt,
+        text: txt,
+        color: 'rgba(255,255,255,' + cfg.alpha + ')',
+        fontSize: cfg.fontSize,
+        fontStyle: 'bold',
+        horzAlign: 'center',
+        vertAlign: 'center'
+      }
+    });
+  } catch(e) {}
+}
+function wmToggle() {
+  _wmVisible = !_wmVisible;
+  _saveWmPref();
+  applyWatermark();
+  wmSyncUI();
+}
+function wmSetStrength(s) {
+  if (!_WM_STRENGTH[s]) return;
+  _wmStrength = s;
+  _saveWmPref();
+  applyWatermark();
+  wmSyncUI();
+}
+function wmSyncUI() {
+  var row = document.getElementById('wmToggleRow');
+  if (row) row.classList.toggle('checked', _wmVisible);
+  var tabs = document.getElementById('wmStrengthTabs');
+  if (tabs) tabs.querySelectorAll('.ctxm-tab').forEach(function(b) {
+    b.classList.toggle('active', b.getAttribute('data-wm') === _wmStrength);
+  });
+}
+
 function initChartContextMenu() {
   var chartEl = document.getElementById('chart');
   if (!chartEl) return;
@@ -1070,6 +1335,10 @@ function initChartContextMenu() {
   });
 
   cstApplyInitialState();
+
+  // Watermark: reflect saved prefs in UI + apply to chart
+  wmSyncUI();
+  applyWatermark();
 
   chartEl.addEventListener('contextmenu', function(e) {
     e.preventDefault();
@@ -1642,6 +1911,13 @@ async function loadChart(symbol, tf, preserveZoom) {
   // Update / re-render active MAs with new data
   clearMASeries();
   renderMAs(bars);
+
+  // Update / re-render active technical indicators
+  clearIndicatorSeries();
+  renderIndicators(bars);
+
+  // Keep the chart watermark text in sync with the current symbol
+  applyWatermark();
 
   // Fit time scale only on initial load (not on background refresh)
   // Also re-fit after a short delay: the chart container can still be mid-resize

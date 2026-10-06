@@ -49,9 +49,30 @@
     #authOverlay::before { content:''; position:absolute; inset:0; background:linear-gradient(180deg,rgba(4,6,12,.22),rgba(4,6,12,.34)); pointer-events:none; }
     .auth-glow { position:absolute; width:600px; height:600px; background:radial-gradient(circle,rgba(41,98,255,.15) 0%,transparent 70%); top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; }
     .auth-card { position:relative; background:rgba(19,23,34,.40); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); border:1px solid rgba(255,255,255,.14); border-radius:20px; padding:2.5rem 2.25rem; width:100%; max-width:420px; box-shadow:0 25px 60px rgba(0,0,0,.5); }
-    .auth-logo { text-align:center; font-size:2rem; font-weight:700; color:#2962ff; margin-bottom:.25rem; letter-spacing:-1px; }
-    .auth-logo span { color:var(--gold); }
-    .auth-tagline { text-align:center; font-size:.8rem; color:var(--text-muted); margin-bottom:2rem; }
+    .auth-logo { text-align:center; font-size:2rem; font-weight:900; margin-bottom:.25rem; letter-spacing:-1px; }
+    .auth-logo .lg-nex { color:var(--gold); }
+    .auth-logo .lg-trade { color:#2962ff; }
+    .auth-tagline { text-align:center; font-size:.8rem; color:var(--text-muted); margin-bottom:2rem; line-height:1.5; }
+    .auth-tagline .flag { font-size:1.05em; vertical-align:-.08em; }
+    /* Mobile: enlarge the login/register card ~75% so it's comfortable on phones */
+    @media (max-width:640px) {
+      .auth-card { max-width:94vw; padding:2.4rem 1.9rem; border-radius:24px; }
+      .auth-logo { font-size:3rem; margin-bottom:.4rem; }
+      .auth-tagline { font-size:1.08rem; margin-bottom:2.2rem; }
+      .auth-tabs { padding:6px; margin-bottom:2rem; }
+      .auth-tab { padding:.85rem; font-size:1.1rem; border-radius:9px; }
+      .auth-form { gap:1.35rem; }
+      .field-group { gap:.55rem; }
+      .field-group label { font-size:1.02rem; }
+      .field-group input { padding:1rem 1.15rem; font-size:1.12rem; border-radius:12px; }
+      .pw-wrap input { padding-left:3.2rem; }
+      .eye-btn svg { width:23px; height:23px; }
+      .auth-btn { padding:1.05rem; font-size:1.18rem; border-radius:12px; }
+      .demo-btn { padding:.95rem; font-size:1.06rem; border-radius:12px; }
+      .auth-divider { font-size:.95rem; }
+      .forgot-link a, .back-link { font-size:1rem; }
+      .auth-footer { font-size:.92rem; margin-top:1.8rem; }
+    }
     .auth-tabs { display:flex; background:var(--surface2); border-radius:10px; padding:4px; margin-bottom:1.75rem; gap:4px; }
     .auth-tab { flex:1; text-align:center; padding:.5rem; font-size:.85rem; font-weight:600; cursor:pointer; border-radius:7px; color:var(--text-muted); transition:all .2s; user-select:none; }
     .auth-tab.active { background:var(--accent); color:#fff; }
@@ -576,6 +597,8 @@
     }
     .ma-toggle.on { background:var(--accent); }
     .ma-toggle.on::after { left:16px; }
+    .ind-head { font-size:.68rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:.3px; padding:.55rem .5rem .2rem; margin-top:.2rem; border-top:1px solid var(--border); }
+    .ind-head:first-of-type { margin-top:.35rem; }
     .sidebar .cards-row { grid-template-columns:1fr; gap:.5rem; margin-bottom:.75rem; }
     .sidebar .stock-card { min-height:70px; padding:.75rem; }
     .right-sidebar { width:220px; }
@@ -1652,8 +1675,8 @@
 <div id="authOverlay">
   <div class="auth-glow"></div>
   <div class="auth-card">
-    <div class="auth-logo">Nex<span>Trade</span></div>
-    <div class="auth-tagline">פלטפורמת המסחר המובילה לשוק הישראלי &#127470;&#127473;</div>
+    <div class="auth-logo"><span class="lg-nex">Nex</span><span class="lg-trade">Trade</span></div>
+    <div class="auth-tagline">פלטפורמת איתותים ומסחר מקצועית בישראל וארצות הברית <span class="flag">&#127470;&#127473;</span> <span class="flag">&#127482;&#127480;</span></div>
     <div class="auth-tabs">
       <div class="auth-tab active" id="tabLogin"  onclick="switchTab('login')">כניסה</div>
       <div class="auth-tab"        id="tabSignup" onclick="switchTab('signup')">הרשמה</div>
@@ -2024,11 +2047,11 @@
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20260927h"></script>
-<script src="main.js?v=20260927h"></script>
-<script src="drawing.js?v=20260927h"></script>
-<script src="features.js?v=20260927h"></script>
-<script src="signals.js?v=20260927h"></script>
+<script src="scanner-symbols.js?v=20260927i"></script>
+<script src="main.js?v=20260927i"></script>
+<script src="drawing.js?v=20260927i"></script>
+<script src="features.js?v=20260927i"></script>
+<script src="signals.js?v=20260927i"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
@@ -2067,6 +2090,22 @@
             <div class="ctxm-colors" id="ctxGradTopColors"></div>
             <div class="ctxm-grad-row"><div class="ctxm-grad-dot" id="ctxGradBotDot" style="background:#1a1f2e"></div><span>צבע תחתון</span></div>
             <div class="ctxm-colors" id="ctxGradBotColors"></div>
+          </div>
+
+          <!-- WATERMARK — symbol name behind the chart -->
+          <div class="ctxm-header" style="padding:1rem 0 .4rem;border-bottom:none;border-top:1px solid #1e2637;margin-top:.8rem">סימן מים (שם הנייר ברקע)</div>
+          <div class="cst-row" id="wmToggleRow" onclick="wmToggle()" style="padding:.4rem .2rem">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">הצג סימן מים</div>
+              <div class="cst-row-desc">שם הנייר יופיע במרכז הגרף ברקע</div>
+            </div>
+          </div>
+          <div class="ctxm-grad-row" style="margin-top:.5rem"><span>חוזק תצוגה</span></div>
+          <div class="ctxm-tabs" id="wmStrengthTabs">
+            <button class="ctxm-tab" data-wm="weak" onclick="wmSetStrength('weak')">חלש</button>
+            <button class="ctxm-tab" data-wm="medium" onclick="wmSetStrength('medium')">בינוני</button>
+            <button class="ctxm-tab" data-wm="strong" onclick="wmSetStrength('strong')">חזק</button>
           </div>
         </div>
 
