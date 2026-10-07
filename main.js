@@ -1357,7 +1357,7 @@ function initChartContextMenu() {
     openChartCtxMenuAt(e.clientX, e.clientY);
   });
 
-  // Alt+R / Alt+A / Alt+Shift+B / Alt+Shift+S / Shift+T / Alt+H / Ctrl+E chart shortcuts
+  // Alt+R / Alt+A / Alt+Shift+B / Alt+Shift+S / Shift+T / Alt+H / Alt+E chart shortcuts
   document.addEventListener('keydown', function(e) {
     var tag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
@@ -1367,7 +1367,7 @@ function initChartContextMenu() {
     else if (e.altKey && e.shiftKey && (e.key === 's' || e.key === 'S')) { crosshairMenuOrder('short', 'limit'); e.preventDefault(); }
     else if (!e.altKey && e.shiftKey && (e.key === 't' || e.key === 'T')) { crosshairMenuShowOrderForm(); e.preventDefault(); }
     else if (e.altKey && !e.shiftKey && (e.key === 'h' || e.key === 'H')) { crosshairMenuDrawHLine(); e.preventDefault(); }
-    else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'e' || e.key === 'E')) { addCurrentToWatchlist(); e.preventDefault(); }
+    else if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey && (e.key === 'e' || e.key === 'E' || e.code === 'KeyE')) { addCurrentToWatchlist(); e.preventDefault(); }
   });
 }
 
