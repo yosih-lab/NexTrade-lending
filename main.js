@@ -968,7 +968,7 @@ function initChart() {
 
   chartInstance = LightweightCharts.createChart(mainEl, {
     autoSize: true,
-    layout: { background: { color: '#0f1117' }, textColor: '#8899aa', fontSize: 11.5 },
+    layout: { background: { color: '#05070a' }, textColor: '#8899aa', fontSize: 11.5 },
     grid:   { vertLines: { color: 'transparent' }, horzLines: { color: 'transparent' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
     rightPriceScale: { borderColor: '#1e2533', autoScale: true, entireTextOnly: true, minimumWidth: 66 },
@@ -1210,13 +1210,17 @@ var CTX_COLORS = [
   '#0891b2','#06b6d4','#67e8f9','#a5f3fc','#164e63','#155e75','#083344','#cffafe',
   '#059669','#10b981','#6ee7b7','#a7f3d0','#064e3b','#065f46','#022c22','#d1fae5'
 ];
-var _ctxBgSolid = '#0f1117';
-var _ctxBgGradTop = '#0f1117', _ctxBgGradBot = '#1a1f2e';
+var _ctxBgSolid = '#05070a';
+var _ctxBgGradTop = '#05070a', _ctxBgGradBot = '#12161f';
 var _ctxBgMode = 'solid';
 (function loadBgPref() {
   try {
     var s = JSON.parse(localStorage.getItem('nt_chartBg'));
-    if (s) { _ctxBgMode = s.mode || 'solid'; _ctxBgSolid = s.solid || '#0f1117'; _ctxBgGradTop = s.top || '#0f1117'; _ctxBgGradBot = s.bot || '#1a1f2e'; }
+    if (s) { _ctxBgMode = s.mode || 'solid'; _ctxBgSolid = s.solid || '#05070a'; _ctxBgGradTop = s.top || '#05070a'; _ctxBgGradBot = s.bot || '#12161f'; }
+    // Migrate the previous lighter default to the new darker near-black
+    if (_ctxBgSolid === '#0f1117') _ctxBgSolid = '#05070a';
+    if (_ctxBgGradTop === '#0f1117') _ctxBgGradTop = '#05070a';
+    if (_ctxBgGradBot === '#1a1f2e') _ctxBgGradBot = '#12161f';
   } catch(e) {}
 })();
 function _saveBgPref() {
@@ -1353,7 +1357,7 @@ function initChartContextMenu() {
     openChartCtxMenuAt(e.clientX, e.clientY);
   });
 
-  // Alt+R / Alt+A / Alt+Shift+B / Alt+Shift+S / Shift+T / Alt+H chart shortcuts
+  // Alt+R / Alt+A / Alt+Shift+B / Alt+Shift+S / Shift+T / Alt+H / Ctrl+E chart shortcuts
   document.addEventListener('keydown', function(e) {
     var tag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
@@ -1363,6 +1367,7 @@ function initChartContextMenu() {
     else if (e.altKey && e.shiftKey && (e.key === 's' || e.key === 'S')) { crosshairMenuOrder('short', 'limit'); e.preventDefault(); }
     else if (!e.altKey && e.shiftKey && (e.key === 't' || e.key === 'T')) { crosshairMenuShowOrderForm(); e.preventDefault(); }
     else if (e.altKey && !e.shiftKey && (e.key === 'h' || e.key === 'H')) { crosshairMenuDrawHLine(); e.preventDefault(); }
+    else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'e' || e.key === 'E')) { addCurrentToWatchlist(); e.preventDefault(); }
   });
 }
 
@@ -2283,6 +2288,42 @@ function removeFromWatchlist(e, sym) {
   watchlist = watchlist.filter(function(s) { return s !== sym; });
   localStorage.setItem('ml_watchlist', JSON.stringify(watchlist));
   renderWatchlist();
+}
+
+// Lightweight transient toast (self-contained, no HTML/CSS needed)
+function ntToast(msg) {
+  var t = document.getElementById('ntToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'ntToast';
+    t.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(16px);' +
+      'background:#111722;color:#fff;font-family:Heebo,sans-serif;font-size:.85rem;font-weight:700;' +
+      'padding:.6rem 1.1rem;border-radius:10px;border:1px solid #2962ff;box-shadow:0 8px 28px rgba(0,0,0,.5);' +
+      'z-index:99999;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;direction:rtl;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  requestAnimationFrame(function() {
+    t.style.opacity = '1';
+    t.style.transform = 'translateX(-50%) translateY(0)';
+  });
+  clearTimeout(ntToast._t);
+  ntToast._t = setTimeout(function() {
+    t.style.opacity = '0';
+    t.style.transform = 'translateX(-50%) translateY(16px)';
+  }, 2000);
+}
+
+// Add the symbol currently shown on the chart to the watchlist (Ctrl+E shortcut)
+function addCurrentToWatchlist() {
+  var sym = currentSymbol;
+  if (!sym) { ntToast('אין נייר פעיל על הגרף'); return; }
+  var label = sym.replace('.TA', '');
+  if (watchlist.includes(sym)) { ntToast(label + ' כבר ברשימת המעקב'); return; }
+  watchlist.push(sym);
+  localStorage.setItem('ml_watchlist', JSON.stringify(watchlist));
+  renderWatchlist();
+  ntToast('✓ ' + label + ' נוסף לרשימת המעקב');
 }
 
 // ============================================
