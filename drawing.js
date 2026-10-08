@@ -1228,145 +1228,199 @@
   }
 
   function ppBeginDrag(e) {
-    e.preventDefault();
-    var rect = posPanel.getBoundingClientRect();
-    var cx = e.touches ? e.touches[0].clientX : e.clientX;
-    var cy = e.touches ? e.touches[0].clientY : e.clientY;
-    var ox = cx - rect.left, oy = cy - rect.top;
-
-    function onMove(ev) {
-      var nx = ev.touches ? ev.touches[0].clientX : ev.clientX;
-      var ny = ev.touches ? ev.touches[0].clientY : ev.clientY;
-      posPanel.style.left = Math.max(0, nx - ox) + 'px';
-      posPanel.style.top = Math.max(0, ny - oy) + 'px';
-      posPanel.style.right = 'auto';
-      posPanel.style.bottom = 'auto';
-      if (ev.cancelable) ev.preventDefault();
-    }
-    function onUp() {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('touchmove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      document.removeEventListener('touchend', onUp);
-    }
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('touchmove', onMove, { passive: false });
-    document.addEventListener('mouseup', onUp);
-    document.addEventListener('touchend', onUp);
+    // Panel is docked (non-dynamic) — dragging disabled.
+    return;
   }
 
   function ppBeginResize(e) {
-    e.preventDefault(); e.stopPropagation();
-    var dir = e.currentTarget.getAttribute('data-dir');
-    var rect = posPanel.getBoundingClientRect();
-    var startX = e.touches ? e.touches[0].clientX : e.clientX;
-    var startY = e.touches ? e.touches[0].clientY : e.clientY;
-    var origL = rect.left, origT = rect.top, origW = rect.width, origH = rect.height;
-
-    function onMove(ev) {
-      var nx = ev.touches ? ev.touches[0].clientX : ev.clientX;
-      var ny = ev.touches ? ev.touches[0].clientY : ev.clientY;
-      var dx = nx - startX, dy = ny - startY;
-      var newL = origL, newT = origT, newW = origW, newH = origH;
-      var MIN_W = 190, MIN_H = 120;
-
-      if (dir.indexOf('e') !== -1) newW = Math.max(MIN_W, origW + dx);
-      if (dir.indexOf('w') !== -1) {
-        newW = Math.max(MIN_W, origW - dx);
-        newL = origL + (origW - newW);
-      }
-      if (dir.indexOf('s') !== -1) newH = Math.max(MIN_H, origH + dy);
-      if (dir.indexOf('n') !== -1) {
-        newH = Math.max(MIN_H, origH - dy);
-        newT = origT + (origH - newH);
-      }
-
-      posPanel.style.left   = newL + 'px';
-      posPanel.style.top    = newT + 'px';
-      posPanel.style.width  = newW + 'px';
-      posPanel.style.height = newH + 'px';
-      posPanel.style.right  = 'auto';
-      posPanel.style.bottom = 'auto';
-      if (ev.cancelable) ev.preventDefault();
-    }
-    function onUp() {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('touchmove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      document.removeEventListener('touchend', onUp);
-    }
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('touchmove', onMove, { passive: false });
-    document.addEventListener('mouseup', onUp);
-    document.addEventListener('touchend', onUp);
+    // Panel is docked (non-dynamic) — resizing disabled.
+    return;
   }
 
   function ppRefresh() {
     ensurePositionPanel();
     var positions = shapes.filter(function (s) { return s.type === 'position'; });
     var cnt = document.getElementById('pp-content');
+    var titleEl = document.getElementById('pp-title');
     if (!cnt) return;
 
+    var symTxt = (window.currentSymbol || '').replace('.TA', '');
+    if (titleEl) titleEl.innerHTML = '<span>📄 ' + (symTxt || 'עסקה') + '</span>';
+
     if (positions.length === 0) {
-      cnt.innerHTML = '<div class="pp-empty">לחץ ▲Long או ▼Short על הגרף<br>להוספת עסקה</div>';
-    } else {
-      cnt.innerHTML = positions.map(function (s) {
-        var risk = Math.abs(s.entry - s.sl);
-        var reward = Math.abs(s.tp - s.entry);
-        var rrNum = risk > 0 ? reward / risk : 0;
-        var rrStr = risk > 0 ? rrNum.toFixed(2) : '∞';
-        var rrColor = rrNum >= 2 ? '#26a69a' : rrNum >= 1 ? '#f5a623' : '#ef5350';
-        var isLong = s.dir === 'long';
-        var profitPct = ((s.tp - s.entry) / s.entry * 100);
-        var lossPct = ((s.sl - s.entry) / s.entry * 100);
-        var id = s.id;
-        return '<div class="pp-pos" data-id="' + id + '">' +
-          '<div class="pp-pos-hdr">' +
-          '<span class="pp-dir ' + (isLong ? 'pp-long' : 'pp-short') + '">' + (isLong ? '▲ LONG' : '▼ SHORT') + '</span>' +
-          '<span class="pp-sym">' + (window.currentSymbol || '') + '</span>' +
-          '<button class="pp-del" data-del="' + id + '">🗑</button>' +
-          '</div>' +
-          '<div class="pp-row"><label>כניסה</label>' +
-          '<input type="number" data-pid="' + id + '" data-f="entry" value="' + s.entry.toFixed(2) + '" step="any" /></div>' +
-          '<div class="pp-row pp-row-tp"><label>יעד</label>' +
-          '<input type="number" data-pid="' + id + '" data-f="tp" value="' + s.tp.toFixed(2) + '" step="any" />' +
-          '<span style="color:#26a69a;font-size:.66rem;width:44px;text-align:left">' + (profitPct >= 0 ? '+' : '') + profitPct.toFixed(1) + '%</span></div>' +
-          '<div class="pp-row pp-row-sl"><label>סטופ</label>' +
-          '<input type="number" data-pid="' + id + '" data-f="sl" value="' + s.sl.toFixed(2) + '" step="any" />' +
-          '<span style="color:#ef5350;font-size:.66rem;width:44px;text-align:left">' + lossPct.toFixed(1) + '%</span></div>' +
-          '<div class="pp-row"><label>כמות</label>' +
-          '<input type="number" data-pid="' + id + '" data-f="qty" value="' + (s.qty || 1) + '" step="1" min="1" /></div>' +
-          '<div class="pp-rr">R:R = <b style="color:' + rrColor + '">' + rrStr + ':1</b></div>' +
-          '</div>';
-      }).join('');
-
-      // Wire input listeners (real-time update)
-      cnt.querySelectorAll('input[data-pid]').forEach(function (inp) {
-        inp.addEventListener('input', function () {
-          var id2 = parseInt(inp.getAttribute('data-pid'), 10);
-          var field = inp.getAttribute('data-f');
-          var val = parseFloat(inp.value);
-          if (isNaN(val)) return;
-          var sh = shapeById(id2);
-          if (!sh) return;
-          if (field === 'qty') { sh.qty = Math.max(1, Math.round(val)); }
-          else { sh[field] = val; }
-          save(); scheduleDraw();
-          // Debounced full refresh for R:R + % recalc
-          clearTimeout(inp._ppTimer);
-          inp._ppTimer = setTimeout(function() { ppRefresh(); }, 400);
-        });
-      });
-
-      // Wire delete buttons
-      cnt.querySelectorAll('.pp-del[data-del]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var id3 = parseInt(btn.getAttribute('data-del'), 10);
-          shapes = shapes.filter(function (s) { return s.id !== id3; });
-          save(); scheduleDraw(); ppRefresh();
-        });
-      });
+      cnt.innerHTML = '<div class="pp-empty">אין עסקה פעילה.<br>הוסף סרגל עסקה (Long/Short) מסרגל הכלים או מתפריט הגרף,<br>ולחץ עליו כדי לפתוח כאן את כל הפרמטרים.</div>';
+      posPanel.style.display = 'flex';
+      return;
     }
+
+    // Show the selected position, else the last one added
+    var s = null;
+    for (var i = 0; i < positions.length; i++) { if (positions[i].id === selectedId) { s = positions[i]; break; } }
+    if (!s) s = positions[positions.length - 1];
+    selectedId = s.id;
+
+    var TICK = 0.01;
+    var isLong = s.dir === 'long';
+    var qty = s.qty || 1;
+    var price = s.entry;
+    var tp = s.tp, sl = s.sl;
+    var orderType = s.orderType || 'Limit';
+    var tif = s.tif || 'GTC';
+    var tpOn = s.tpOn !== false;
+    var slOn = s.slOn !== false;
+
+    var live = (window.priceCache && window.priceCache[window.currentSymbol]) ? window.priceCache[window.currentSymbol].price : price;
+    var sellPx = live, buyPx = live + TICK;
+
+    var riskUsd  = Math.abs(price - sl) * qty;
+    var tradeVal = price * qty;
+    var tickVal  = qty * TICK;
+    var tpTicks  = Math.round(Math.abs(tp - price) / TICK);
+    var slTicks  = Math.round(Math.abs(price - sl) / TICK);
+    var rrNum    = slTicks > 0 ? (tpTicks / slTicks) : 0;
+    var rrStr    = slTicks > 0 ? rrNum.toFixed(1) : '∞';
+    var rrColor  = rrNum >= 2 ? '#26a69a' : rrNum >= 1 ? '#f5a623' : '#ef5350';
+
+    function f(n, d) { return (typeof fmtPrice === 'function') ? fmtPrice(n) : Number(n).toFixed(d == null ? 2 : d); }
+    function money(n) { return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+    var types = ['Market', 'Limit', 'Stop', 'Stop Limit'];
+    var typeBtns = types.map(function (t) {
+      return '<div class="ot-type' + (t === orderType ? ' active' : '') + '" data-type="' + t + '">' + t + '</div>';
+    }).join('');
+
+    var priceDisabled = orderType === 'Market';
+
+    cnt.innerHTML =
+      '<div class="ot">' +
+        '<div class="ot-tabs">' +
+          '<div class="ot-tab active">Order</div>' +
+          '<div class="ot-tab">DOM</div>' +
+        '</div>' +
+
+        '<div class="ot-bs">' +
+          '<div class="ot-bs-side ot-bs-sell' + (!isLong ? ' active' : '') + '" data-side="sell">' +
+            '<span class="ot-bs-lbl">Sell</span><span class="ot-bs-px">' + f(sellPx) + '</span></div>' +
+          '<div class="ot-bs-qty"><input type="number" id="otQty" value="' + qty + '" min="1" step="1" /></div>' +
+          '<div class="ot-bs-side ot-bs-buy' + (isLong ? ' active' : '') + '" data-side="buy">' +
+            '<span class="ot-bs-lbl">Buy</span><span class="ot-bs-px">' + f(buyPx) + '</span></div>' +
+        '</div>' +
+
+        '<div class="ot-types">' + typeBtns + '</div>' +
+
+        '<div class="ot-field">' +
+          '<div class="ot-field-lbl">Price</div>' +
+          '<div class="ot-input-wrap">' +
+            '<input type="number" id="otPrice" value="' + price.toFixed(2) + '" step="any"' + (priceDisabled ? ' disabled' : '') + ' />' +
+            '<span class="ot-swap">⇄</span>' +
+            '<span class="ot-input-side">' + (isLong ? 'Ask' : 'Bid') + '</span>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="ot-field">' +
+          '<div class="ot-field-lbl">Risk USD</div>' +
+          '<div class="ot-input-wrap">' +
+            '<input type="text" value="' + money(riskUsd) + '" disabled />' +
+            '<span class="ot-input-side">' + qty + ' shares</span>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="ot-tvbox">' +
+          '<div class="ot-tvrow"><span class="ot-tv-lbl">Trade value (2:1)</span><span class="ot-tv-val">' + money(tradeVal) + ' USD</span></div>' +
+          '<div class="ot-tvrow"><span class="ot-tv-lbl">Tick value</span><span class="ot-tv-val">' + money(tickVal) + ' USD</span></div>' +
+        '</div>' +
+
+        '<div class="ot-sec"><span>Exits</span></div>' +
+
+        '<div class="ot-exit-lbl"><span>Take profit, price</span>' +
+          '<div class="ot-switch' + (tpOn ? ' on' : '') + '" data-sw="tp"></div></div>' +
+        '<div class="ot-field">' +
+          '<div class="ot-input-wrap">' +
+            '<input type="number" id="otTp" value="' + tp.toFixed(2) + '" step="any"' + (tpOn ? '' : ' disabled') + ' />' +
+            '<span class="ot-swap">⇄</span>' +
+            '<span class="ot-input-side">' + tpTicks + ' ticks</span>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="ot-exit-lbl"><span>Stop loss, price</span>' +
+          '<div class="ot-switch' + (slOn ? ' on' : '') + '" data-sw="sl"></div></div>' +
+        '<div class="ot-field">' +
+          '<div class="ot-input-wrap">' +
+            '<input type="number" id="otSl" value="' + sl.toFixed(2) + '" step="any"' + (slOn ? '' : ' disabled') + ' />' +
+            '<span class="ot-swap">⇄</span>' +
+            '<span class="ot-input-side">' + slTicks + ' ticks</span>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="ot-rr"><span class="ot-rr-lbl">Risk / Reward</span>' +
+          '<span class="ot-rr-val" style="color:' + rrColor + '">' + rrStr + '</span></div>' +
+
+        '<div class="ot-sec"><span>Extra settings</span>' +
+          '<button class="ot-del" id="otDel" title="מחק עסקה">🗑</button></div>' +
+        '<div class="ot-field-lbl" style="margin:0 .6rem .2rem">Time in force</div>' +
+        '<select class="ot-select" id="otTif">' +
+          ['GTC', 'DAY', 'GTD', 'IOC'].map(function (o) {
+            return '<option value="' + o + '"' + (o === tif ? ' selected' : '') + '>' + o + '</option>';
+          }).join('') +
+        '</select>' +
+
+        '<button class="ot-submit ' + (isLong ? 'buy' : 'sell') + '" id="otSubmit">' +
+          (isLong ? 'Buy' : 'Sell') +
+          '<small>' + symTxt + ' @ ' + price.toFixed(2) + ' ' + orderType.toUpperCase() + '</small>' +
+        '</button>' +
+      '</div>';
+
+    // ----- wire listeners -----
+    function setField(field, raw, isInt) {
+      var val = parseFloat(raw);
+      if (isNaN(val)) return;
+      if (isInt) val = Math.max(1, Math.round(val));
+      s[field] = val;
+      save(); scheduleDraw();
+    }
+    function debouncedRefresh(inp) {
+      clearTimeout(inp._t); inp._t = setTimeout(function () { ppRefresh(); }, 450);
+    }
+
+    var qtyInp = cnt.querySelector('#otQty');
+    if (qtyInp) qtyInp.addEventListener('input', function () { setField('qty', qtyInp.value, true); debouncedRefresh(qtyInp); });
+    var priceInp = cnt.querySelector('#otPrice');
+    if (priceInp) priceInp.addEventListener('input', function () { setField('entry', priceInp.value); debouncedRefresh(priceInp); });
+    var tpInp = cnt.querySelector('#otTp');
+    if (tpInp) tpInp.addEventListener('input', function () { setField('tp', tpInp.value); debouncedRefresh(tpInp); });
+    var slInp = cnt.querySelector('#otSl');
+    if (slInp) slInp.addEventListener('input', function () { setField('sl', slInp.value); debouncedRefresh(slInp); });
+
+    cnt.querySelectorAll('.ot-bs-side').forEach(function (el) {
+      el.addEventListener('click', function () {
+        s.dir = el.getAttribute('data-side') === 'buy' ? 'long' : 'short';
+        // swap tp/sl so profit zone stays on the correct side
+        var hi = Math.max(s.tp, s.sl), lo = Math.min(s.tp, s.sl);
+        if (s.dir === 'long') { s.tp = hi; s.sl = lo; } else { s.tp = lo; s.sl = hi; }
+        save(); scheduleDraw(); ppRefresh();
+      });
+    });
+    cnt.querySelectorAll('.ot-type').forEach(function (el) {
+      el.addEventListener('click', function () { s.orderType = el.getAttribute('data-type'); save(); ppRefresh(); });
+    });
+    cnt.querySelectorAll('.ot-switch').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var k = el.getAttribute('data-sw');
+        if (k === 'tp') s.tpOn = !(s.tpOn !== false); else s.slOn = !(s.slOn !== false);
+        save(); scheduleDraw(); ppRefresh();
+      });
+    });
+    var tifSel = cnt.querySelector('#otTif');
+    if (tifSel) tifSel.addEventListener('change', function () { s.tif = tifSel.value; save(); });
+    var delBtn = cnt.querySelector('#otDel');
+    if (delBtn) delBtn.addEventListener('click', function () {
+      shapes = shapes.filter(function (x) { return x.id !== s.id; });
+      selectedId = null; save(); scheduleDraw(); ppRefresh();
+    });
+    var submit = cnt.querySelector('#otSubmit');
+    if (submit) submit.addEventListener('click', function () {
+      if (typeof window.ntToast === 'function') window.ntToast('✓ העסקה עודכנה על הגרף');
+    });
 
     posPanel.style.display = 'flex';
   }
