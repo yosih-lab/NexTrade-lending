@@ -1280,7 +1280,7 @@
       position:fixed; right:50px; top:42px; bottom:0;
       width:286px;
       background:#131722; border-left:1px solid #2a2e39; border-right:1px solid #2a2e39;
-      z-index:1500;
+      z-index:150;
       box-shadow:-6px 0 24px rgba(0,0,0,.5);
       display:none; flex-direction:column;
       font-family:'Heebo',sans-serif; direction:ltr;
@@ -1289,8 +1289,13 @@
     /* Docked: hide resize handles + non-draggable header */
     #positionPanel .pp-rh { display:none !important; }
     #positionPanel #pp-actions { display:none !important; }
+    /* When the trade ticket is open, shrink the chart so its price scale
+       sits immediately to the LEFT of the panel (panel docked between the
+       right icon toolbar (50px) and the chart's price axis). */
+    body.trade-open .layout { padding-right:336px; }
     @media (max-width:768px) {
-      #positionPanel { right:0; top:78px; bottom:56px; width:270px; max-width:88vw; }
+      #positionPanel { right:0; top:78px; bottom:56px; width:270px; max-width:88vw; z-index:1500; }
+      body.trade-open .layout { padding-right:0; }
     }
     /* Position action bar — floats top-left below chart info */
     #posActionBar {
@@ -1365,8 +1370,8 @@
     .ot-bs-side .ot-bs-px { font-size:.86rem; font-weight:800; color:#d1d4dc; }
     .ot-bs-sell.active { background:#4a2a2e; }
     .ot-bs-sell.active .ot-bs-lbl, .ot-bs-sell.active .ot-bs-px { color:#ff5252; }
-    .ot-bs-buy.active { background:#15325f; }
-    .ot-bs-buy.active .ot-bs-lbl, .ot-bs-buy.active .ot-bs-px { color:#2196f3; }
+    .ot-bs-buy.active { background:#173d2b; }
+    .ot-bs-buy.active .ot-bs-lbl, .ot-bs-buy.active .ot-bs-px { color:#26a69a; }
     .ot-bs-qty { width:64px; display:flex; align-items:center; justify-content:center; background:#0e1119; border-left:1px solid #2a2e39; border-right:1px solid #2a2e39; }
     .ot-bs-qty input { width:100%; background:transparent; border:none; color:#d1d4dc; text-align:center; font-size:.82rem; font-weight:700; font-family:'Heebo',sans-serif; }
     .ot-bs-qty input:focus { outline:none; }
@@ -1406,8 +1411,8 @@
     /* big action button */
     .ot-submit { margin:.2rem .6rem .7rem; padding:.55rem; border:none; border-radius:6px; font-family:'Heebo',sans-serif; font-weight:800; font-size:.86rem; color:#fff; cursor:pointer; text-align:center; line-height:1.3; }
     .ot-submit small { display:block; font-size:.64rem; font-weight:600; opacity:.85; margin-top:.1rem; }
-    .ot-submit.buy { background:#2962ff; }
-    .ot-submit.buy:hover { background:#2d6cff; }
+    .ot-submit.buy { background:#26a69a; }
+    .ot-submit.buy:hover { background:#2eb8ab; }
     .ot-submit.sell { background:#ef5350; }
     .ot-submit.sell:hover { background:#f36562; }
     .ot-del { background:transparent; border:none; color:#787b86; font-size:.82rem; cursor:pointer; }
@@ -2111,11 +2116,11 @@
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20260927l"></script>
-<script src="main.js?v=20260927l"></script>
-<script src="drawing.js?v=20260927l"></script>
-<script src="features.js?v=20260927l"></script>
-<script src="signals.js?v=20260927l"></script>
+<script src="scanner-symbols.js?v=20260927m"></script>
+<script src="main.js?v=20260927m"></script>
+<script src="drawing.js?v=20260927m"></script>
+<script src="features.js?v=20260927m"></script>
+<script src="signals.js?v=20260927m"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">

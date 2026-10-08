@@ -1216,6 +1216,8 @@
     // Close button
     div.querySelector('#pp-close').addEventListener('click', function () {
       div.style.display = 'none';
+      document.body.classList.remove('trade-open');
+      scheduleDraw();
     });
 
     // Add new position buttons
@@ -1250,6 +1252,7 @@
     if (positions.length === 0) {
       cnt.innerHTML = '<div class="pp-empty">אין עסקה פעילה.<br>הוסף סרגל עסקה (Long/Short) מסרגל הכלים או מתפריט הגרף,<br>ולחץ עליו כדי לפתוח כאן את כל הפרמטרים.</div>';
       posPanel.style.display = 'flex';
+      document.body.classList.add('trade-open');
       return;
     }
 
@@ -1423,6 +1426,7 @@
     });
 
     posPanel.style.display = 'flex';
+    document.body.classList.add('trade-open');
   }
 
   function ppAddNew(dir) {
