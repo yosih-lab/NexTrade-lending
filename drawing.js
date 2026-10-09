@@ -1216,8 +1216,7 @@
     // Close button
     div.querySelector('#pp-close').addEventListener('click', function () {
       div.style.display = 'none';
-      document.body.classList.remove('trade-open');
-      scheduleDraw();
+      closeTradePanelLayout();
     });
 
     // Add new position buttons
@@ -1252,7 +1251,7 @@
     if (positions.length === 0) {
       cnt.innerHTML = '<div class="pp-empty">אין עסקה פעילה.<br>הוסף סרגל עסקה (Long/Short) מסרגל הכלים או מתפריט הגרף,<br>ולחץ עליו כדי לפתוח כאן את כל הפרמטרים.</div>';
       posPanel.style.display = 'flex';
-      document.body.classList.add('trade-open');
+      openTradePanelLayout();
       return;
     }
 
@@ -1426,8 +1425,44 @@
     });
 
     posPanel.style.display = 'flex';
-    document.body.classList.add('trade-open');
+    openTradePanelLayout();
   }
+
+  // Dock the ticket + keep the CHART interactive underneath.
+  // The drawing canvas captures all pointer events in any mode except 'off',
+  // which would freeze chart panning/scrolling while the ticket is open — so we
+  // drop back to 'off' and force the chart to re-measure its new (narrower) size.
+  function openTradePanelLayout() {
+    var wasOpen = document.body.classList.contains('trade-open');
+    document.body.classList.add('trade-open');
+    if (mode !== 'off') setTool('off');
+    if (wasOpen) return; // already docked — skip the (expensive) re-measure
+    requestAnimationFrame(function () {
+      try { window.dispatchEvent(new Event('resize')); } catch (e) {}
+      if (window.chartInstance) {
+        try {
+          var el = document.getElementById('chart');
+          if (el && el.offsetWidth > 0 && el.offsetHeight > 0) window.chartInstance.resize(el.offsetWidth, el.offsetHeight);
+        } catch (e) {}
+      }
+      scheduleDraw();
+    });
+  }
+
+  function closeTradePanelLayout() {
+    document.body.classList.remove('trade-open');
+    requestAnimationFrame(function () {
+      try { window.dispatchEvent(new Event('resize')); } catch (e) {}
+      if (window.chartInstance) {
+        try {
+          var el = document.getElementById('chart');
+          if (el && el.offsetWidth > 0 && el.offsetHeight > 0) window.chartInstance.resize(el.offsetWidth, el.offsetHeight);
+        } catch (e) {}
+      }
+      scheduleDraw();
+    });
+  }
+
 
   function ppAddNew(dir) {
     var midPrice = canvas ? yToP(canvas.clientHeight / 2) : null;
