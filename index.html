@@ -930,9 +930,10 @@
     /* PWA install button — small dismissible corner FAB (kept out of the chart's way) */
     #pwaInstallBtn {
       display:none; position:fixed; bottom:8px; left:8px; z-index:9997;
-      width:44px; height:44px; border-radius:50%; padding:0;
-      background:#2962ff; color:#fff; border:none;
-      font-size:1.25rem; cursor:pointer; box-shadow:0 4px 20px rgba(41,98,255,.5);
+      height:44px; border-radius:22px; padding:0 16px;
+      background:#2962ff; color:#fff; border:none; gap:6px;
+      font-size:.9rem; font-weight:800; font-family:'Heebo',sans-serif;
+      cursor:pointer; box-shadow:0 4px 20px rgba(41,98,255,.5);
       align-items:center; justify-content:center;
       animation:pwaSlide .4s ease;
     }
@@ -946,6 +947,50 @@
       font-size:.65rem; line-height:1; cursor:pointer; align-items:center; justify-content:center;
     }
     #pwaInstallClose:hover { color:#ef5350; border-color:#ef5350; }
+    /* PWA install help modal — platform-specific instructions */
+    #pwaHelp {
+      display:none; position:fixed; inset:0; z-index:10001;
+      background:rgba(2,4,10,.78); backdrop-filter:blur(4px);
+      align-items:center; justify-content:center; padding:18px;
+    }
+    #pwaHelp.open { display:flex; }
+    .pwa-help-card {
+      width:100%; max-width:420px; background:var(--surface); color:var(--text);
+      border:1px solid var(--border); border-radius:18px; padding:22px 20px 24px;
+      box-shadow:0 20px 60px rgba(0,0,0,.6); position:relative; text-align:right;
+      animation:pwaSlide .3s ease;
+    }
+    .pwa-help-x {
+      position:absolute; top:12px; left:12px; width:30px; height:30px; border-radius:50%;
+      background:var(--surface2); border:1px solid var(--border); color:var(--text-muted);
+      font-size:.95rem; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    }
+    .pwa-help-logo { text-align:center; font-size:1.6rem; font-weight:900; margin-bottom:4px; }
+    .pwa-help-logo .lg-nex { color:var(--gold); }
+    .pwa-help-logo .lg-trade { color:#2962ff; }
+    .pwa-help-card h3 { margin:2px 0 14px; text-align:center; font-size:1.05rem; font-weight:800; }
+    .pwa-help-tabs { display:flex; gap:6px; margin-bottom:14px; }
+    .pwa-help-tab {
+      flex:1; padding:8px 4px; border-radius:10px; cursor:pointer; text-align:center;
+      background:var(--surface2); border:1px solid var(--border); color:var(--text-muted);
+      font-size:.82rem; font-weight:700; font-family:'Heebo',sans-serif;
+    }
+    .pwa-help-tab.active { background:rgba(41,98,255,.16); border-color:var(--accent); color:#fff; }
+    .pwa-help-steps { font-size:.92rem; line-height:1.9; }
+    .pwa-help-steps ol { margin:0; padding-right:22px; }
+    .pwa-help-steps li { margin-bottom:6px; }
+    .pwa-help-steps .pk {
+      display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px;
+      padding:0 6px; border-radius:6px; background:var(--surface2); border:1px solid var(--border);
+      font-weight:800; vertical-align:middle; margin:0 2px;
+    }
+    .pwa-help-note { margin-top:14px; font-size:.78rem; color:var(--text-muted); text-align:center; }
+    .pwa-help-primary {
+      width:100%; margin-top:16px; height:46px; border:none; border-radius:12px;
+      background:#2962ff; color:#fff; font-size:.95rem; font-weight:800; cursor:pointer;
+      font-family:'Heebo',sans-serif;
+    }
+    .pwa-help-primary:hover { background:#1a4fd6; }
     /* UPTREND POPUP */
     .uptrend-popup{
       position:fixed; bottom:20px; right:60px; z-index:9999;
@@ -2284,11 +2329,11 @@
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20260927q"></script>
-<script src="main.js?v=20260927q"></script>
-<script src="drawing.js?v=20260927q"></script>
-<script src="features.js?v=20260927q"></script>
-<script src="signals.js?v=20260927q"></script>
+<script src="scanner-symbols.js?v=20260927r"></script>
+<script src="main.js?v=20260927r"></script>
+<script src="drawing.js?v=20260927r"></script>
+<script src="features.js?v=20260927r"></script>
+<script src="signals.js?v=20260927r"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
@@ -3089,8 +3134,25 @@ function ibDelAlert2(i) {
 }
 </script>
 
-<button id="pwaInstallBtn" onclick="pwaInstall()" title="התקן את NexTrade כאפליקציה">📲</button>
+<button id="pwaInstallBtn" onclick="pwaInstall()" title="התקן את NexTrade כאפליקציה">📲 התקן אפליקציה</button>
 <button id="pwaInstallClose" onclick="pwaDismiss(event)" title="לא עכשיו">✕</button>
+
+<!-- PWA install instructions modal -->
+<div id="pwaHelp" onclick="pwaHelpBackdrop(event)">
+  <div class="pwa-help-card">
+    <button class="pwa-help-x" onclick="pwaHelpClose()" aria-label="סגור">✕</button>
+    <div class="pwa-help-logo"><span class="lg-nex">Nex</span><span class="lg-trade">Trade</span></div>
+    <h3>התקנת האפליקציה במכשיר</h3>
+    <div class="pwa-help-tabs">
+      <div class="pwa-help-tab" id="pwaTabIos"     onclick="pwaHelpShow('ios')">אייפון</div>
+      <div class="pwa-help-tab" id="pwaTabAndroid" onclick="pwaHelpShow('android')">אנדרואיד</div>
+      <div class="pwa-help-tab" id="pwaTabDesktop" onclick="pwaHelpShow('desktop')">מחשב</div>
+    </div>
+    <div class="pwa-help-steps" id="pwaHelpSteps"></div>
+    <button class="pwa-help-primary" id="pwaHelpInstallBtn" style="display:none" onclick="pwaInstall()">התקן עכשיו</button>
+    <div class="pwa-help-note">לאחר ההתקנה האפליקציה תיפתח במסך מלא, עם אייקון משלה, ותעבוד גם ללא אינטרנט.</div>
+  </div>
+</div>
 <script>
 // Register Service Worker (PWA)
 if ('serviceWorker' in navigator) {
@@ -3108,20 +3170,44 @@ function pwaWasDismissedRecently() {
   var until = parseInt(localStorage.getItem(PWA_DISMISS_KEY) || '0', 10);
   return Date.now() < until;
 }
-window.addEventListener('beforeinstallprompt', function(e) {
-  e.preventDefault();
-  _pwaPrompt = e;
-  if (pwaWasDismissedRecently()) return;
+// --- platform detection ---
+function pwaIsStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.navigator.standalone === true;
+}
+function pwaIsIOS() {
+  var ua = navigator.userAgent || '';
+  var iOS = /iPad|iPhone|iPod/.test(ua) ||
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return iOS;
+}
+function pwaDefaultPlatform() {
+  if (pwaIsIOS()) return 'ios';
+  if (/Android/i.test(navigator.userAgent || '')) return 'android';
+  return 'desktop';
+}
+// Show the floating "Install app" button (unless already installed or dismissed)
+function pwaMaybeShowButton() {
+  if (pwaIsStandalone()) return;            // already installed → nothing to do
+  if (pwaWasDismissedRecently()) return;    // user asked to hide it
   var btn = document.getElementById('pwaInstallBtn');
   var close = document.getElementById('pwaInstallClose');
-  if (btn) btn.style.display = 'flex';
+  if (btn) btn.style.display = 'inline-flex';
   if (close) close.style.display = 'flex';
+}
+window.addEventListener('load', pwaMaybeShowButton);
+
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  _pwaPrompt = e;                  // native install is available (Chrome/Edge/Android)
+  pwaMaybeShowButton();
 });
 window.addEventListener('appinstalled', function() {
   var btn = document.getElementById('pwaInstallBtn');
   var close = document.getElementById('pwaInstallClose');
   if (btn) btn.style.display = 'none';
   if (close) close.style.display = 'none';
+  pwaHelpClose();
   _pwaPrompt = null;
 });
 function pwaDismiss(ev) {
@@ -3133,6 +3219,7 @@ function pwaDismiss(ev) {
   if (btn) btn.style.display = 'none';
   if (close) close.style.display = 'none';
 }
+// Main action: use native prompt if available, otherwise show instructions
 function pwaInstall() {
   if (_pwaPrompt) {
     _pwaPrompt.prompt();
@@ -3142,11 +3229,67 @@ function pwaInstall() {
         var close = document.getElementById('pwaInstallClose');
         if (btn) btn.style.display = 'none';
         if (close) close.style.display = 'none';
+        pwaHelpClose();
       }
       _pwaPrompt = null;
     });
+    return;
   }
+  // No native prompt (iOS Safari, or not yet eligible) → show manual instructions
+  pwaHelpOpen();
 }
+// --- instructions modal ---
+var PWA_STEPS = {
+  ios:
+    '<ol>' +
+    '<li>ודא שהאתר פתוח בדפדפן <b>Safari</b> (לא כרום).</li>' +
+    '<li>הקש על כפתור <b>השיתוף</b> <span class="pk">⬆︎</span> בתחתית המסך.</li>' +
+    '<li>גלול ובחר <b>"הוסף למסך הבית"</b> <span class="pk">➕</span>.</li>' +
+    '<li>הקש <b>"הוסף"</b> בפינה העליונה.</li>' +
+    '</ol>',
+  android:
+    '<ol>' +
+    '<li>פתח את האתר בדפדפן <b>Chrome</b>.</li>' +
+    '<li>הקש על <b>שלוש הנקודות</b> <span class="pk">⋮</span> בפינה הימנית למעלה.</li>' +
+    '<li>בחר <b>"התקן אפליקציה"</b> או <b>"הוסף למסך הבית"</b>.</li>' +
+    '<li>אשר את ההתקנה.</li>' +
+    '</ol>',
+  desktop:
+    '<ol>' +
+    '<li>פתח את האתר ב‑<b>Chrome</b> או <b>Edge</b>.</li>' +
+    '<li>בשורת הכתובת, בצד, לחץ על אייקון <b>ההתקנה</b> <span class="pk">⊕</span>.</li>' +
+    '<li>לחץ <b>"התקן"</b>.</li>' +
+    '<li>אם אין אייקון — פתח את תפריט הדפדפן ובחר "התקן את NexTrade".</li>' +
+    '</ol>'
+};
+function pwaHelpShow(platform) {
+  var steps = document.getElementById('pwaHelpSteps');
+  if (steps) steps.innerHTML = PWA_STEPS[platform] || PWA_STEPS.desktop;
+  ['ios','android','desktop'].forEach(function(p) {
+    var t = document.getElementById('pwaTab' + p.charAt(0).toUpperCase() + p.slice(1));
+    if (t) t.classList.toggle('active', p === platform);
+  });
+  // Offer the one-tap native install inside the modal when it's available
+  var pb = document.getElementById('pwaHelpInstallBtn');
+  if (pb) pb.style.display = (_pwaPrompt && platform !== 'ios') ? 'block' : 'none';
+}
+function pwaHelpOpen() {
+  var m = document.getElementById('pwaHelp');
+  if (!m) return;
+  pwaHelpShow(pwaDefaultPlatform());
+  m.classList.add('open');
+}
+function pwaHelpClose() {
+  var m = document.getElementById('pwaHelp');
+  if (m) m.classList.remove('open');
+}
+function pwaHelpBackdrop(ev) {
+  if (ev && ev.target && ev.target.id === 'pwaHelp') pwaHelpClose();
+}
+window.pwaHelpOpen = pwaHelpOpen;
+window.pwaHelpClose = pwaHelpClose;
+window.pwaHelpShow = pwaHelpShow;
+window.pwaHelpBackdrop = pwaHelpBackdrop;
 </script>
 </body>
 </html>
