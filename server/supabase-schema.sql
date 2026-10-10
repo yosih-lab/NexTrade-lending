@@ -12,3 +12,13 @@ create table if not exists public.users (
 
 -- Server uses the Service Role key (bypasses RLS), so RLS can stay enabled with no public policies.
 alter table public.users enable row level security;
+
+-- Per-user watchlist — keeps the symbol list in sync across the website and the installed PWA.
+create table if not exists public.watchlists (
+  user_id    bigint primary key references public.users(id) on delete cascade,
+  symbols    jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.watchlists enable row level security;
+

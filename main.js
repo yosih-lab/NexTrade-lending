@@ -377,6 +377,71 @@ var alerts          = JSON.parse(localStorage.getItem('ml_alerts')    || '[]');
 var lastBars        = [];   // last loaded bars for MA computation
 
 // ============================================
+//   WATCHLIST CLOUD SYNC  (website <-> installed app)
+//   Stores the list per logged-in user on the server so adding/removing a
+//   symbol on one client propagates to all others.
+// ============================================
+function _ntToken() { return localStorage.getItem('nt_token'); }
+var _wlSyncTimer = null;
+
+// Save locally (instant/offline) and push to the server (debounced).
+function saveWatchlist() {
+  try { localStorage.setItem('ml_watchlist', JSON.stringify(watchlist)); } catch (e) {}
+  pushWatchlistToServer();
+}
+
+function pushWatchlistToServer() {
+  var token = _ntToken();
+  if (!token) return; // demo/not-logged-in → local only
+  clearTimeout(_wlSyncTimer);
+  var snapshot = watchlist.slice();
+  _wlSyncTimer = setTimeout(function () {
+    fetch(API_BASE + '/api/watchlist', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ symbols: snapshot })
+    }).catch(function () {});
+  }, 500);
+}
+
+// Pull the server copy on load. Server is the source of truth once logged in.
+// If the server is empty but we have a local list, seed the server with it.
+async function syncWatchlistFromServer() {
+  var token = _ntToken();
+  if (!token) return; // demo/not-logged-in → keep local list
+  try {
+    var r = await fetch(API_BASE + '/api/watchlist', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!r.ok) return;
+    var data = await r.json();
+    var serverList = Array.isArray(data.symbols) ? data.symbols : null;
+    if (serverList === null) return;
+    if (serverList.length === 0) {
+      // First time for this user → upload whatever is on this device
+      if (watchlist.length) pushWatchlistToServer();
+      return;
+    }
+    // Adopt the server list (handles deletions made on another device)
+    watchlist = serverList;
+    try { localStorage.setItem('ml_watchlist', JSON.stringify(watchlist)); } catch (e) {}
+    if (typeof renderWatchlist === 'function') renderWatchlist();
+  } catch (e) {}
+}
+window.syncWatchlistFromServer = syncWatchlistFromServer;
+
+// Re-sync whenever the user returns to this client (switches back to the tab or
+// re-opens the installed app), so a change made elsewhere shows up promptly.
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'visible' && _ntToken()) {
+    syncWatchlistFromServer();
+  }
+});
+window.addEventListener('focus', function () {
+  if (_ntToken()) syncWatchlistFromServer();
+});
+
+// ============================================
 //   MOVING AVERAGES
 // ============================================
 var MA_CONFIGS = [
@@ -2287,7 +2352,7 @@ async function addToWatchlist() {
   if (watchlist.includes(finalSym)) return;
 
   watchlist.push(finalSym);
-  localStorage.setItem('ml_watchlist', JSON.stringify(watchlist));
+  saveWatchlist();
   await loadCard(finalSym);
   renderWatchlist();
 }
@@ -2295,7 +2360,7 @@ async function addToWatchlist() {
 function removeFromWatchlist(e, sym) {
   e.stopPropagation();
   watchlist = watchlist.filter(function(s) { return s !== sym; });
-  localStorage.setItem('ml_watchlist', JSON.stringify(watchlist));
+  saveWatchlist();
   renderWatchlist();
 }
 
@@ -2330,7 +2395,7 @@ function addCurrentToWatchlist() {
   var label = sym.replace('.TA', '');
   if (watchlist.includes(sym)) { ntToast(label + ' כבר ברשימת המעקב'); return; }
   watchlist.push(sym);
-  localStorage.setItem('ml_watchlist', JSON.stringify(watchlist));
+  saveWatchlist();
   renderWatchlist();
   ntToast('✓ ' + label + ' נוסף לרשימת המעקב');
 }
@@ -2954,6 +3019,10 @@ async function init() {
     renderPortfolio();
     renderAlerts();
     initMSymSwitchGestures();
+
+    // Pull this user's saved watchlist from the server so the list stays in
+    // sync between the website and the installed app (handles remote deletions).
+    await syncWatchlistFromServer();
 
     // Load the full TASE stock universe for the search box (cached for 7 days).
     // Use cache immediately if present so search works instantly; refresh in background.
@@ -3771,7 +3840,7 @@ function smToggleWL(btn, sym) {
     btn.textContent = '+';
     btn.classList.remove('added');
   }
-  localStorage.setItem('ml_watchlist', JSON.stringify(watchlist));
+  saveWatchlist();
   renderWatchlist();
 }
 

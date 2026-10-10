@@ -166,6 +166,43 @@ async function deleteAllUsers() {
   saveUsersMem([]);
 }
 
+// ── WATCHLIST STORE ───────────────────────────────────────────────
+// Per-user watchlist, so the list stays in sync across the website and the
+// installed PWA (and across devices). Supabase when configured, file fallback for dev.
+const WL_FILE = path.join(__dirname, 'watchlists.json');
+let _wlCache = null;
+function loadWlMem() {
+  if (_wlCache) return _wlCache;
+  try { _wlCache = JSON.parse(fs.readFileSync(WL_FILE, 'utf8')); }
+  catch(e) { _wlCache = {}; }
+  return _wlCache;
+}
+function saveWlMem(map) {
+  _wlCache = map;
+  try { fs.writeFileSync(WL_FILE, JSON.stringify(map, null, 2)); }
+  catch(e) { console.error('[NexTrade] Failed to write watchlists.json:', e.message); }
+}
+async function getWatchlist(userId) {
+  if (supabase) {
+    const { data, error } = await supabase.from('watchlists').select('symbols').eq('user_id', userId).maybeSingle();
+    if (error) { console.error('[NexTrade] getWatchlist error:', error.message); return null; }
+    return data ? (data.symbols || []) : [];
+  }
+  const map = loadWlMem();
+  return map[userId] || [];
+}
+async function setWatchlist(userId, symbols) {
+  if (supabase) {
+    const { error } = await supabase.from('watchlists')
+      .upsert({ user_id: userId, symbols: symbols, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    if (error) { console.error('[NexTrade] setWatchlist error:', error.message); throw error; }
+    return;
+  }
+  const map = loadWlMem();
+  map[userId] = symbols;
+  saveWlMem(map);
+}
+
 // ── SEED ADMIN + START SERVER ─────────────────────────────────────
 // Must complete seeding BEFORE accepting requests
 async function seedAndStart() {
@@ -264,6 +301,38 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/me', requireAuth, (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.json({ username: req.user.username, role: req.user.role });
+});
+
+// ── WATCHLIST ROUTES ──────────────────────────────────────────────
+// Read the current user's watchlist (symbols array).
+app.get('/api/watchlist', requireAuth, async (req, res) => {
+  try {
+    const symbols = await getWatchlist(req.user.id);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ symbols: Array.isArray(symbols) ? symbols : [] });
+  } catch (e) {
+    console.error('[NexTrade] GET /api/watchlist error:', e.message);
+    res.status(500).json({ error: 'שגיאה בטעינת רשימת המעקב' });
+  }
+});
+// Replace the current user's watchlist. Deleting on one client propagates to all.
+app.put('/api/watchlist', requireAuth, async (req, res) => {
+  const raw = req.body && req.body.symbols;
+  if (!Array.isArray(raw)) return res.status(400).json({ error: 'symbols חייב להיות מערך' });
+  // sanitize: unique strings only, reasonable caps
+  const seen = {};
+  const clean = [];
+  for (let i = 0; i < raw.length && clean.length < 500; i++) {
+    const s = raw[i];
+    if (typeof s === 'string' && s.length > 0 && s.length <= 24 && !seen[s]) { seen[s] = 1; clean.push(s); }
+  }
+  try {
+    await setWatchlist(req.user.id, clean);
+    res.json({ ok: true, count: clean.length });
+  } catch (e) {
+    console.error('[NexTrade] PUT /api/watchlist error:', e.message);
+    res.status(500).json({ error: 'שגיאה בשמירת רשימת המעקב' });
+  }
 });
 
 // ── ADMIN ROUTES ──────────────────────────────────────────────────
