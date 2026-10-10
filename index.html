@@ -1655,16 +1655,19 @@
 
       /* ---- LIST HOME header: clean logo + big search only ---- */
       body:not(.m-chart) #mHomeLogo {
-        display:flex; align-items:center; gap:0; margin:0 auto;
-        font-size:1.35rem; font-weight:900; letter-spacing:.3px;
+        display:flex; align-items:center; gap:0;
+        position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+        font-size:1.4rem; font-weight:900; letter-spacing:.3px;
       }
       body:not(.m-chart) #mHomeLogo .lg-nex { color:var(--gold); }
       body:not(.m-chart) #mHomeLogo .lg-trade { color:#2962ff; }
       body:not(.m-chart) #mHomeSearch {
         display:flex; align-items:center; justify-content:center;
-        width:38px; height:38px; flex-shrink:0;
+        position:absolute; left:10px; top:50%; transform:translateY(-50%);
+        width:40px; height:40px; flex-shrink:0;
         background:transparent; border:none; color:var(--text); cursor:pointer; padding:0;
       }
+      body:not(.m-chart) #mHomeSearch svg { width:26px; height:26px; }
       /* Hide the cluttered topbar items on the list home */
       body:not(.m-chart) .chart-type-wrap,
       body:not(.m-chart) header.topbar .tf-sep,
@@ -2329,11 +2332,11 @@
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20260927r"></script>
-<script src="main.js?v=20260927r"></script>
-<script src="drawing.js?v=20260927r"></script>
-<script src="features.js?v=20260927r"></script>
-<script src="signals.js?v=20260927r"></script>
+<script src="scanner-symbols.js?v=20260927s"></script>
+<script src="main.js?v=20260927s"></script>
+<script src="drawing.js?v=20260927s"></script>
+<script src="features.js?v=20260927s"></script>
+<script src="signals.js?v=20260927s"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">

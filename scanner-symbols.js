@@ -250,7 +250,8 @@ var US_SYMBOLS = [
   'FBIN','CNM','UFPI','BLD','BLDR','AZEK','TREX','AWI','BECN','GMS',
   'MLI','NVT','GNRC','HUBB','AYI','LECO','AAON','TT','WST','SHLS',
   'WAB','GBX','TRN','GATX','RAIL','ARCB','SAIA','ODFL','XPO','WERN',
-  'R','AL','AER','GATX','HII','TDG','HEI','BWXT','KTOS','AVAV'
+  'R','AL','AER','GATX','HII','TDG','HEI','BWXT','KTOS','AVAV',
+  'WGS','ACMR','SCHD','AGM'
 ];
 
 // Combined scanner list

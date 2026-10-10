@@ -247,6 +247,13 @@ var NAMES = {
   'NICE':       'נייס סיסטמס',
   'CHKP':       'CheckPoint',
   NVDA:   'NVIDIA Corp.',
+  'WGS':  'GeneDx Holdings Corp.',
+  'RELY': 'Remitly Global, Inc.',
+  'AGM':  'Federal Agricultural Mortgage',
+  'ACMR': 'ACM Research, Inc.',
+  'SCHD': 'Schwab US Dividend Equity ETF',
+  'AMGN': 'Amgen Inc.',
+  'AMG':  'Affiliated Managers Group',
 };
 
 // ============================================
@@ -3611,6 +3618,14 @@ var SM_GENERAL = [
   { sym: 'ETH-USD', short: 'ETH', name: 'Ethereum USD', cat: 'general' },
   { sym: 'GC=F', short: 'GOLD', name: 'Gold Futures', cat: 'general' },
   { sym: 'CL=F', short: 'OIL', name: 'Crude Oil Futures', cat: 'general' },
+  // Indices / Forex / Commodities (Yahoo Finance tickers)
+  { sym: '^GSPC',     short: 'SPX',    name: 'S&P 500 Index', cat: 'general' },
+  { sym: 'ES=F',      short: 'ES1!',   name: 'E-mini S&P 500 Futures', cat: 'general' },
+  { sym: 'XAUUSD=X',  short: 'XAUUSD', name: 'Gold Spot / U.S. Dollar', cat: 'general' },
+  { sym: 'XAGUSD=X',  short: 'XAGUSD', name: 'Silver / U.S. Dollar', cat: 'general' },
+  { sym: 'SI=F',      short: 'SILVER', name: 'Silver Futures', cat: 'general' },
+  { sym: 'EURUSD=X',  short: 'EURUSD', name: 'Euro / U.S. Dollar', cat: 'general' },
+  { sym: 'CLV25.NYM', short: 'CLV2025', name: 'Crude Oil Futures (Oct 2025)', cat: 'general' },
 ];
 
 function openSearchModal() {
@@ -3710,10 +3725,13 @@ function smGetItems(tab, q) {
   };
   var genSrc = function() {
     return SM_GENERAL.map(function(it) {
-      var isCrypto = it.sym.indexOf('-USD') !== -1;
-      var isFuture = it.sym.indexOf('=F') !== -1;
-      var typeLabel = isCrypto ? 'קריפטו' : (isFuture ? 'סחורה' : 'מניה');
-      var exch = isCrypto ? 'CRYPTO' : (isFuture ? 'FUT' : 'US');
+      var s = it.sym;
+      var isCrypto = s.indexOf('-USD') !== -1;
+      var isIndex  = s.charAt(0) === '^';
+      var isForex  = s.indexOf('=X') !== -1;
+      var isFuture = s.indexOf('=F') !== -1 || /\.(NYM|CMX|CBT|NYB)$/.test(s);
+      var typeLabel = isCrypto ? 'קריפטו' : isIndex ? 'מדד' : isForex ? 'מט"ח' : isFuture ? 'סחורה' : 'מניה';
+      var exch = isCrypto ? 'CRYPTO' : isIndex ? 'INDEX' : isForex ? 'FX' : isFuture ? 'FUT' : 'US';
       return { sym: it.sym, short: it.short, name: it.name, typeLabel: typeLabel, exch: exch };
     });
   };
