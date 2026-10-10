@@ -1823,6 +1823,7 @@ async function loadChart(symbol, tf, preserveZoom) {
   document.getElementById('chartTitle').textContent    = targetSymbol + '  ' + (NAMES[targetSymbol] || (priceCache[targetSymbol] && priceCache[targetSymbol].name) || targetSymbol);
   document.getElementById('chartSubtitle').innerHTML =
     '<span id="loadDots" style="color:var(--accent)">&#9679;&#9679;&#9679; מחפש נתונים מ-Yahoo Finance...</span>';
+  if (typeof updateMSymSwitch === 'function') updateMSymSwitch();
   // Populate overlay sym + name immediately
   var _name = NAMES[targetSymbol] || (priceCache[targetSymbol] && priceCache[targetSymbol].name) || '';
   var ciSym = document.getElementById('ciSym');
@@ -1976,6 +1977,7 @@ function setTimeframe(tf, btn) {
   var mb = document.getElementById('mtf-' + tf);
   if (mb) mb.classList.add('active');
   loadChart(currentSymbol, tf);
+  if (typeof updateMSymSwitch === 'function') updateMSymSwitch();
 }
 
 // ============================================
@@ -2740,6 +2742,7 @@ function _isMobileNav() {
 function mobileShowChart() {
   if (!_isMobileNav()) return;
   document.body.classList.add('m-chart');
+  if (typeof updateMSymSwitch === 'function') updateMSymSwitch();
   // The chart had 0 size while hidden — force it to re-measure now it's visible.
   setTimeout(function() {
     try { window.dispatchEvent(new Event('resize')); } catch (e) {}
@@ -2762,6 +2765,112 @@ function mobileBackToList() {
 window.mobileShowChart = mobileShowChart;
 window.mobileBackToList = mobileBackToList;
 
+// ============================================
+//   MOBILE SYMBOL SWITCHER (bottom bar + scrollable watchlist sheet)
+//   Flip between watchlist charts without leaving the chart screen.
+// ============================================
+var _tfLabels = { '1H':'1H','4H':'4H','8H':'8H','1D':'D','1W':'W','1M':'M','1Q':'1Q','6M':'6M' };
+
+function updateMSymSwitch() {
+  var symEl = document.getElementById('mSymSwitchSym');
+  var tfEl  = document.getElementById('mSymSwitchTf');
+  var icoEl = document.getElementById('mSymSwitchIco');
+  if (symEl) symEl.textContent = (currentSymbol || '—').replace('.TA', '');
+  if (tfEl)  tfEl.textContent  = _tfLabels[currentTF] || currentTF;
+  if (icoEl) {
+    var logo = (typeof getStockLogo === 'function') ? getStockLogo(currentSymbol) : null;
+    if (logo) { icoEl.style.backgroundImage = 'url(' + logo + ')'; }
+    else { icoEl.style.backgroundImage = 'none'; }
+  }
+}
+
+function renderMSymList() {
+  var list = document.getElementById('mSymSheetList');
+  if (!list) return;
+  list.innerHTML = watchlist.map(function(sym) {
+    var d = priceCache[sym];
+    var cls = d ? (d.change >= 0 ? 'up' : 'down') : '';
+    var pct = d ? (d.change >= 0 ? '+' : '') + d.changePct.toFixed(2) + '%' : '';
+    var priceText = d ? formatPrice(d.price, sym) : '';
+    var name = (NAMES[sym] || (d && d.name) || sym).replace(/\s*\(.*?\)\s*/g, '').trim();
+    var shortSym = sym.replace('.TA', '');
+    var logoUrl = (typeof getStockLogo === 'function') ? getStockLogo(sym) : null;
+    var initials = shortSym.slice(0, 2).toUpperCase();
+    var iconBg = (typeof smColor === 'function') ? smColor(shortSym) : '#2a3040';
+    var icoStyle = logoUrl ? ('background-image:url(' + logoUrl + ');background-color:' + iconBg) : ('background-color:' + iconBg);
+    var icoInner = logoUrl ? '' : initials;
+    var active = (sym === currentSymbol) ? ' active' : '';
+    return '<div class="m-sym-row' + active + '" onclick="selectSymbolFromSheet(\'' + sym + '\')">'
+      + '<div class="m-row-ico" style="' + icoStyle + '">' + icoInner + '</div>'
+      + '<div class="m-row-main"><span class="m-row-sym">' + shortSym + '</span>'
+      + '<span class="m-row-name">' + name + '</span></div>'
+      + '<div style="text-align:left"><div class="m-row-price">' + priceText + '</div>'
+      + (pct ? '<div class="m-row-chg ' + cls + '">' + pct + '</div>' : '') + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function toggleMSymSheet() {
+  var sheet = document.getElementById('mSymSheet');
+  var caret = document.getElementById('mSymCaret');
+  if (!sheet) return;
+  var open = sheet.classList.toggle('open');
+  if (caret) caret.textContent = open ? '▴' : '▾';
+  if (open) {
+    renderMSymList();
+    // scroll active row into view
+    var active = sheet.querySelector('.m-sym-row.active');
+    if (active) setTimeout(function() { active.scrollIntoView({ block: 'center' }); }, 30);
+  }
+}
+
+function closeMSymSheet(e) {
+  if (e) e.stopPropagation();
+  var sheet = document.getElementById('mSymSheet');
+  var caret = document.getElementById('mSymCaret');
+  if (sheet) sheet.classList.remove('open');
+  if (caret) caret.textContent = '▾';
+}
+
+function selectSymbolFromSheet(sym) {
+  closeMSymSheet();
+  selectSymbol(sym);
+}
+
+// Swipe up/down on the switcher bar = previous/next watchlist symbol
+function mobileStepSymbol(dir) {
+  if (!watchlist.length) return;
+  var idx = watchlist.indexOf(currentSymbol);
+  if (idx === -1) idx = 0;
+  var next = (idx + dir + watchlist.length) % watchlist.length;
+  selectSymbol(watchlist[next]);
+}
+
+function initMSymSwitchGestures() {
+  var bar = document.getElementById('mSymSwitch');
+  if (!bar) return;
+  var startY = 0, startX = 0, tracking = false;
+  bar.addEventListener('touchstart', function(e) {
+    if (!e.touches || !e.touches.length) return;
+    startY = e.touches[0].clientY; startX = e.touches[0].clientX; tracking = true;
+  }, { passive: true });
+  bar.addEventListener('touchend', function(e) {
+    if (!tracking) return; tracking = false;
+    var t = (e.changedTouches && e.changedTouches[0]) || null;
+    if (!t) return;
+    var dy = t.clientY - startY, dx = t.clientX - startX;
+    if (Math.abs(dy) > 34 && Math.abs(dy) > Math.abs(dx)) {
+      // swipe up = next, swipe down = previous
+      mobileStepSymbol(dy < 0 ? 1 : -1);
+      e.preventDefault();
+    }
+  }, { passive: false });
+}
+
+window.updateMSymSwitch = updateMSymSwitch;
+window.toggleMSymSheet = toggleMSymSheet;
+window.closeMSymSheet = closeMSymSheet;
+window.selectSymbolFromSheet = selectSymbolFromSheet;
 
 // ============================================
 //   TICKER
@@ -2791,6 +2900,9 @@ async function refreshPrices() {
   buildTicker();
   updateTASEBadge();
   runAutoScanner(); // auto scan after each price refresh
+  // Keep the mobile symbol sheet prices fresh while it's open
+  var _sheet = document.getElementById('mSymSheet');
+  if (_sheet && _sheet.classList.contains('open') && typeof renderMSymList === 'function') renderMSymList();
 }
 
 // ============================================
@@ -2834,6 +2946,7 @@ async function init() {
     renderWatchlist();
     renderPortfolio();
     renderAlerts();
+    initMSymSwitchGestures();
 
     // Load the full TASE stock universe for the search box (cached for 7 days).
     // Use cache immediately if present so search works instantly; refresh in background.

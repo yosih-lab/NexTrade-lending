@@ -1240,6 +1240,8 @@
     #mobileTfBar { display:none; }
     /* Mobile drill-down back button (desktop hidden) */
     #mobileBackBtn { display:none; }
+    /* Mobile symbol switcher + sheet (desktop hidden) */
+    #mSymSwitch, #mSymSheet { display:none; }
 
     #bellAlertDetails {
       position:fixed; top:74px; right:150px; z-index:10000;
@@ -1611,6 +1613,65 @@
         font-family:'Heebo',sans-serif; cursor:pointer; white-space:nowrap;
         margin-left:.3rem;
       }
+
+      /* ---- Mobile SYMBOL SWITCHER bar (chart screen only) ---- */
+      /* Sits just above the bottom drawing toolbar, left of the right icon bar. */
+      body.m-chart #mSymSwitch {
+        display:flex; align-items:center; gap:.5rem;
+        position:fixed; left:0; right:41px; bottom:53px; height:34px; z-index:997;
+        background:var(--surface); border-top:1px solid var(--border);
+        padding:0 .7rem; cursor:pointer; -webkit-tap-highlight-color:transparent;
+      }
+      body.m-chart #mSymSwitch .m-sym-ico {
+        width:20px; height:20px; border-radius:50%; flex-shrink:0;
+        background:var(--surface2); display:inline-block;
+        background-size:cover; background-position:center;
+      }
+      body.m-chart #mSymSwitch .m-sym-txt { font-size:.84rem; font-weight:800; color:var(--text); }
+      body.m-chart #mSymSwitch .m-sym-tf {
+        font-size:.66rem; font-weight:700; color:var(--accent);
+        background:rgba(41,98,255,.14); border-radius:5px; padding:.05rem .35rem;
+      }
+      body.m-chart #mSymSwitch .m-sym-caret { margin-right:auto; color:var(--text-muted); font-size:.72rem; }
+
+      /* The scrollable watchlist sheet that opens above the switcher */
+      body.m-chart #mSymSheet {
+        display:none; flex-direction:column;
+        position:fixed; left:0; right:41px; bottom:87px; z-index:998;
+        max-height:55vh; background:var(--surface);
+        border-top:1px solid var(--border); box-shadow:0 -10px 30px rgba(0,0,0,.6);
+      }
+      body.m-chart #mSymSheet.open { display:flex; }
+      body.m-chart #mSymSheet .m-sym-sheet-hdr {
+        display:flex; align-items:center; justify-content:space-between;
+        padding:.5rem .8rem; border-bottom:1px solid var(--border);
+        font-size:.78rem; font-weight:800; color:var(--text); flex-shrink:0;
+      }
+      body.m-chart #mSymSheet .m-sym-sheet-close {
+        background:transparent; border:none; color:var(--text-muted); font-size:1rem; cursor:pointer;
+      }
+      body.m-chart #mSymSheetList { overflow-y:auto; -webkit-overflow-scrolling:touch; }
+      .m-sym-row {
+        display:flex; align-items:center; gap:.5rem;
+        padding:.55rem .8rem; border-bottom:1px solid var(--border); cursor:pointer;
+      }
+      .m-sym-row.active { background:rgba(41,98,255,.12); }
+      .m-sym-row .m-row-ico {
+        width:26px; height:26px; border-radius:50%; flex-shrink:0;
+        display:flex; align-items:center; justify-content:center;
+        font-size:.62rem; font-weight:800; color:#fff;
+        background-size:cover; background-position:center;
+      }
+      .m-sym-row .m-row-main { display:flex; flex-direction:column; min-width:0; flex:1; }
+      .m-sym-row .m-row-sym { font-size:.82rem; font-weight:800; color:var(--text); }
+      .m-sym-row .m-row-name { font-size:.66rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .m-sym-row .m-row-price { font-size:.78rem; font-weight:700; color:var(--text); text-align:left; }
+      .m-sym-row .m-row-chg { font-size:.68rem; font-weight:700; text-align:left; }
+      .m-sym-row .m-row-chg.up { color:var(--green); }
+      .m-sym-row .m-row-chg.down { color:var(--red); }
+
+      /* Make room for the 34px switcher bar above the 53px draw toolbar */
+      body.m-chart .layout { bottom:87px !important; }
     }
 
     /* ===== SIGNAL FEED (Mode A) ===== */
@@ -1905,6 +1966,20 @@
     <button class="tf-btn" id="mtf-1Q" onclick="setTimeframe('1Q',this)">1Q</button>
     <button class="tf-btn" id="mtf-6M" onclick="setTimeframe('6M',this)">6M</button>
   </div>
+  <!-- Mobile-only bottom SYMBOL SWITCHER (chart screen) — scroll the watchlist to flip charts -->
+  <div id="mSymSwitch" onclick="toggleMSymSheet()">
+    <span class="m-sym-ico" id="mSymSwitchIco"></span>
+    <span class="m-sym-txt" id="mSymSwitchSym">—</span>
+    <span class="m-sym-tf" id="mSymSwitchTf"></span>
+    <span class="m-sym-caret" id="mSymCaret">▾</span>
+  </div>
+  <div id="mSymSheet">
+    <div class="m-sym-sheet-hdr">
+      <span>רשימת המעקב</span>
+      <button class="m-sym-sheet-close" onclick="closeMSymSheet(event)">✕</button>
+    </div>
+    <div id="mSymSheetList"></div>
+  </div>
   <div class="layout">
     <aside class="sidebar">
       <div id="sidebarTitle" style="display:none"></div>
@@ -2150,11 +2225,11 @@
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20260927o"></script>
-<script src="main.js?v=20260927o"></script>
-<script src="drawing.js?v=20260927o"></script>
-<script src="features.js?v=20260927o"></script>
-<script src="signals.js?v=20260927o"></script>
+<script src="scanner-symbols.js?v=20260927p"></script>
+<script src="main.js?v=20260927p"></script>
+<script src="drawing.js?v=20260927p"></script>
+<script src="features.js?v=20260927p"></script>
+<script src="signals.js?v=20260927p"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
