@@ -2726,7 +2726,42 @@ async function selectSymbol(symbol) {
   renderWatchlist();
   renderPortfolio();
   renderAlerts();
+  mobileShowChart();
 }
+
+// ============================================
+//   MOBILE DRILL-DOWN NAVIGATION
+//   Home screen = watchlist only. Tapping a stock opens the chart screen.
+//   Controlled by body.m-chart (added only on phones).
+// ============================================
+function _isMobileNav() {
+  try { return window.matchMedia('(max-width:768px)').matches; } catch (e) { return false; }
+}
+function mobileShowChart() {
+  if (!_isMobileNav()) return;
+  document.body.classList.add('m-chart');
+  // The chart had 0 size while hidden — force it to re-measure now it's visible.
+  setTimeout(function() {
+    try { window.dispatchEvent(new Event('resize')); } catch (e) {}
+    if (chartInstance) {
+      try {
+        var el = document.getElementById('chart');
+        if (el && el.offsetWidth > 0 && el.offsetHeight > 0) {
+          chartInstance.resize(el.offsetWidth, el.offsetHeight);
+          chartInstance.timeScale().fitContent();
+        }
+      } catch (e) {}
+    }
+  }, 70);
+}
+function mobileBackToList() {
+  document.body.classList.remove('m-chart');
+  // Always return to the watchlist view (not indicators/etc.)
+  if (typeof sidebarOpen === 'function') { try { sidebarOpen('watchlist'); } catch (e) {} }
+}
+window.mobileShowChart = mobileShowChart;
+window.mobileBackToList = mobileBackToList;
+
 
 // ============================================
 //   TICKER

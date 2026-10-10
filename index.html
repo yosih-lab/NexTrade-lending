@@ -1238,6 +1238,8 @@
 
     /* ===== MOBILE TF BAR (desktop hidden) ===== */
     #mobileTfBar { display:none; }
+    /* Mobile drill-down back button (desktop hidden) */
+    #mobileBackBtn { display:none; }
 
     #bellAlertDetails {
       position:fixed; top:74px; right:150px; z-index:10000;
@@ -1579,6 +1581,36 @@
 
       /* Position panel: fits within chart area on mobile */
       #positionPanel { width:calc(100vw - 74px) !important; left:16px !important; top:86px !important; right:auto !important; }
+
+      /* ================================================================
+         MOBILE DRILL-DOWN NAVIGATION
+         Home = watchlist only. Tap a stock → chart screen.
+         Default (no body.m-chart) = list home; body.m-chart = chart view.
+         ================================================================ */
+      /* List home: watchlist fills the screen below the topbar */
+      body:not(.m-chart) .sidebar {
+        display:flex !important;
+        position:fixed !important; top:42px; left:0; right:0; bottom:0;
+        width:100% !important; flex:none !important; z-index:850;
+        border-left:none !important;
+      }
+      /* List home: hide the chart and all chart chrome */
+      body:not(.m-chart) .main-area,
+      body:not(.m-chart) #mobileTfBar,
+      body:not(.m-chart) #drawToolbar,
+      body:not(.m-chart) #drawToolLauncher,
+      body:not(.m-chart) .icon-toolbar,
+      body:not(.m-chart) #positionPanel { display:none !important; }
+      /* Chart view: hide the watchlist sidebar */
+      body.m-chart .sidebar { display:none !important; }
+      /* Back button (only on the chart screen) */
+      body.m-chart #mobileBackBtn {
+        display:inline-flex; align-items:center; gap:.2rem;
+        background:var(--surface2); border:1px solid var(--border); color:var(--text);
+        border-radius:8px; padding:.26rem .6rem; font-size:.78rem; font-weight:800;
+        font-family:'Heebo',sans-serif; cursor:pointer; white-space:nowrap;
+        margin-left:.3rem;
+      }
     }
 
     /* ===== SIGNAL FEED (Mode A) ===== */
@@ -1804,6 +1836,8 @@
   <div class="ticker-wrap"><div class="ticker-inner" id="tickerInner">טוען נתונים...</div></div>
   <header class="topbar">
     <div class="topbar-left">
+      <!-- Mobile-only: back to watchlist (shown only on the chart screen) -->
+      <button id="mobileBackBtn" onclick="mobileBackToList()" title="חזרה לרשימת המעקב">‹ מעקב</button>
       <!-- CHART TYPE + TIMEFRAME TOOLBAR -->
       <div class="chart-type-wrap">
         <button class="chart-type-btn" id="chartTypeBtn" onclick="toggleChartTypeMenu()">
@@ -2116,11 +2150,11 @@
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20260927n"></script>
-<script src="main.js?v=20260927n"></script>
-<script src="drawing.js?v=20260927n"></script>
-<script src="features.js?v=20260927n"></script>
-<script src="signals.js?v=20260927n"></script>
+<script src="scanner-symbols.js?v=20260927o"></script>
+<script src="main.js?v=20260927o"></script>
+<script src="drawing.js?v=20260927o"></script>
+<script src="features.js?v=20260927o"></script>
+<script src="signals.js?v=20260927o"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
