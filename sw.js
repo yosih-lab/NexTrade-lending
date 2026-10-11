@@ -1,5 +1,5 @@
 // NexTrade Service Worker — PWA offline support
-var CACHE = 'nextrade-v47';
+var CACHE = 'nextrade-v48';
 var STATIC = [
   '/',
   '/index.html',
@@ -15,7 +15,7 @@ var STATIC = [
 ];
 
 // App files that should always be fetched from network first
-var APP_FILES = ['/index.html', '/main.js', '/drawing.js', '/features.js', '/signals.js'];
+var APP_FILES = ['/index.html', '/main.js', '/drawing.js', '/features.js', '/signals.js', '/manifest.json'];
 
 // Install: cache static assets
 self.addEventListener('install', function(e) {
