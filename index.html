@@ -242,6 +242,30 @@
     }
     .wl-filter-sel:focus { outline:none; border-color:var(--accent); }
     .wl-divider { height:1px; background:var(--border); margin:.5rem 0 .2rem; border:none; }
+    /* ---- Color-bookmark filter bar (above the watchlist) ---- */
+    .wl-colorbar {
+      display:flex; flex-direction:row; align-items:center; gap:.5rem;
+      padding:.15rem .1rem .45rem; direction:rtl; flex-wrap:wrap;
+    }
+    .wlcb-chip {
+      display:flex; flex-direction:column; align-items:center; gap:.12rem;
+      background:transparent; border:none; cursor:pointer; padding:.1rem; border-radius:7px;
+      transition:background .12s, transform .1s;
+    }
+    .wlcb-chip:hover { background:var(--surface2); }
+    .wlcb-chip.active { background:rgba(41,98,255,.14); }
+    .wlcb-chip.active .wlcb-bm { transform:scale(1.12); }
+    .wlcb-bm {
+      width:16px; height:22px; flex-shrink:0; display:block;
+      background:#5b6472; transition:transform .12s;
+      clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%);
+    }
+    .wlcb-bm.all {
+      background:linear-gradient(135deg,#ef5350,#f5a623,#26a69a,#2962ff,#a855f7);
+      clip-path:none; border-radius:50%; width:20px; height:20px;
+    }
+    .wlcb-count { font-size:.62rem; font-weight:800; color:var(--text-muted); line-height:1; }
+    .wlcb-chip.active .wlcb-count { color:var(--accent); }
     .wl-logo { border-radius:50%; object-fit:contain; flex-shrink:0; background:var(--surface); position:absolute; top:0; left:0; }
     .watch-item {
       display:flex;
@@ -1948,10 +1972,12 @@
       }
       /* Floating user avatar (bottom-right) only on the home list screen */
       body:not(.m-chart) #mHomeAvatar { display:flex; }
-      /* Remove the watchlist filter boxes entirely on the app home */
-      body:not(.m-chart) .wl-mgr-filters,
-      body:not(.m-chart) .wl-divider { display:none !important; }
-      body:not(.m-chart) .wl-mgr { padding:0 !important; }
+      /* Color-bookmark bar sits above the stock list on the app home */
+      body:not(.m-chart) .wl-mgr { padding:.4rem .6rem !important; }
+      body:not(.m-chart) .wl-colorbar { justify-content:flex-start; gap:.8rem; padding:.2rem .1rem .5rem; }
+      body:not(.m-chart) .wlcb-bm { width:20px; height:27px; }
+      body:not(.m-chart) .wlcb-bm.all { width:25px; height:25px; }
+      body:not(.m-chart) .wlcb-count { font-size:.72rem; }
       /* Hide the cluttered topbar items on the list home */
       body:not(.m-chart) .chart-type-wrap,
       body:not(.m-chart) header.topbar .tf-sep,
@@ -2462,17 +2488,8 @@
         <!-- VIEW: Watchlist (default) -->
         <div class="sidebar-view active" id="sview-watchlist">
           <div class="wl-mgr">
-            <div class="wl-mgr-filters">
-              <input type="text" id="wlSymFilter" class="wl-filter-inp" placeholder="סנן לפי סמל..." oninput="renderWatchlist()" autocomplete="off" />
-              <select id="wlPctFilter" class="wl-filter-sel" onchange="renderWatchlist()">
-                <option value="">כל השינויים</option>
-                <option value="sort-desc">% שינוי: גדול → קטן</option>
-                <option value="sort-asc">% שינוי: קטן → גדול</option>
-                <option value="up">עלייה בלבד &#9650;</option>
-                <option value="down">ירידה בלבד &#9660;</option>
-              </select>
-            </div>
-            <div class="wl-divider"></div>
+            <!-- Color favorites bookmark bar (replaces the old filter boxes) -->
+            <div class="wl-colorbar" id="wlColorBar"></div>
           </div>
           <ul id="watchlist" style="list-style:none;padding:0;margin:0;"></ul>
         </div>
@@ -2700,11 +2717,11 @@
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20260927ac"></script>
-<script src="main.js?v=20260927ac"></script>
-<script src="drawing.js?v=20260927ac"></script>
-<script src="features.js?v=20260927ac"></script>
-<script src="signals.js?v=20260927ac"></script>
+<script src="scanner-symbols.js?v=20260927ad"></script>
+<script src="main.js?v=20260927ad"></script>
+<script src="drawing.js?v=20260927ad"></script>
+<script src="features.js?v=20260927ad"></script>
+<script src="signals.js?v=20260927ad"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">

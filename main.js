@@ -312,6 +312,30 @@ function setFavFilter(key) {
   }
 }
 
+// Inline color-bookmark filter bar shown ABOVE the watchlist (desktop + mobile).
+function renderColorBar() {
+  var box = document.getElementById('wlColorBar');
+  if (!box) return;
+  var counts = {};
+  (watchlist || []).forEach(function(s) {
+    var c = wlColorMap[s];
+    if (c) counts[c] = (counts[c] || 0) + 1;
+  });
+  var html = '';
+  html += '<button class="wlcb-chip' + (wlColorFilter === '' ? ' active' : '') + '" onclick="setFavFilter(\'\')" title="הצג הכל" aria-label="הצג הכל">'
+    + '<span class="wlcb-bm all"></span>'
+    + '<span class="wlcb-count">' + (watchlist ? watchlist.length : 0) + '</span>'
+    + '</button>';
+  WL_COLORS.forEach(function(c) {
+    html += '<button class="wlcb-chip' + (wlColorFilter === c.key ? ' active' : '') + '" onclick="setFavFilter(\'' + c.key + '\')" title="' + c.label + '" aria-label="' + c.label + '">'
+      + '<span class="wlcb-bm" style="background:' + c.hex + '"></span>'
+      + '<span class="wlcb-count">' + (counts[c.key] || 0) + '</span>'
+      + '</button>';
+  });
+  box.innerHTML = html;
+}
+window.renderColorBar = renderColorBar;
+
 // --- Per-symbol color assignment (inline palette popup) ---
 function openColorPicker(ev, sym) {
   if (ev) { ev.stopPropagation(); ev.preventDefault(); }
@@ -404,6 +428,8 @@ var TECH_EYE_OFF  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 
 // Drawing tools that belong in the "Technical Tools" combo (per user spec)
 var TECH_TOOL_WHITELIST = ['trend','hline','vline','ray','rect','ellipse','arrow','text','brush','fib'];
+// Advanced drawing tools (second section) — gann family + trade rulers
+var TECH_TOOL_ADVANCED = ['gann','gannbox','gannsq','gannfix','long','short'];
 
 function getTechFavs() {
   try { var a = JSON.parse(localStorage.getItem('nt_tech_favs') || '[]'); return Array.isArray(a) ? a : []; }
@@ -436,16 +462,21 @@ function getTechCatalog() {
   var cats = [];
   // --- Drawing tools (filtered to the technical-analysis subset) ---
   var draw = (window.NTDraw && typeof window.NTDraw.getToolCatalog === 'function') ? window.NTDraw.getToolCatalog() : [];
+  var byId = {};
+  draw.forEach(function(g) { (g.items || []).forEach(function(it) { byId[it.id] = it; }); });
   var toolItems = [];
-  draw.forEach(function(g) {
-    (g.items || []).forEach(function(it) {
-      if (TECH_TOOL_WHITELIST.indexOf(it.id) !== -1) {
-        toolItems.push({ id: it.id, name: it.name, icon: it.icon, type: 'tool' });
-      }
-    });
+  TECH_TOOL_WHITELIST.forEach(function(id) {
+    var it = byId[id];
+    if (it) toolItems.push({ id: it.id, name: it.name, icon: it.icon, type: 'tool' });
   });
-  toolItems.sort(function(a, b) { return TECH_TOOL_WHITELIST.indexOf(a.id) - TECH_TOOL_WHITELIST.indexOf(b.id); });
   if (toolItems.length) cats.push({ title: 'כלים טכניים', items: toolItems });
+  // Advanced drawing tools (gann + trade rulers)
+  var advItems = [];
+  TECH_TOOL_ADVANCED.forEach(function(id) {
+    var it = byId[id];
+    if (it) advItems.push({ id: it.id, name: it.name, icon: it.icon, type: 'tool' });
+  });
+  if (advItems.length) cats.push({ title: 'כלים מתקדמים', items: advItems });
 
   // --- Indicators (only present once the indicator engine has loaded) ---
   if (typeof MA_CONFIGS !== 'undefined') {
@@ -2865,6 +2896,7 @@ function renderWatchlist() {
       + '<button class="watch-remove-btn" title="מחק" onclick="removeFromWatchlist(event,\'' + sym + '\')">✕</button>'
       + '</li>';
   }).join('');
+  renderColorBar();
 }
 
 async function addToWatchlist() {

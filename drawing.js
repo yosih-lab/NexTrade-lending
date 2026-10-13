@@ -178,12 +178,6 @@
     toolbar.style.display = 'flex';
     var headHtml =
       '<div class="dt-head">' +
-        '<button class="dt-ctl dt-grip" title="גרור סרגל (מצב צף)">' +
-          svg('<circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/>') +
-        '</button>' +
-        '<button class="dt-ctl dt-float" title="סרגל צף / מעוגן">' +
-          svg('<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6"/>') +
-        '</button>' +
         '<button class="dt-ctl dt-hide" title="הסתר סרגל">' +
           svg('<path d="M6 6 18 18M18 6 6 18"/>') +
         '</button>' +
@@ -219,10 +213,14 @@
       var grp = b.getAttribute('data-group');
       if (grp === 'gann' && GANN_TOOLS.length) pickTool(GANN_TOOLS[0].id);
     });
-    // Header controls: float toggle, hide, and drag handle
-    toolbar.querySelector('.dt-float').addEventListener('click', function () { toggleFloating(); });
+    // Header controls: hide only (toolbar is fixed/docked — no float or drag)
     toolbar.querySelector('.dt-hide').addEventListener('click', function () { hideToolbar(); });
-    initToolbarDrag();
+    // Toolbar is fixed/docked; clear any legacy floating state and restore hidden state
+    try {
+      localStorage.removeItem('nt_drawtb_float');
+      localStorage.removeItem('nt_drawtb_pos');
+      if (localStorage.getItem('nt_drawtb_hidden') === '1') hideToolbar();
+    } catch (e) {}
 
     actionBar = document.createElement('div');
     actionBar.id = 'drawActionBar';
@@ -408,9 +406,9 @@
     window.addEventListener('mouseup', end);
     window.addEventListener('touchend', end);
 
-    // Restore persisted float / hidden state
+    // Restore persisted hidden state only — the toolbar is fixed/docked (never floats)
     try {
-      if (localStorage.getItem('nt_drawtb_float') === '1') toggleFloating();
+      localStorage.removeItem('nt_drawtb_float');
       if (localStorage.getItem('nt_drawtb_hidden') === '1') hideToolbar();
     } catch (e) {}
   }
