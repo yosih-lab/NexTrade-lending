@@ -176,6 +176,17 @@ function loginSuccess(user) {
   if (nameEl) nameEl.textContent = user.name;
   if (avatarEl) avatarEl.textContent = user.name.charAt(0).toUpperCase();
 
+  // Mobile avatar + profile (initials = first letter of first name + first letter of last name)
+  var inits = userInitials(user.name);
+  var mAvatar = document.getElementById('mHomeAvatar');
+  var mProfAv = document.getElementById('mProfAvatar');
+  var mProfNm = document.getElementById('mProfName');
+  var mProfSb = document.getElementById('mProfSub');
+  if (mAvatar) mAvatar.textContent = inits;
+  if (mProfAv) mProfAv.textContent = inits;
+  if (mProfNm) mProfNm.textContent = user.name || 'משתמש';
+  if (mProfSb) mProfSb.textContent = (user.email || '') + (user.role === 'admin' ? ' · מנהל' : '');
+
   var backOfficeBtn = document.getElementById('backOfficeBtn');
   if (backOfficeBtn) backOfficeBtn.style.display = (user.role === 'admin') ? '' : 'none';
 
@@ -203,6 +214,147 @@ function handleLogout() {
   if (dd) dd.classList.remove('open');
   switchTab('login');
 }
+
+// ============================================
+//   MOBILE PROFILE + COLORED FAVORITE LISTS
+// ============================================
+// Initials = first letter of first name + first letter of last name (like the website).
+function userInitials(name) {
+  if (!name) return 'U';
+  var parts = String(name).trim().split(/\s+/);
+  var a = parts[0] ? parts[0].charAt(0) : '';
+  var b = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
+  return (a + b).toUpperCase() || 'U';
+}
+
+// --- Profile screen ---
+function openProfile() {
+  var p = document.getElementById('mProfile');
+  if (p) p.classList.add('open');
+}
+function closeProfile() {
+  var p = document.getElementById('mProfile');
+  if (p) p.classList.remove('open');
+}
+function mProfAbout() {
+  ntToast('NexTrade — פלטפורמת איתותים ומסחר');
+}
+function mProfHelp() {
+  ntToast('מרכז עזרה — צרו קשר: support@getnexttrade.com');
+}
+window.openProfile = openProfile;
+window.closeProfile = closeProfile;
+window.mProfAbout = mProfAbout;
+window.mProfHelp = mProfHelp;
+
+// --- Colored favorite lists (red/green/yellow/purple/blue) ---
+var WL_COLORS = [
+  { key: 'red',    label: 'אדום',  hex: '#ef5350' },
+  { key: 'green',  label: 'ירוק',  hex: '#26a69a' },
+  { key: 'yellow', label: 'צהוב',  hex: '#f5a623' },
+  { key: 'purple', label: 'סגול',  hex: '#a855f7' },
+  { key: 'blue',   label: 'כחול',  hex: '#2962ff' }
+];
+function wlColorHex(key) {
+  for (var i = 0; i < WL_COLORS.length; i++) if (WL_COLORS[i].key === key) return WL_COLORS[i].hex;
+  return '';
+}
+var wlColorMap = {};
+try { wlColorMap = JSON.parse(localStorage.getItem('nt_wl_colors') || '{}') || {}; } catch (e) { wlColorMap = {}; }
+var wlColorFilter = ''; // '' = show all; otherwise a color key
+var _wlPickerSym = null; // symbol currently being colored
+
+function saveWlColors() {
+  try { localStorage.setItem('nt_wl_colors', JSON.stringify(wlColorMap)); } catch (e) {}
+}
+
+function openFavLists() {
+  renderFavLists();
+  var m = document.getElementById('mFavLists');
+  if (m) m.classList.add('open');
+}
+function closeFavLists() {
+  var m = document.getElementById('mFavLists');
+  if (m) m.classList.remove('open');
+}
+function favListsBackdrop(ev) {
+  if (ev && ev.target && ev.target.id === 'mFavLists') closeFavLists();
+}
+function renderFavLists() {
+  var box = document.getElementById('mFavRows');
+  if (!box) return;
+  var counts = {};
+  (watchlist || []).forEach(function(s) {
+    var c = wlColorMap[s];
+    if (c) counts[c] = (counts[c] || 0) + 1;
+  });
+  var rows = '';
+  rows += '<button class="mfav-row' + (wlColorFilter === '' ? ' active' : '') + '" onclick="setFavFilter(\'\')">'
+    + '<span class="mfav-swatch" style="background:linear-gradient(135deg,#ef5350,#26a69a,#2962ff)"></span>'
+    + '<span>הצג הכל</span>'
+    + '<span class="mfav-count">' + (watchlist ? watchlist.length : 0) + '</span>'
+    + '</button>';
+  WL_COLORS.forEach(function(c) {
+    rows += '<button class="mfav-row' + (wlColorFilter === c.key ? ' active' : '') + '" onclick="setFavFilter(\'' + c.key + '\')">'
+      + '<span class="mfav-swatch" style="background:' + c.hex + '"></span>'
+      + '<span>' + c.label + '</span>'
+      + '<span class="mfav-count">' + (counts[c.key] || 0) + '</span>'
+      + '</button>';
+  });
+  box.innerHTML = rows;
+}
+function setFavFilter(key) {
+  wlColorFilter = key;
+  closeFavLists();
+  renderWatchlist();
+  if (typeof ntToast === 'function') {
+    var lbl = key ? ('מציג רשימת ' + (WL_COLORS.filter(function(c){return c.key===key;})[0]||{}).label) : 'מציג את כל הרשימה';
+    ntToast(lbl);
+  }
+}
+
+// --- Per-symbol color assignment (inline palette popup) ---
+function openColorPicker(ev, sym) {
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  _wlPickerSym = sym;
+  var pk = document.getElementById('wlColorPicker');
+  if (!pk) return;
+  pk.classList.add('open');
+  // position near the clicked dot
+  var rect = ev && ev.currentTarget ? ev.currentTarget.getBoundingClientRect() : null;
+  var pw = 220, ph = 46;
+  var left = rect ? Math.min(Math.max(8, rect.left - pw + rect.width), window.innerWidth - pw - 8) : 20;
+  var top  = rect ? (rect.bottom + 6) : 80;
+  if (top + ph > window.innerHeight) top = rect.top - ph - 6;
+  pk.style.left = left + 'px';
+  pk.style.top  = top + 'px';
+}
+function setSymColor(color) {
+  if (_wlPickerSym) {
+    if (color) wlColorMap[_wlPickerSym] = color;
+    else delete wlColorMap[_wlPickerSym];
+    saveWlColors();
+  }
+  var pk = document.getElementById('wlColorPicker');
+  if (pk) pk.classList.remove('open');
+  _wlPickerSym = null;
+  renderWatchlist();
+}
+window.openFavLists = openFavLists;
+window.closeFavLists = closeFavLists;
+window.favListsBackdrop = favListsBackdrop;
+window.setFavFilter = setFavFilter;
+window.openColorPicker = openColorPicker;
+window.setSymColor = setSymColor;
+
+// Close the color picker when clicking elsewhere
+document.addEventListener('click', function(e) {
+  var pk = document.getElementById('wlColorPicker');
+  if (pk && pk.classList.contains('open') && !pk.contains(e.target)) {
+    pk.classList.remove('open');
+    _wlPickerSym = null;
+  }
+});
 
 (function checkAutoLogin() {
   // Check server-based auth first (from login.html)
@@ -2290,6 +2442,7 @@ function renderWatchlist() {
   var pctFilter = ((document.getElementById('wlPctFilter') || {}).value || '');
   var ul = document.getElementById('watchlist');
   var toShow = watchlist.filter(function(sym) {
+    if (wlColorFilter && wlColorMap[sym] !== wlColorFilter) return false;
     if (symFilter && sym.replace('.TA','').indexOf(symFilter) === -1) return false;
     if (pctFilter) {
       var d = priceCache[sym];
@@ -2323,7 +2476,10 @@ function renderWatchlist() {
     var logoImg = '<img class="wl-logo" data-sym="' + shortSym + '" src="' + (logoUrl || '') + '"'
       + (logoUrl ? '' : ' style="display:none"')
       + ' width="20" height="20" onerror="this.style.display=\'none\'">';
+    var favCol = wlColorMap[sym] || '';
+    var favStyle = favCol ? ('background:' + wlColorHex(favCol) + ';border-color:' + wlColorHex(favCol)) : '';
     return '<li class="watch-item" onclick="selectSymbol(\'' + sym + '\')">'
+      + '<button class="watch-color-dot" style="' + favStyle + '" title="סמן בצבע מועדפים" onclick="openColorPicker(event,\'' + sym + '\')"></button>'
       + '<div class="watch-icon-wrap">'
       + '<div class="watch-icon" style="background:' + iconBg + '">' + initials + '</div>'
       + logoImg

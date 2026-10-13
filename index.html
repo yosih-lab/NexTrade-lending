@@ -1289,6 +1289,108 @@
     #mSymSwitch, #mSymSheet { display:none; }
     /* Mobile home header bits (desktop hidden) */
     #mHomeLogo, #mHomeSearch { display:none; }
+    /* Mobile home menu + avatar + profile + favorites (desktop hidden) */
+    #mHomeMenu, #mHomeAvatar, #mProfile, #mFavLists, #wlColorPicker { display:none; }
+
+    /* ---- Hamburger (3 lines) next to the logo ---- */
+    #mHomeMenu {
+      width:40px; height:40px; background:transparent; border:none; cursor:pointer;
+      flex-direction:column; align-items:center; justify-content:center; gap:5px; padding:0;
+    }
+    #mHomeMenu span { display:block; width:22px; height:2.5px; border-radius:2px; background:#fff; }
+
+    /* ---- Floating user avatar (bottom-right of home) ---- */
+    #mHomeAvatar {
+      position:fixed; right:16px; bottom:18px; z-index:950;
+      width:54px; height:54px; border-radius:50%; border:none; cursor:pointer;
+      background:#7bd88f; color:#0a2a14; font-family:'Heebo',sans-serif;
+      font-size:1.15rem; font-weight:900; letter-spacing:.5px;
+      align-items:center; justify-content:center;
+      box-shadow:0 6px 20px rgba(0,0,0,.5);
+    }
+
+    /* ---- Profile screen ---- */
+    #mProfile {
+      position:fixed; inset:0; z-index:10002; background:var(--bg);
+      flex-direction:column; direction:rtl;
+    }
+    #mProfile.open { display:flex; }
+    .mprof-top {
+      display:flex; align-items:center; gap:.5rem; height:52px; padding:0 .8rem;
+      border-bottom:1px solid var(--border); flex-shrink:0;
+    }
+    .mprof-back {
+      width:38px; height:38px; border-radius:10px; background:var(--surface2);
+      border:1px solid var(--border); color:var(--text); font-size:1.5rem; font-weight:800;
+      cursor:pointer; display:flex; align-items:center; justify-content:center;
+    }
+    .mprof-title { font-size:1.05rem; font-weight:800; color:var(--text); }
+    .mprof-card {
+      display:flex; align-items:center; gap:.9rem; padding:1.3rem 1.1rem;
+      margin:1rem; background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    }
+    .mprof-avatar {
+      width:64px; height:64px; border-radius:50%; flex-shrink:0;
+      background:#7bd88f; color:#0a2a14; font-weight:900; font-size:1.5rem;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .mprof-name { font-size:1.25rem; font-weight:800; color:var(--text); }
+    .mprof-sub { font-size:.85rem; color:var(--text-muted); margin-top:.2rem; }
+    .mprof-actions { display:flex; flex-direction:column; gap:.6rem; padding:.5rem 1rem; }
+    .mprof-act {
+      display:flex; align-items:center; gap:.8rem; width:100%;
+      padding:1rem; border-radius:12px; background:var(--surface); border:1px solid var(--border);
+      color:var(--text); font-family:'Heebo',sans-serif; font-size:1rem; font-weight:700; cursor:pointer;
+    }
+    .mprof-act .mprof-act-ico { font-size:1.2rem; width:24px; text-align:center; }
+    .mprof-act .mprof-act-chev { margin-right:auto; color:var(--text-muted); font-size:1.3rem; }
+    .mprof-act.danger { color:var(--red); }
+    .mprof-act.danger .mprof-act-ico { color:var(--red); }
+
+    /* ---- Colored favorites window ---- */
+    #mFavLists {
+      position:fixed; inset:0; z-index:10001; background:rgba(2,4,10,.72);
+      align-items:flex-end; justify-content:center;
+    }
+    #mFavLists.open { display:flex; }
+    .mfav-card {
+      width:100%; max-width:560px; background:var(--surface);
+      border-top-left-radius:18px; border-top-right-radius:18px;
+      border:1px solid var(--border); border-bottom:none; padding:1rem 1rem 1.6rem;
+      direction:rtl; animation:pwaSlide .3s ease;
+    }
+    .mfav-hdr { display:flex; align-items:center; justify-content:space-between; }
+    .mfav-hdr span { font-size:1.05rem; font-weight:800; color:var(--text); }
+    .mfav-close { background:transparent; border:none; color:var(--text-muted); font-size:1.1rem; cursor:pointer; }
+    .mfav-sub { font-size:.82rem; color:var(--text-muted); margin:.3rem 0 .8rem; }
+    .mfav-rows { display:flex; flex-direction:column; gap:.5rem; }
+    .mfav-row {
+      display:flex; align-items:center; gap:.8rem; width:100%;
+      padding:.8rem .9rem; border-radius:12px; background:var(--surface2);
+      border:1px solid var(--border); cursor:pointer; color:var(--text);
+      font-family:'Heebo',sans-serif; font-size:1rem; font-weight:700;
+    }
+    .mfav-row.active { border-color:var(--accent); background:rgba(41,98,255,.12); }
+    .mfav-swatch { width:20px; height:20px; border-radius:50%; flex-shrink:0; }
+    .mfav-count { margin-right:auto; font-size:.85rem; color:var(--text-muted); font-weight:700; }
+
+    /* ---- Inline color picker popup + per-row color dot ---- */
+    #wlColorPicker {
+      position:fixed; z-index:10050; gap:.4rem; padding:.45rem .55rem;
+      background:var(--surface); border:1px solid var(--border); border-radius:12px;
+      box-shadow:0 10px 30px rgba(0,0,0,.6); align-items:center;
+    }
+    #wlColorPicker.open { display:flex; }
+    .wlcp-dot { width:26px; height:26px; border-radius:50%; border:2px solid transparent; cursor:pointer; padding:0; }
+    .wlcp-dot:hover { border-color:#fff; }
+    .wlcp-clear {
+      width:26px; height:26px; border-radius:50%; cursor:pointer; padding:0;
+      background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); font-size:.8rem;
+    }
+    .watch-color-dot {
+      width:14px; height:14px; border-radius:50%; flex-shrink:0; cursor:pointer;
+      border:2px solid var(--border); background:transparent;
+    }
 
     #bellAlertDetails {
       position:fixed; top:74px; right:150px; z-index:10000;
@@ -1668,6 +1770,17 @@
         background:transparent; border:none; color:var(--text); cursor:pointer; padding:0;
       }
       body:not(.m-chart) #mHomeSearch svg { width:26px; height:26px; }
+      /* Hamburger (favorites) on the right of the home header */
+      body:not(.m-chart) #mHomeMenu {
+        display:flex;
+        position:absolute; right:8px; top:50%; transform:translateY(-50%);
+      }
+      /* Floating user avatar (bottom-right) only on the home list screen */
+      body:not(.m-chart) #mHomeAvatar { display:flex; }
+      /* Remove the watchlist filter boxes entirely on the app home */
+      body:not(.m-chart) .wl-mgr-filters,
+      body:not(.m-chart) .wl-divider { display:none !important; }
+      body:not(.m-chart) .wl-mgr { padding:0 !important; }
       /* Hide the cluttered topbar items on the list home */
       body:not(.m-chart) .chart-type-wrap,
       body:not(.m-chart) header.topbar .tf-sep,
@@ -2003,6 +2116,10 @@
       <button id="mHomeSearch" onclick="openSearchModal()" title="חפש מניה" aria-label="חפש מניה">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
       </button>
+      <!-- Mobile-only HOME header: hamburger (favorites color lists) on the right -->
+      <button id="mHomeMenu" onclick="openFavLists()" title="רשימות מועדפים" aria-label="רשימות מועדפים">
+        <span></span><span></span><span></span>
+      </button>
       <!-- CHART TYPE + TIMEFRAME TOOLBAR -->
       <div class="chart-type-wrap">
         <button class="chart-type-btn" id="chartTypeBtn" onclick="toggleChartTypeMenu()">
@@ -2086,6 +2203,51 @@
       <button class="m-sym-sheet-close" onclick="closeMSymSheet(event)">✕</button>
     </div>
     <div id="mSymSheetList"></div>
+  </div>
+
+  <!-- Mobile-only: floating user avatar (bottom-right of the home screen) -->
+  <button id="mHomeAvatar" onclick="openProfile()" title="הפרופיל שלי" aria-label="הפרופיל שלי">Y</button>
+
+  <!-- Mobile PROFILE screen (opens from the avatar) -->
+  <div id="mProfile">
+    <div class="mprof-top">
+      <button class="mprof-back" onclick="closeProfile()" aria-label="חזרה">‹</button>
+      <span class="mprof-title">הפרופיל שלי</span>
+    </div>
+    <div class="mprof-card">
+      <div class="mprof-avatar" id="mProfAvatar">Y</div>
+      <div class="mprof-info">
+        <div class="mprof-name" id="mProfName">משתמש</div>
+        <div class="mprof-sub" id="mProfSub"></div>
+      </div>
+    </div>
+    <div class="mprof-actions">
+      <button class="mprof-act" onclick="mProfAbout()"><span class="mprof-act-ico">ⓘ</span><span>אודות NexTrade</span><span class="mprof-act-chev">‹</span></button>
+      <button class="mprof-act" onclick="mProfHelp()"><span class="mprof-act-ico">?</span><span>מרכז עזרה</span><span class="mprof-act-chev">‹</span></button>
+      <button class="mprof-act danger" onclick="handleLogout()"><span class="mprof-act-ico">⎋</span><span>התנתקות מהחשבון</span><span class="mprof-act-chev">‹</span></button>
+    </div>
+  </div>
+
+  <!-- Colored FAVORITES lists window (opens from the hamburger) -->
+  <div id="mFavLists" onclick="favListsBackdrop(event)">
+    <div class="mfav-card">
+      <div class="mfav-hdr">
+        <span>רשימות מעקב — מועדפים</span>
+        <button class="mfav-close" onclick="closeFavLists()" aria-label="סגור">✕</button>
+      </div>
+      <div class="mfav-sub">סנן את רשימת המעקב לפי צבע מועדפים</div>
+      <div class="mfav-rows" id="mFavRows"></div>
+    </div>
+  </div>
+
+  <!-- Inline color palette popup (assign a color to a watched symbol) -->
+  <div id="wlColorPicker">
+    <button class="wlcp-dot" data-color="red"    style="background:#ef5350" onclick="setSymColor('red')"></button>
+    <button class="wlcp-dot" data-color="green"  style="background:#26a69a" onclick="setSymColor('green')"></button>
+    <button class="wlcp-dot" data-color="yellow" style="background:#f5a623" onclick="setSymColor('yellow')"></button>
+    <button class="wlcp-dot" data-color="purple" style="background:#a855f7" onclick="setSymColor('purple')"></button>
+    <button class="wlcp-dot" data-color="blue"   style="background:#2962ff" onclick="setSymColor('blue')"></button>
+    <button class="wlcp-clear" onclick="setSymColor('')" title="הסר צבע">✕</button>
   </div>
   <div class="layout">
     <aside class="sidebar">
@@ -2332,11 +2494,11 @@
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20260927u"></script>
-<script src="main.js?v=20260927u"></script>
-<script src="drawing.js?v=20260927u"></script>
-<script src="features.js?v=20260927u"></script>
-<script src="signals.js?v=20260927u"></script>
+<script src="scanner-symbols.js?v=20260927v"></script>
+<script src="main.js?v=20260927v"></script>
+<script src="drawing.js?v=20260927v"></script>
+<script src="features.js?v=20260927v"></script>
+<script src="signals.js?v=20260927v"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
