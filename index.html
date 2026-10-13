@@ -1163,6 +1163,53 @@
     #drawToolLauncher:hover { border-color:var(--accent); transform:scale(1.06); }
     #drawToolLauncher svg { width:20px; height:20px; }
     body.draw-hidden .layout { padding-left:0 !important; }
+
+    /* ===== TECHNICAL TOOLS launcher button + window ===== */
+    #techToolsBtn {
+      position:fixed; z-index:996; bottom:16px; left:60px;
+      display:flex; align-items:center; gap:.5rem;
+      background:var(--accent); color:#fff; border:none; cursor:pointer;
+      padding:.55rem .95rem; border-radius:10px; font-size:.9rem; font-weight:800;
+      box-shadow:0 6px 18px rgba(0,0,0,.45); transition:transform .12s, filter .12s;
+    }
+    #techToolsBtn:hover { transform:translateY(-1px); filter:brightness(1.08); }
+    #techToolsBtn svg { width:18px; height:18px; }
+    #techToolsModal {
+      display:none; position:fixed; inset:0; z-index:4000;
+      background:rgba(0,0,0,.55); align-items:center; justify-content:center;
+    }
+    #techToolsModal.open { display:flex; }
+    .tt-card {
+      width:min(560px,94vw); max-height:86vh; display:flex; flex-direction:column;
+      background:var(--surface); border:1px solid var(--border); border-radius:14px;
+      overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.6);
+    }
+    .tt-hdr {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:.9rem 1.1rem; border-bottom:1px solid var(--border);
+      font-size:1.05rem; font-weight:900; color:var(--text); flex-shrink:0;
+    }
+    .tt-close { background:transparent; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer; line-height:1; }
+    .tt-close:hover { color:var(--text); }
+    .tt-body { padding:1rem 1.1rem 1.3rem; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+    .tt-group { margin-bottom:1.15rem; }
+    .tt-group:last-child { margin-bottom:0; }
+    .tt-group-title {
+      font-size:.72rem; font-weight:800; letter-spacing:.6px; color:var(--text-muted);
+      text-transform:uppercase; margin-bottom:.55rem;
+    }
+    .tt-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:.6rem; }
+    .tt-tool {
+      display:flex; flex-direction:column; align-items:center; gap:.45rem;
+      padding:.75rem .4rem; background:#2a2b31; border:1px solid #35363d; border-radius:10px;
+      color:var(--text); cursor:pointer; text-align:center; transition:border-color .12s, background .12s, transform .1s;
+    }
+    .tt-tool:hover { border-color:var(--accent); background:#30323a; transform:translateY(-1px); }
+    .tt-tool.danger:hover { border-color:var(--red); }
+    .tt-tool .tt-ic { color:var(--text); display:flex; align-items:center; justify-content:center; }
+    .tt-tool .tt-ic svg { width:26px; height:26px; }
+    .tt-tool .tt-name { font-size:.74rem; font-weight:700; line-height:1.2; }
+
     #drawActionBar {
       position:absolute; z-index:13; display:flex; align-items:center; gap:4px;
       background:rgba(19,23,34,.97); border:1px solid var(--border); border-radius:9px;
@@ -1827,6 +1874,21 @@
         bottom:109px !important; /* 56 draw bar + 53 switcher */
       }
 
+      /* ---- TECHNICAL TOOLS button (mobile) ---- */
+      /* Home screen: hide. Chart screen: full-width bottom bar that replaces
+         the small drawing-icon strip, opening the labeled tools window. */
+      body:not(.m-chart) #techToolsBtn { display:none !important; }
+      body.m-chart #techToolsBtn {
+        bottom:0 !important; left:0 !important; right:0 !important;
+        width:100% !important; height:53px !important; border-radius:0 !important;
+        justify-content:center !important; padding:0 !important;
+        background:var(--surface) !important; color:var(--text) !important;
+        border-top:1px solid var(--border) !important; box-shadow:none !important;
+        font-size:1rem !important; z-index:998 !important;
+      }
+      body.m-chart #techToolsBtn svg { color:var(--accent); width:20px; height:20px; }
+      body.m-chart #drawToolbar { display:none !important; }
+      .tt-card { width:100vw !important; max-width:100vw !important; height:100%; max-height:100vh !important; border-radius:0 !important; }
       /* ---- Mobile SYMBOL SWITCHER bar (chart screen only) ---- */
       body.m-chart #mSymSwitch {
         display:flex; align-items:center; gap:.6rem;
@@ -2258,6 +2320,27 @@
     <button class="wlcp-dot" data-color="blue"   style="background:#2962ff" onclick="setSymColor('blue')"></button>
     <button class="wlcp-clear" onclick="setSymColor('')" title="הסר צבע">✕</button>
   </div>
+
+  <!-- Technical Tools launcher button (chart screen / desktop) -->
+  <button id="techToolsBtn" onclick="openTechTools()" aria-label="כלים טכניים" title="כלים טכניים">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="5.5" cy="18.5" r="1.7"/><circle cx="18.5" cy="5.5" r="1.7"/><path d="M6.9 17.1 17.1 6.9"/>
+      <path d="M4 4.5h4M6 2.5v4" opacity=".7"/>
+    </svg>
+    <span>כלים טכניים</span>
+  </button>
+
+  <!-- Technical Tools window: all drawing tools as labeled category cards -->
+  <div id="techToolsModal" onclick="techToolsBackdrop(event)">
+    <div class="tt-card">
+      <div class="tt-hdr">
+        <span>כלים טכניים</span>
+        <button class="tt-close" onclick="closeTechTools()" aria-label="סגור">✕</button>
+      </div>
+      <div class="tt-body" id="ttBody"></div>
+    </div>
+  </div>
+
   <div class="layout">
     <aside class="sidebar">
       <div id="sidebarTitle" style="display:none"></div>
@@ -2503,11 +2586,11 @@
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20260927w"></script>
-<script src="main.js?v=20260927w"></script>
-<script src="drawing.js?v=20260927w"></script>
-<script src="features.js?v=20260927w"></script>
-<script src="signals.js?v=20260927w"></script>
+<script src="scanner-symbols.js?v=20260927x"></script>
+<script src="main.js?v=20260927x"></script>
+<script src="drawing.js?v=20260927x"></script>
+<script src="features.js?v=20260927x"></script>
+<script src="signals.js?v=20260927x"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">

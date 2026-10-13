@@ -346,6 +346,55 @@ window.setFavFilter = setFavFilter;
 window.openColorPicker = openColorPicker;
 window.setSymColor = setSymColor;
 
+// --- Technical Tools window (all drawing tools as labeled category cards) ---
+function renderTechTools() {
+  var box = document.getElementById('ttBody');
+  if (!box) return;
+  var cats = (window.NTDraw && typeof window.NTDraw.getToolCatalog === 'function')
+    ? window.NTDraw.getToolCatalog() : [];
+  if (!cats.length) { box.innerHTML = '<div style="color:var(--text-muted);padding:1rem;text-align:center">הכלים נטענים…</div>'; return; }
+  var html = '';
+  cats.forEach(function(group) {
+    html += '<div class="tt-group"><div class="tt-group-title">' + group.title + '</div><div class="tt-grid">';
+    (group.items || []).forEach(function(it) {
+      var danger = (it.id === 'clear') ? ' danger' : '';
+      html += '<button class="tt-tool' + danger + '" onclick="pickTechTool(\'' + it.id + '\')">'
+        + '<span class="tt-ic">' + it.icon + '</span>'
+        + '<span class="tt-name">' + it.name + '</span>'
+        + '</button>';
+    });
+    html += '</div></div>';
+  });
+  box.innerHTML = html;
+}
+function openTechTools() {
+  if (window.NTDraw && typeof window.NTDraw.ensure === 'function') window.NTDraw.ensure();
+  renderTechTools();
+  var m = document.getElementById('techToolsModal');
+  if (m) m.classList.add('open');
+}
+function closeTechTools() {
+  var m = document.getElementById('techToolsModal');
+  if (m) m.classList.remove('open');
+}
+function techToolsBackdrop(ev) {
+  if (ev && ev.target && ev.target.id === 'techToolsModal') closeTechTools();
+}
+function pickTechTool(id) {
+  if (window.NTDraw && typeof window.NTDraw.pickTool === 'function') window.NTDraw.pickTool(id);
+  closeTechTools();
+  if (typeof ntToast === 'function' && id !== 'clear') {
+    var cats = (window.NTDraw && window.NTDraw.getToolCatalog) ? window.NTDraw.getToolCatalog() : [];
+    var name = id;
+    cats.forEach(function(g){ (g.items||[]).forEach(function(it){ if (it.id === id) name = it.name; }); });
+    ntToast('נבחר: ' + name);
+  }
+}
+window.openTechTools = openTechTools;
+window.closeTechTools = closeTechTools;
+window.techToolsBackdrop = techToolsBackdrop;
+window.pickTechTool = pickTechTool;
+
 // Close the color picker when clicking elsewhere
 document.addEventListener('click', function(e) {
   var pk = document.getElementById('wlColorPicker');

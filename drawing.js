@@ -91,6 +91,42 @@
     { id: 'gannfix', icon: ICONS.gannfix, tip: 'ריבוע גאן קבוע (Square Fixed)' },
   ];
 
+  // Full categorized catalog — used to build the "Technical Tools" window
+  // (labeled cards grouped by category, TradingView-style).
+  var TOOL_CATALOG = [
+    { title: 'קווים ומגמות', items: [
+      { id: 'trend',   icon: ICONS.trend,   name: 'קו מגמה' },
+      { id: 'hline',   icon: ICONS.hline,   name: 'קו אופקי' },
+      { id: 'vline',   icon: ICONS.vline,   name: 'קו אנכי' },
+      { id: 'ray',     icon: ICONS.ray,     name: 'קרן' },
+    ] },
+    { title: 'צורות', items: [
+      { id: 'rect',    icon: ICONS.rect,    name: 'מלבן' },
+      { id: 'ellipse', icon: ICONS.ellipse, name: 'עיגול / אליפסה' },
+      { id: 'arrow',   icon: ICONS.arrow,   name: 'חץ' },
+    ] },
+    { title: 'טקסט וציור', items: [
+      { id: 'text',    icon: ICONS.text,    name: 'טקסט' },
+      { id: 'brush',   icon: ICONS.brush,   name: 'ציור חופשי' },
+    ] },
+    { title: 'פיבונאצ׳י וגאן', items: [
+      { id: 'fib',     icon: ICONS.fib,     name: 'פיבונאצ׳י' },
+      { id: 'gann',    icon: ICONS.gann,    name: 'מניפת גאן' },
+      { id: 'gannbox', icon: ICONS.gannbox, name: 'תיבת גאן' },
+      { id: 'gannsq',  icon: ICONS.gannsq,  name: 'ריבוע גאן' },
+      { id: 'gannfix', icon: ICONS.gannfix, name: 'ריבוע גאן קבוע' },
+    ] },
+    { title: 'סרגלי עסקה', items: [
+      { id: 'long',    icon: ICONS.long,    name: 'עסקת לונג' },
+      { id: 'short',   icon: ICONS.short,   name: 'עסקת שורט' },
+    ] },
+    { title: 'כללי', items: [
+      { id: 'select',  icon: ICONS.select,  name: 'בחירה / עריכה' },
+      { id: 'off',     icon: ICONS.off,     name: 'ניווט בגרף' },
+      { id: 'clear',   icon: ICONS.clear,   name: 'מחק הכל' },
+    ] },
+  ];
+
   // Gann fan angles as [time, price] ratios relative to the 1x1 line
   var GANN_RATIOS = [[1,8],[1,4],[1,3],[1,2],[1,1],[2,1],[3,1],[4,1],[8,1]];
   // Gann box/square internal grid levels
@@ -1658,6 +1694,8 @@
     clearAllShapes: clearAllShapes,
     toggleFloating: function () { ensureDom(); toggleFloating(); },
     showToolbar: function () { ensureDom(); showToolbar(); },
-    hideToolbar: function () { ensureDom(); hideToolbar(); }
+    hideToolbar: function () { ensureDom(); hideToolbar(); },
+    pickTool: function (t) { ensureDom(); showToolbar(); pickTool(t); },
+    getToolCatalog: function () { return TOOL_CATALOG; }
   };
 })();
