@@ -383,6 +383,7 @@ function techToolsBackdrop(ev) {
 function pickTechTool(id) {
   if (window.NTDraw && typeof window.NTDraw.pickTool === 'function') window.NTDraw.pickTool(id);
   closeTechTools();
+  if (typeof closeTechDropdown === 'function') closeTechDropdown();
   if (typeof ntToast === 'function' && id !== 'clear') {
     var cats = (window.NTDraw && window.NTDraw.getToolCatalog) ? window.NTDraw.getToolCatalog() : [];
     var name = id;
@@ -394,6 +395,110 @@ window.openTechTools = openTechTools;
 window.closeTechTools = closeTechTools;
 window.techToolsBackdrop = techToolsBackdrop;
 window.pickTechTool = pickTechTool;
+
+// --- Technical Tools FAVORITES dropdown (combo list) + floating bottom bar ---
+var TECH_STAR_SVG = '<svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 18.9 6.1 21l1.2-6.5L2.5 9.9l6.6-.9z"/></svg>';
+
+function getTechFavs() {
+  try { var a = JSON.parse(localStorage.getItem('nt_tech_favs') || '[]'); return Array.isArray(a) ? a : []; }
+  catch (e) { return []; }
+}
+function saveTechFavs(arr) {
+  try { localStorage.setItem('nt_tech_favs', JSON.stringify(arr)); } catch (e) {}
+}
+function flattenTechTools() {
+  var cats = (window.NTDraw && typeof window.NTDraw.getToolCatalog === 'function') ? window.NTDraw.getToolCatalog() : [];
+  var out = [];
+  cats.forEach(function(g) { (g.items || []).forEach(function(it) { out.push(it); }); });
+  return out;
+}
+function techToolById(id) {
+  var all = flattenTechTools();
+  for (var i = 0; i < all.length; i++) if (all[i].id === id) return all[i];
+  return null;
+}
+function renderTechDropdown() {
+  var box = document.getElementById('ttdList');
+  if (!box) return;
+  var tools = flattenTechTools();
+  if (!tools.length) { box.innerHTML = '<div style="color:var(--text-muted);padding:.8rem;text-align:center">הכלים נטענים…</div>'; return; }
+  var favs = getTechFavs();
+  var html = '';
+  tools.forEach(function(it) {
+    var isFav = favs.indexOf(it.id) !== -1;
+    html += '<div class="ttd-row" onclick="pickTechTool(\'' + it.id + '\')">'
+      + '<span class="ttd-ic">' + it.icon + '</span>'
+      + '<span class="ttd-name">' + it.name + '</span>'
+      + '<button class="ttd-star' + (isFav ? ' fav' : '') + '" onclick="toggleTechFav(\'' + it.id + '\',event)" '
+      + 'title="' + (isFav ? 'הסר ממועדפים' : 'הוסף למועדפים') + '" aria-label="מועדפים">' + TECH_STAR_SVG + '</button>'
+      + '</div>';
+  });
+  box.innerHTML = html;
+}
+function toggleTechDropdown(ev) {
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  if (window.NTDraw && typeof window.NTDraw.ensure === 'function') window.NTDraw.ensure();
+  var dd = document.getElementById('techToolsDropdown');
+  var btn = document.getElementById('techToolsBtn');
+  if (!dd || !btn) return;
+  if (dd.classList.contains('open')) { dd.classList.remove('open'); return; }
+  renderTechDropdown();
+  // Position relative to the button (flip up if not enough room below)
+  dd.classList.add('open');
+  var r = btn.getBoundingClientRect();
+  var ddw = dd.offsetWidth || 300;
+  var ddh = dd.offsetHeight || 320;
+  var left = Math.max(8, Math.min(r.left, window.innerWidth - ddw - 8));
+  var top;
+  if (r.bottom + ddh + 8 <= window.innerHeight) top = r.bottom + 6;        // below
+  else top = Math.max(8, r.top - ddh - 6);                                  // above
+  dd.style.left = left + 'px';
+  dd.style.top = top + 'px';
+}
+function closeTechDropdown() {
+  var dd = document.getElementById('techToolsDropdown');
+  if (dd) dd.classList.remove('open');
+}
+function toggleTechFav(id, ev) {
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  var favs = getTechFavs();
+  var i = favs.indexOf(id);
+  if (i === -1) favs.push(id); else favs.splice(i, 1);
+  saveTechFavs(favs);
+  renderTechDropdown();
+  renderTechFavBar();
+}
+function renderTechFavBar() {
+  var bar = document.getElementById('techFavBar');
+  if (!bar) return;
+  var favs = getTechFavs();
+  if (!favs.length) { bar.className = ''; bar.innerHTML = ''; return; }
+  var html = '';
+  favs.forEach(function(id) {
+    var it = techToolById(id);
+    if (!it) return;
+    html += '<button class="tfav-btn" onclick="pickTechTool(\'' + id + '\')" title="' + it.name + '" aria-label="' + it.name + '">' + it.icon + '</button>';
+  });
+  bar.innerHTML = html;
+  bar.className = html ? 'show' : '';
+}
+window.toggleTechDropdown = toggleTechDropdown;
+window.closeTechDropdown = closeTechDropdown;
+window.toggleTechFav = toggleTechFav;
+window.renderTechFavBar = renderTechFavBar;
+
+// Close the favorites dropdown when clicking/tapping outside it
+document.addEventListener('pointerdown', function(e) {
+  var dd = document.getElementById('techToolsDropdown');
+  if (!dd || !dd.classList.contains('open')) return;
+  var caret = document.getElementById('techToolsCaret');
+  if (!dd.contains(e.target) && e.target !== caret && (!caret || !caret.contains(e.target))) {
+    closeTechDropdown();
+  }
+}, true);
+
+// Build the favorites bar once the drawing module is ready
+setTimeout(function() { try { renderTechFavBar(); } catch (e) {} }, 800);
 
 // Close the color picker when clicking elsewhere
 document.addEventListener('click', function(e) {
@@ -3026,22 +3131,22 @@ async function searchStock() {
 }
 
 async function selectSymbol(symbol) {
-  var resolved = await resolveSymbolForData(symbol, currentTF);
-  if (!resolved) {
-    document.getElementById('chartTitle').textContent = symbol;
-    document.getElementById('chartSubtitle').textContent = 'לא נמצאו נתונים ב-Yahoo Finance. נסה פורמט XXXX.TA למניות תא';
-    return;
-  }
+  // Show the chart screen immediately on mobile so the tap feels instant
+  // (the loading indicator is shown while data streams in).
+  mobileShowChart();
 
-  currentSymbol = resolved;
+  // loadChart resolves the symbol itself (and falls back to saved/demo bars),
+  // so we skip the extra resolveSymbolForData round-trip that used to run here.
+  await loadChart(symbol, currentTF);
+  var resolved = currentSymbol;
   localStorage.setItem('nt_lastSymbol', resolved);
-  await loadChart(resolved, currentTF);
-  await loadNews(resolved);
-  if (!priceCache[resolved]) await loadCard(resolved);
+
+  // Non-blocking: news + card details load after the chart is already visible.
+  loadNews(resolved);
+  if (!priceCache[resolved]) loadCard(resolved);
   renderWatchlist();
   renderPortfolio();
   renderAlerts();
-  mobileShowChart();
 }
 
 // ============================================
