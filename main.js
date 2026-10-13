@@ -290,14 +290,13 @@ function renderFavLists() {
   });
   var rows = '';
   rows += '<button class="mfav-row' + (wlColorFilter === '' ? ' active' : '') + '" onclick="setFavFilter(\'\')">'
-    + '<span class="mfav-swatch" style="background:linear-gradient(135deg,#ef5350,#26a69a,#2962ff)"></span>'
+    + '<span class="mfav-swatch all" style="background:linear-gradient(135deg,#ef5350,#26a69a,#2962ff)"></span>'
     + '<span>הצג הכל</span>'
     + '<span class="mfav-count">' + (watchlist ? watchlist.length : 0) + '</span>'
     + '</button>';
   WL_COLORS.forEach(function(c) {
-    rows += '<button class="mfav-row' + (wlColorFilter === c.key ? ' active' : '') + '" onclick="setFavFilter(\'' + c.key + '\')">'
+    rows += '<button class="mfav-row' + (wlColorFilter === c.key ? ' active' : '') + '" onclick="setFavFilter(\'' + c.key + '\')" title="' + c.label + '" aria-label="' + c.label + '">'
       + '<span class="mfav-swatch" style="background:' + c.hex + '"></span>'
-      + '<span>' + c.label + '</span>'
       + '<span class="mfav-count">' + (counts[c.key] || 0) + '</span>'
       + '</button>';
   });

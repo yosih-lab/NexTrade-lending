@@ -1327,7 +1327,7 @@
     .mprof-title { font-size:1.05rem; font-weight:800; color:var(--text); }
     .mprof-card {
       display:flex; align-items:center; gap:.9rem; padding:1.3rem 1.1rem;
-      margin:1rem; background:var(--surface); border:1px solid var(--border); border-radius:16px;
+      margin:1rem; background:#2a2b31; border:1px solid #35363d; border-radius:16px;
     }
     .mprof-avatar {
       width:64px; height:64px; border-radius:50%; flex-shrink:0;
@@ -1339,7 +1339,7 @@
     .mprof-actions { display:flex; flex-direction:column; gap:.6rem; padding:.5rem 1rem; }
     .mprof-act {
       display:flex; align-items:center; gap:.8rem; width:100%;
-      padding:1rem; border-radius:12px; background:var(--surface); border:1px solid var(--border);
+      padding:1rem; border-radius:12px; background:#2a2b31; border:1px solid #35363d;
       color:var(--text); font-family:'Heebo',sans-serif; font-size:1rem; font-weight:700; cursor:pointer;
     }
     .mprof-act .mprof-act-ico { font-size:1.2rem; width:24px; text-align:center; }
@@ -1366,12 +1366,19 @@
     .mfav-rows { display:flex; flex-direction:column; gap:.5rem; }
     .mfav-row {
       display:flex; align-items:center; gap:.8rem; width:100%;
-      padding:.8rem .9rem; border-radius:12px; background:var(--surface2);
-      border:1px solid var(--border); cursor:pointer; color:var(--text);
+      padding:.8rem .9rem; border-radius:12px; background:#2a2b31;
+      border:1px solid #35363d; cursor:pointer; color:var(--text);
       font-family:'Heebo',sans-serif; font-size:1rem; font-weight:700;
     }
     .mfav-row.active { border-color:var(--accent); background:rgba(41,98,255,.12); }
-    .mfav-swatch { width:20px; height:20px; border-radius:50%; flex-shrink:0; }
+    /* Bookmark-shaped color swatch */
+    .mfav-swatch {
+      width:18px; height:24px; flex-shrink:0;
+      clip-path:polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+    }
+    .mfav-swatch.all {
+      clip-path:none; width:20px; height:20px; border-radius:50%;
+    }
     .mfav-count { margin-right:auto; font-size:.85rem; color:var(--text-muted); font-weight:700; }
 
     /* ---- Inline color picker popup + per-row color dot ---- */
@@ -1381,15 +1388,17 @@
       box-shadow:0 10px 30px rgba(0,0,0,.6); align-items:center;
     }
     #wlColorPicker.open { display:flex; }
-    .wlcp-dot { width:26px; height:26px; border-radius:50%; border:2px solid transparent; cursor:pointer; padding:0; }
-    .wlcp-dot:hover { border-color:#fff; }
+    .wlcp-dot { width:22px; height:28px; border:2px solid transparent; cursor:pointer; padding:0; background:transparent;
+      clip-path:polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%); }
+    .wlcp-dot:hover { outline:2px solid #fff; }
     .wlcp-clear {
       width:26px; height:26px; border-radius:50%; cursor:pointer; padding:0;
       background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); font-size:.8rem;
     }
     .watch-color-dot {
-      width:14px; height:14px; border-radius:50%; flex-shrink:0; cursor:pointer;
-      border:2px solid var(--border); background:transparent;
+      width:13px; height:17px; flex-shrink:0; cursor:pointer;
+      border:1.5px solid var(--border); background:transparent;
+      clip-path:polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
     }
 
     #bellAlertDetails {
@@ -2494,11 +2503,11 @@
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20260927v"></script>
-<script src="main.js?v=20260927v"></script>
-<script src="drawing.js?v=20260927v"></script>
-<script src="features.js?v=20260927v"></script>
-<script src="signals.js?v=20260927v"></script>
+<script src="scanner-symbols.js?v=20260927w"></script>
+<script src="main.js?v=20260927w"></script>
+<script src="drawing.js?v=20260927w"></script>
+<script src="features.js?v=20260927w"></script>
+<script src="signals.js?v=20260927w"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
