@@ -1762,6 +1762,8 @@ function openCrosshairAlertPopup() {
   var btnLeft = parseInt(btn.style.left) || 0;
   popup.style.top  = Math.max(5, btnTop - 30) + 'px';
   popup.style.left = Math.max(5, btnLeft - 285) + 'px';
+  popup.classList.remove('closing');
+  if (popup._closeTimer) { clearTimeout(popup._closeTimer); popup._closeTimer = null; }
   popup.style.display = 'block';
   // Keep button visible while popup is open
   btn.style.display = 'flex';
@@ -1769,7 +1771,17 @@ function openCrosshairAlertPopup() {
 
 function closeCrosshairAlertPopup() {
   var popup = document.getElementById('crosshairAlertPopup');
-  if (popup) popup.style.display = 'none';
+  if (!popup) return;
+  if (popup.style.display === 'none' || popup.style.display === '') return;
+  // Smooth fade-out, then hide
+  popup.classList.add('closing');
+  var p = popup;
+  if (p._closeTimer) clearTimeout(p._closeTimer);
+  p._closeTimer = setTimeout(function() {
+    p.style.display = 'none';
+    p.classList.remove('closing');
+    p._closeTimer = null;
+  }, 160);
 }
 
 function showCrosshairBanner(msg) {
@@ -1895,12 +1907,26 @@ function openChartCtxMenuAt(clientX, clientY) {
   if (top + approxH > wrapRect.height) top  = Math.max(4, wrapRect.height - approxH - 4);
   popup.style.left = left + 'px';
   popup.style.top  = top + 'px';
+  popup.classList.remove('closing');
+  if (popup._closeTimer) { clearTimeout(popup._closeTimer); popup._closeTimer = null; }
   popup.style.display = 'block';
 }
 
 function ctxResetView() {
   closeCrosshairAlertPopup();
-  if (chartInstance) { try { chartInstance.timeScale().fitContent(); } catch (e) {} }
+  if (!chartInstance) return;
+  try {
+    var ts = chartInstance.timeScale();
+    ts.resetTimeScale();        // reset zoom/scroll to default
+    ts.fitContent();            // fit all bars into view
+  } catch (e) {
+    try { chartInstance.timeScale().fitContent(); } catch (e2) {}
+  }
+  // Re-enable auto price scaling so the Y axis fits the data again
+  try {
+    var series = candleSeries || lineSeries;
+    if (series && series.priceScale) series.priceScale().applyOptions({ autoScale: true });
+  } catch (e) {}
 }
 
 function ctxCopyPrice() {
@@ -2022,6 +2048,17 @@ document.addEventListener('click', function(e) {
     }
   }
 });
+
+// Mobile: dismiss the chart context menu smoothly when tapping anywhere outside it
+document.addEventListener('pointerdown', function(e) {
+  var popup = document.getElementById('crosshairAlertPopup');
+  if (!popup || popup.style.display !== 'block') return;
+  if (popup.classList.contains('closing')) return;
+  var btn = document.getElementById('crosshairAlertBtn');
+  if (!popup.contains(e.target) && e.target !== btn && (!btn || !btn.contains(e.target))) {
+    closeCrosshairAlertPopup();
+  }
+}, true);
 
 function syncVolumeCrosshair(param) {
   if (!param || !param.point) return;

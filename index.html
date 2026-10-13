@@ -121,7 +121,7 @@
     .topbar { position:fixed; top:0; left:0; right:34px; z-index:1001; height:42px; background:var(--surface); border-bottom:1px solid var(--border); padding:0; display:flex; align-items:center; direction:ltr; }
     .topbar-left { display:flex; gap:.22rem; align-items:center; flex-direction:row; padding:0 .45rem; flex:1; min-width:0; }
     .search-box { display:flex; gap:.45rem; align-items:center; position:relative; }
-    .search-box input { background:#2a2e3a; border:1px solid var(--border); border-radius:10px; padding:.18rem .39rem; color:#fff; font-size:.62rem; font-family:'Heebo',sans-serif; width:119px; direction:rtl; height:19px; cursor:pointer; }
+    .search-box input { background:#2a2e3a; border:1px solid var(--border); border-radius:10px; padding:.27rem .58rem; color:#fff; font-size:.93rem; font-family:'Heebo',sans-serif; width:179px; direction:rtl; height:29px; cursor:pointer; }
     .search-box input:focus { outline:none; border-color:var(--accent); }
     .search-box input::placeholder { color:#fff; opacity:.95; }
     /* OLD dropdown hidden — replaced by search modal */
@@ -172,7 +172,7 @@
     .user-menu { position:relative; }
     .user-btn { background:var(--surface2); border:1px solid var(--border); border-radius:999px; padding:.06rem; display:flex; gap:0; align-items:center; cursor:pointer; }
     .user-btn:hover { border-color:var(--accent); }
-    .topbar .user-avatar { width:18px; height:18px; font-size:.57rem; }
+    .topbar .user-avatar { width:27px; height:27px; font-size:.85rem; }
     .topbar .user-name { display:none; }
     .user-dropdown {
       position:absolute; top:110%; right:0; left:auto;
@@ -302,6 +302,18 @@
       color:var(--red);
       border-color:rgba(239,83,80,.35);
       background:rgba(239,83,80,.08);
+    }
+    /* Desktop: enlarge the right-sidebar watchlist by ~50% */
+    @media (min-width:769px) {
+      .watch-item { padding:.54rem .57rem; gap:.57rem; }
+      .watch-icon-wrap { width:30px; height:30px; }
+      .watch-icon { width:30px; height:30px; font-size:.77rem; }
+      .watch-dot { width:12px; height:12px; }
+      .watch-sym { font-size:.9rem; }
+      .watch-name { font-size:.77rem; }
+      .watch-price { font-size:.89rem; }
+      .watch-chg { font-size:.8rem; }
+      .watch-remove-btn { width:24px; height:24px; font-size:.96rem; }
     }
     /* PORTFOLIO FULL PAGE */
     .port-open-btn{display:flex;align-items:center;justify-content:space-between;width:100%;background:rgba(41,98,255,.08);border:1px solid rgba(41,98,255,.3);border-radius:9px;padding:.55rem .8rem;font-size:.8rem;font-weight:700;font-family:'Heebo',sans-serif;color:var(--accent);cursor:pointer;transition:all .15s;margin-top:.1rem}
@@ -490,7 +502,10 @@
       font-family:'Heebo',sans-serif;
       direction:rtl;
       pointer-events:auto;
+      opacity:1;
+      transition:opacity .16s ease;
     }
+    #crosshairAlertPopup.closing { opacity:0; }
     #crosshairMenuList { display:flex; flex-direction:column; gap:1px; }
     .cm-item {
       display:flex; align-items:center; gap:.5rem;
@@ -687,8 +702,8 @@
     .ib-sep{width:18px;height:1px;background:var(--border);margin:2px 0;pointer-events:none}
     /* Topbar bell button */
     .topbar-bell {
-      background:transparent; border:none; font-size:1.01rem; cursor:pointer; position:relative;
-      display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%;
+      background:transparent; border:none; font-size:1.5rem; cursor:pointer; position:relative;
+      display:flex; align-items:center; justify-content:center; width:39px; height:39px; border-radius:50%;
       transition:background .15s;
     }
     .topbar-bell:hover { background:var(--surface2); }
@@ -1166,14 +1181,13 @@
 
     /* ===== TECHNICAL TOOLS launcher button + window ===== */
     #techToolsBtn {
-      position:fixed; z-index:996; bottom:16px; left:60px;
-      display:flex; align-items:center; gap:.5rem;
-      background:var(--accent); color:#fff; border:none; cursor:pointer;
-      padding:.55rem .95rem; border-radius:10px; font-size:.9rem; font-weight:800;
-      box-shadow:0 6px 18px rgba(0,0,0,.45); transition:transform .12s, filter .12s;
+      display:inline-flex; align-items:center; gap:.4rem;
+      background:rgba(41,98,255,.14); border:1px solid rgba(41,98,255,.4); color:var(--accent);
+      border-radius:8px; padding:.32rem .7rem; font-size:.78rem; font-weight:800; cursor:pointer;
+      font-family:Heebo,sans-serif; white-space:nowrap; transition:background .15s;
     }
-    #techToolsBtn:hover { transform:translateY(-1px); filter:brightness(1.08); }
-    #techToolsBtn svg { width:18px; height:18px; }
+    #techToolsBtn:hover { background:rgba(41,98,255,.28); }
+    #techToolsBtn svg { width:16px; height:16px; }
     #techToolsModal {
       display:none; position:fixed; inset:0; z-index:4000;
       background:rgba(0,0,0,.55); align-items:center; justify-content:center;
@@ -1879,11 +1893,12 @@
          the small drawing-icon strip, opening the labeled tools window. */
       body:not(.m-chart) #techToolsBtn { display:none !important; }
       body.m-chart #techToolsBtn {
+        display:flex !important; position:fixed !important;
         bottom:0 !important; left:0 !important; right:0 !important;
         width:100% !important; height:53px !important; border-radius:0 !important;
         justify-content:center !important; padding:0 !important;
         background:var(--surface) !important; color:var(--text) !important;
-        border-top:1px solid var(--border) !important; box-shadow:none !important;
+        border:none !important; border-top:1px solid var(--border) !important; box-shadow:none !important;
         font-size:1rem !important; z-index:998 !important;
       }
       body.m-chart #techToolsBtn svg { color:var(--accent); width:20px; height:20px; }
@@ -1960,7 +1975,7 @@
     /* ===== SIGNAL FEED (Mode A) ===== */
     .topbar-modebtn {
       background:rgba(41,98,255,.14); border:1px solid rgba(41,98,255,.4); color:var(--accent);
-      border-radius:8px; padding:.32rem .7rem; font-size:.78rem; font-weight:700; cursor:pointer;
+      border-radius:8px; padding:.48rem 1.05rem; font-size:1.17rem; font-weight:700; cursor:pointer;
       font-family:Heebo,sans-serif; margin-left:.4rem; white-space:nowrap; transition:background .15s;
     }
     .topbar-modebtn:hover { background:rgba(41,98,255,.28); }
@@ -2191,24 +2206,7 @@
       <button id="mHomeMenu" onclick="openFavLists()" title="רשימות מועדפים" aria-label="רשימות מועדפים">
         <span></span><span></span><span></span>
       </button>
-      <!-- CHART TYPE + TIMEFRAME TOOLBAR -->
-      <div class="chart-type-wrap">
-        <button class="chart-type-btn" id="chartTypeBtn" onclick="toggleChartTypeMenu()">
-          <span>סוגי גרף</span>
-        </button>
-        <div class="chart-type-menu" id="chartTypeMenu">
-          <button class="chart-type-opt" id="optLine" onclick="setChartType('line')">
-            <span class="chart-icon-gold">&#128200;</span><span>גרף קו</span>
-          </button>
-          <button class="chart-type-opt active" id="optCandle" onclick="setChartType('candle')">
-            <span class="chart-icon-gold">&#128329;</span><span>נרות יפניים</span>
-          </button>
-          <button class="chart-type-opt" id="optBar" onclick="setChartType('bar')">
-            <span class="chart-icon-gold">&#128202;</span><span>גרף עמודות</span>
-          </button>
-        </div>
-      </div>
-      <div class="tf-sep"></div>
+      <!-- TIMEFRAME TOOLBAR -->
       <button class="tf-btn"        id="tf-1H" onclick="setTimeframe('1H',this)" title="Alt+1">1h</button>
       <button class="tf-btn"        id="tf-4H" onclick="setTimeframe('4H',this)" title="Alt+2">4h</button>
       <button class="tf-btn"        id="tf-1D" onclick="setTimeframe('1D',this)" title="Alt+3">D</button>
@@ -2220,6 +2218,15 @@
       <button class="tf-btn"        id="tf-6M" onclick="setTimeframe('6M',this)" title="Alt+7">6M</button>
       <div class="tf-sep"></div>
       <button class="tf-btn" id="tf-trade" onclick="openPortPage()" style="background:rgba(41,98,255,.12);color:var(--accent);border-color:rgba(41,98,255,.4);font-weight:800">Trade</button>
+      <div class="tf-sep"></div>
+      <!-- Technical Tools launcher (next to Trade) -->
+      <button id="techToolsBtn" onclick="openTechTools()" aria-label="כלים טכניים" title="כלים טכניים">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="5.5" cy="18.5" r="1.7"/><circle cx="18.5" cy="5.5" r="1.7"/><path d="M6.9 17.1 17.1 6.9"/>
+          <path d="M4 4.5h4M6 2.5v4" opacity=".7"/>
+        </svg>
+        <span>כלים טכניים</span>
+      </button>
       <div class="tf-sep"></div>
       <span id="taseBadge" class="tase-dot" title="מצב שוק"></span>
       <!-- SPACER -->
@@ -2320,15 +2327,6 @@
     <button class="wlcp-dot" data-color="blue"   style="background:#2962ff" onclick="setSymColor('blue')"></button>
     <button class="wlcp-clear" onclick="setSymColor('')" title="הסר צבע">✕</button>
   </div>
-
-  <!-- Technical Tools launcher button (chart screen / desktop) -->
-  <button id="techToolsBtn" onclick="openTechTools()" aria-label="כלים טכניים" title="כלים טכניים">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="5.5" cy="18.5" r="1.7"/><circle cx="18.5" cy="5.5" r="1.7"/><path d="M6.9 17.1 17.1 6.9"/>
-      <path d="M4 4.5h4M6 2.5v4" opacity=".7"/>
-    </svg>
-    <span>כלים טכניים</span>
-  </button>
 
   <!-- Technical Tools window: all drawing tools as labeled category cards -->
   <div id="techToolsModal" onclick="techToolsBackdrop(event)">
@@ -2586,11 +2584,11 @@
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20260927x"></script>
-<script src="main.js?v=20260927x"></script>
-<script src="drawing.js?v=20260927x"></script>
-<script src="features.js?v=20260927x"></script>
-<script src="signals.js?v=20260927x"></script>
+<script src="scanner-symbols.js?v=20260927y"></script>
+<script src="main.js?v=20260927y"></script>
+<script src="drawing.js?v=20260927y"></script>
+<script src="features.js?v=20260927y"></script>
+<script src="signals.js?v=20260927y"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
