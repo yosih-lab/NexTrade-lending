@@ -248,14 +248,17 @@
       flex-direction:row;
       align-items:center;
       gap:.38rem;
-      padding:.36rem .38rem;
-      border-radius:0;
+      padding:.5rem .5rem;
+      margin:.28rem .35rem;
+      border-radius:9px;
       cursor:pointer;
-      transition:background .15s;
+      transition:background .15s, border-color .15s, transform .1s;
       direction:rtl;
-      border-bottom:1px solid rgba(255,255,255,0.08);
+      background:var(--surface2);
+      border:1px solid rgba(255,255,255,0.09);
+      box-shadow:0 1px 3px rgba(0,0,0,.25);
     }
-    .watch-item:hover { background:var(--surface2); }
+    .watch-item:hover { background:#2d333f; border-color:rgba(41,98,255,.35); }
     .watch-icon-wrap { position:relative; flex-shrink:0; width:20px; height:20px; }
     .watch-icon {
       width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center;
@@ -386,10 +389,17 @@
     .tf-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
     .tf-sep { width:1px; height:11px; background:var(--border); margin:0 .1rem; }
     .tase-badge { font-size:.64rem; padding:.1rem .36rem; border-radius:4px; background:var(--surface); border:1px solid var(--border); color:var(--text-muted); white-space:nowrap; margin-right:auto; margin-left:0; display:none; }
-    .tase-dot { width:13px; height:13px; border-radius:50%; background:var(--red); flex-shrink:0; }
-    .tase-dot.open { background:var(--green); animation:blink 2s infinite; }
-    .tase-dot.closed { background:var(--red); }
-    .tase-dot.pre { background:var(--gold); }
+    .tase-dot { width:15px; height:15px; border-radius:50%; background:var(--red); flex-shrink:0; }
+    /* Market OPEN = green pulsing dot */
+    .tase-dot.open { background:#26a69a; box-shadow:0 0 0 0 rgba(38,166,154,.6); animation:blink 2s infinite; }
+    /* Pre / after market = orange dot */
+    .tase-dot.pre { background:#ff922b; }
+    /* Market CLOSED = purple crescent moon */
+    .tase-dot.closed {
+      background:transparent;
+      box-shadow:inset -5px -1.5px 0 0 #a855f7;
+      transform:rotate(22deg);
+    }
     .chart-type-wrap { position:relative; display:flex; align-items:center; margin-left:.35rem; overflow:visible; z-index:80; }
     .chart-type-btn {
       display:flex; align-items:center; gap:.26rem;
@@ -653,6 +663,15 @@
     }
     .ib:hover{background:var(--surface2);color:var(--accent)}
     .ib.active{background:rgba(41,98,255,.12);color:var(--accent)}
+    /* Bottom group: all non-hamburger icons drop to the bottom-right corner */
+    .ib-bottom-group{
+      margin-top:auto;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:2px;
+      padding-bottom:4px;
+    }
     /* Hamburger button — bigger, always highlighted at top */
     .ib-hamburger{
       width:44px;
@@ -1190,10 +1209,11 @@
     #techToolsBtn svg { width:16px; height:16px; }
     #techToolsCaret {
       display:inline-flex; align-items:center; justify-content:center;
-      width:16px; height:16px; margin-right:.1rem; color:#fff; font-size:.7rem;
-      border-radius:4px; transition:background .12s;
+      width:22px; height:22px; margin-right:.12rem; color:#fff;
+      border-radius:5px; transition:background .12s;
     }
-    #techToolsCaret:hover { background:rgba(255,255,255,.18); }
+    #techToolsCaret:hover { background:rgba(255,255,255,.22); }
+    #techToolsCaret svg { width:18px; height:18px; display:block; }
 
     /* ---- Favorites dropdown (combo list) ---- */
     #techToolsDropdown {
@@ -1208,12 +1228,19 @@
       padding:.4rem .6rem .5rem; letter-spacing:.3px;
     }
     .ttd-list { display:flex; flex-direction:column; gap:1px; }
+    .ttd-group-title {
+      font-size:.68rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;
+      letter-spacing:.3px; padding:.5rem .55rem .25rem; margin-top:.15rem;
+    }
+    .ttd-group-title:first-child { margin-top:0; }
     .ttd-row {
       display:flex; align-items:center; gap:.6rem;
       padding:.5rem .55rem; border-radius:8px; cursor:pointer;
       color:var(--text); transition:background .12s;
     }
     .ttd-row:hover { background:#2a2b31; }
+    .ttd-row.on { background:rgba(41,98,255,.16); }
+    .ttd-row.on .ttd-name { color:var(--accent); }
     .ttd-row .ttd-ic { display:flex; align-items:center; justify-content:center; color:var(--text); flex-shrink:0; }
     .ttd-row .ttd-ic svg { width:20px; height:20px; }
     .ttd-row .ttd-name { flex:1; font-size:.84rem; font-weight:600; }
@@ -1228,21 +1255,36 @@
     /* Favorited = white filled star drawn in white */
     .ttd-star.fav svg { fill:#fff; stroke:#fff; }
 
-    /* ---- Floating favorites bar (bottom) ---- */
+    /* ---- Floating favorites bar (bottom) — draggable ---- */
     #techFavBar {
-      display:none; position:fixed; z-index:995; bottom:14px; left:58px;
-      align-items:center; gap:4px; padding:5px 7px; direction:rtl;
+      display:none; position:fixed; z-index:5000; bottom:14px; left:58px;
+      align-items:center; gap:4px; padding:5px 7px 5px 5px; direction:rtl;
       background:#1b1c22; border:1px solid #35363d; border-radius:12px;
       box-shadow:0 8px 26px rgba(0,0,0,.5);
+      -webkit-user-select:none; user-select:none;
     }
     #techFavBar.show { display:flex; }
+    #techFavBar.dragging { opacity:.92; cursor:grabbing; box-shadow:0 14px 40px rgba(0,0,0,.7); }
+    .tfav-grip {
+      display:flex; flex-wrap:wrap; align-content:center; gap:3px 3px;
+      width:14px; flex-shrink:0; cursor:grab; padding:2px; border-radius:5px;
+    }
+    .tfav-grip:hover { background:rgba(255,255,255,.08); }
+    .tfav-grip i { width:3px; height:3px; border-radius:50%; background:#8b93a7; display:block; }
     .tfav-btn {
       width:38px; height:38px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
       background:transparent; border:1px solid transparent; border-radius:9px; color:var(--text);
       cursor:pointer; transition:background .12s, border-color .12s, color .12s;
     }
     .tfav-btn:hover { background:#2a2b31; color:var(--accent); border-color:rgba(41,98,255,.4); }
+    .tfav-btn.on { background:rgba(41,98,255,.18); border-color:rgba(41,98,255,.5); color:var(--accent); }
     .tfav-btn svg { width:22px; height:22px; }
+    .tfav-close {
+      width:26px; height:38px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+      background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:.9rem;
+      border-radius:7px; transition:background .12s, color .12s;
+    }
+    .tfav-close:hover { background:rgba(239,83,80,.14); color:var(--red); }
     #techToolsModal {
       display:none; position:fixed; inset:0; z-index:4000;
       background:rgba(0,0,0,.55); align-items:center; justify-content:center;
@@ -1960,7 +2002,7 @@
       body.m-chart #drawToolbar { display:none !important; }
       .tt-card { width:100vw !important; max-width:100vw !important; height:100%; max-height:100vh !important; border-radius:0 !important; }
       /* Favorites bar floats just above the symbol switcher on the chart screen */
-      body.m-chart #techFavBar { bottom:115px !important; left:8px !important; right:8px !important; justify-content:center; }
+      body.m-chart #techFavBar:not(.moved) { bottom:115px !important; left:8px !important; right:8px !important; justify-content:center; }
       body:not(.m-chart) #techFavBar { display:none !important; }
       #techToolsDropdown { width:min(300px,94vw) !important; }
       /* ---- Mobile SYMBOL SWITCHER bar (chart screen only) ---- */
@@ -2285,7 +2327,9 @@
           <path d="M4 4.5h4M6 2.5v4" opacity=".7"/>
         </svg>
         <span>כלים טכניים</span>
-        <span id="techToolsCaret" onclick="toggleTechDropdown(event)" title="מועדפים" aria-label="פתח רשימת כלים">▾</span>
+        <span id="techToolsCaret" onclick="toggleTechDropdown(event)" title="מועדפים" aria-label="פתח רשימת כלים">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
       </button>
       <div class="tf-sep"></div>
       <span id="taseBadge" class="tase-dot" title="מצב שוק"></span>
@@ -2653,11 +2697,11 @@
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20260927z"></script>
-<script src="main.js?v=20260927z"></script>
-<script src="drawing.js?v=20260927z"></script>
-<script src="features.js?v=20260927z"></script>
-<script src="signals.js?v=20260927z"></script>
+<script src="scanner-symbols.js?v=20260927aa"></script>
+<script src="main.js?v=20260927aa"></script>
+<script src="drawing.js?v=20260927aa"></script>
+<script src="features.js?v=20260927aa"></script>
+<script src="signals.js?v=20260927aa"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
@@ -2823,33 +2867,29 @@
     <span></span><span></span><span></span>
     <span class="ib-tip">Watchlist</span>
   </button>
-  <!-- clock removed from toolbar, shown below chart -->
-  <div class="ib-sep"></div>
-  <button class="ib" id="ib-chat"    onclick="ibToggle('chat')"    title="">
-    💬<span class="ib-tip">צ'אטים</span>
-  </button>
-  <div class="ib-sep"></div>
-  <div class="ib-sep"></div>
-  <button class="ib" id="ib-indicators" onclick="ibToggle('indicators')" title="">
-    📊<span class="ib-tip">אינדיקטורים</span>
-  </button>
-  <div class="ib-sep"></div>
-  <button class="ib" id="ib-insights" onclick="ibToggle('insights')" title="">
-    🧠<span class="ib-tip">תובנות AI</span>
-  </button>
-  <button class="ib" id="ib-risk" onclick="ibToggle('risk')" title="">
-    ⚖️<span class="ib-tip">סיכוני תיק</span>
-  </button>
-  <button class="ib" id="ib-calendar" onclick="ibToggle('calendar')" title="">
-    📅<span class="ib-tip">לוח אירועים</span>
-  </button>
-  <button class="ib" id="ib-lab" onclick="ibToggle('lab')" title="">
-    🧪<span class="ib-tip">מעבדה / דמו</span>
-  </button>
-  <div class="ib-sep"></div>
-  <button class="ib" id="ib-news" onclick="ibToggle('news')" title="">
-    📰<span class="ib-tip">חדשות שוק</span>
-  </button>
+  <!-- All other tools drop to the bottom-right, leaving a gap below the hamburger -->
+  <div class="ib-bottom-group">
+    <button class="ib" id="ib-chat"    onclick="ibToggle('chat')"    title="">
+      💬<span class="ib-tip">צ'אטים</span>
+    </button>
+    <div class="ib-sep"></div>
+    <button class="ib" id="ib-insights" onclick="ibToggle('insights')" title="">
+      🧠<span class="ib-tip">תובנות AI</span>
+    </button>
+    <button class="ib" id="ib-risk" onclick="ibToggle('risk')" title="">
+      ⚖️<span class="ib-tip">סיכוני תיק</span>
+    </button>
+    <button class="ib" id="ib-calendar" onclick="ibToggle('calendar')" title="">
+      📅<span class="ib-tip">לוח אירועים</span>
+    </button>
+    <button class="ib" id="ib-lab" onclick="ibToggle('lab')" title="">
+      🧪<span class="ib-tip">מעבדה / דמו</span>
+    </button>
+    <div class="ib-sep"></div>
+    <button class="ib" id="ib-news" onclick="ibToggle('news')" title="">
+      📰<span class="ib-tip">חדשות שוק</span>
+    </button>
+  </div>
 </div>
 
 <!-- TOOLBAR PANELS (hidden — content moved to sidebar) -->

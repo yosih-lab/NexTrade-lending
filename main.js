@@ -407,9 +407,8 @@ function saveTechFavs(arr) {
   try { localStorage.setItem('nt_tech_favs', JSON.stringify(arr)); } catch (e) {}
 }
 function flattenTechTools() {
-  var cats = (window.NTDraw && typeof window.NTDraw.getToolCatalog === 'function') ? window.NTDraw.getToolCatalog() : [];
   var out = [];
-  cats.forEach(function(g) { (g.items || []).forEach(function(it) { out.push(it); }); });
+  getTechCatalog().forEach(function(g) { (g.items || []).forEach(function(it) { out.push(it); }); });
   return out;
 }
 function techToolById(id) {
@@ -417,21 +416,90 @@ function techToolById(id) {
   for (var i = 0; i < all.length; i++) if (all[i].id === id) return all[i];
   return null;
 }
+
+// Small line-wave icon used for indicator entries (colored per indicator)
+function indIconSvg(color) {
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="' + color + '" stroke-width="2" '
+    + 'stroke-linecap="round" stroke-linejoin="round"><path d="M3 16l4-5 4 3 4-7 6 7"/></svg>';
+}
+
+// Unified catalog = drawing tools (from NTDraw) + indicators (MA / overlay / oscillators)
+function getTechCatalog() {
+  var cats = [];
+  var draw = (window.NTDraw && typeof window.NTDraw.getToolCatalog === 'function') ? window.NTDraw.getToolCatalog() : [];
+  draw.forEach(function(g) {
+    cats.push({ title: g.title, items: (g.items || []).map(function(it) {
+      return { id: it.id, name: it.name, icon: it.icon, type: 'tool' };
+    }) });
+  });
+  // Indicators — only present once the indicator engine has loaded
+  if (typeof MA_CONFIGS !== 'undefined') {
+    var maItems = [];
+    if (typeof toggleVolume === 'function') {
+      maItems.push({ id: 'ind_vol', name: 'נפח עסקאות', icon: indIconSvg('#5b6472'), type: 'indicator', kind: 'vol' });
+    }
+    MA_CONFIGS.forEach(function(cfg) {
+      maItems.push({ id: 'ind_ma_' + cfg.period, name: cfg.label, icon: indIconSvg(cfg.color), type: 'indicator', kind: 'ma', period: cfg.period });
+    });
+    cats.push({ title: 'ממוצעים נעים (MA)', items: maItems });
+  }
+  if (typeof INDICATORS !== 'undefined') {
+    var overlay = INDICATORS.filter(function(c) { return c.kind === 'overlay'; }).map(function(c) {
+      return { id: 'ind_' + c.id, name: c.label, icon: indIconSvg(c.colors[0]), type: 'indicator', kind: 'ind', indId: c.id };
+    });
+    var osc = INDICATORS.filter(function(c) { return c.kind === 'osc'; }).map(function(c) {
+      return { id: 'ind_' + c.id, name: c.label, icon: indIconSvg(c.colors[0]), type: 'indicator', kind: 'ind', indId: c.id };
+    });
+    if (overlay.length) cats.push({ title: 'אינדיקטורים על הגרף', items: overlay });
+    if (osc.length)     cats.push({ title: 'אוסצילטורים', items: osc });
+  }
+  return cats;
+}
+
+// Is an indicator item currently active on the chart?
+function isTechItemActive(it) {
+  if (!it || it.type !== 'indicator') return false;
+  if (it.kind === 'vol') return (typeof volumeVisible !== 'undefined') && !!volumeVisible;
+  if (it.kind === 'ma')  return (typeof maActive !== 'undefined') && !!maActive[it.period];
+  if (it.kind === 'ind') return (typeof indActive !== 'undefined') && !!indActive[it.indId];
+  return false;
+}
+
+// Run a tech item: drawing tool → activate it; indicator → toggle on/off
+function runTechItem(id) {
+  var it = techToolById(id);
+  if (!it) return;
+  if (it.type === 'indicator') {
+    if (it.kind === 'vol' && typeof toggleVolume === 'function') toggleVolume();
+    else if (it.kind === 'ma' && typeof toggleMA === 'function') toggleMA(it.period);
+    else if (it.kind === 'ind' && typeof toggleIndicator === 'function') toggleIndicator(it.indId);
+    if (typeof ntToast === 'function') ntToast((isTechItemActive(it) ? 'הופעל: ' : 'הוסר: ') + it.name);
+    renderTechDropdown();
+    renderTechFavBar();
+  } else {
+    pickTechTool(id);
+  }
+}
+
 function renderTechDropdown() {
   var box = document.getElementById('ttdList');
   if (!box) return;
-  var tools = flattenTechTools();
-  if (!tools.length) { box.innerHTML = '<div style="color:var(--text-muted);padding:.8rem;text-align:center">הכלים נטענים…</div>'; return; }
+  var cats = getTechCatalog();
+  if (!cats.length) { box.innerHTML = '<div style="color:var(--text-muted);padding:.8rem;text-align:center">הכלים נטענים…</div>'; return; }
   var favs = getTechFavs();
   var html = '';
-  tools.forEach(function(it) {
-    var isFav = favs.indexOf(it.id) !== -1;
-    html += '<div class="ttd-row" onclick="pickTechTool(\'' + it.id + '\')">'
-      + '<span class="ttd-ic">' + it.icon + '</span>'
-      + '<span class="ttd-name">' + it.name + '</span>'
-      + '<button class="ttd-star' + (isFav ? ' fav' : '') + '" onclick="toggleTechFav(\'' + it.id + '\',event)" '
-      + 'title="' + (isFav ? 'הסר ממועדפים' : 'הוסף למועדפים') + '" aria-label="מועדפים">' + TECH_STAR_SVG + '</button>'
-      + '</div>';
+  cats.forEach(function(group) {
+    html += '<div class="ttd-group-title">' + group.title + '</div>';
+    (group.items || []).forEach(function(it) {
+      var isFav = favs.indexOf(it.id) !== -1;
+      var on = isTechItemActive(it);
+      html += '<div class="ttd-row' + (on ? ' on' : '') + '" onclick="runTechItem(\'' + it.id + '\')">'
+        + '<span class="ttd-ic">' + it.icon + '</span>'
+        + '<span class="ttd-name">' + it.name + '</span>'
+        + '<button class="ttd-star' + (isFav ? ' fav' : '') + '" onclick="toggleTechFav(\'' + it.id + '\',event)" '
+        + 'title="' + (isFav ? 'הסר ממועדפים' : 'הוסף למועדפים') + '" aria-label="מועדפים">' + TECH_STAR_SVG + '</button>'
+        + '</div>';
+    });
   });
   box.innerHTML = html;
 }
@@ -472,16 +540,30 @@ function renderTechFavBar() {
   var bar = document.getElementById('techFavBar');
   if (!bar) return;
   var favs = getTechFavs();
-  if (!favs.length) { bar.className = ''; bar.innerHTML = ''; return; }
-  var html = '';
+  if (!favs.length) { bar.classList.remove('show'); bar.innerHTML = ''; return; }
+  // Drag grip (six dots) + the favorited tool/indicator buttons
+  var html = '<span class="tfav-grip" title="גרור את הסרגל" aria-label="גרור">'
+    + '<i></i><i></i><i></i><i></i><i></i><i></i></span>';
   favs.forEach(function(id) {
     var it = techToolById(id);
     if (!it) return;
-    html += '<button class="tfav-btn" onclick="pickTechTool(\'' + id + '\')" title="' + it.name + '" aria-label="' + it.name + '">' + it.icon + '</button>';
+    var on = isTechItemActive(it);
+    html += '<button class="tfav-btn' + (on ? ' on' : '') + '" onclick="runTechItem(\'' + id + '\')" '
+      + 'title="' + it.name + '" aria-label="' + it.name + '">' + it.icon + '</button>';
   });
+  // Close button clears the whole favorites bar
+  html += '<button class="tfav-close" onclick="clearTechFavs(event)" title="סגור סרגל" aria-label="סגור">✕</button>';
   bar.innerHTML = html;
-  bar.className = html ? 'show' : '';
+  bar.classList.add('show');
 }
+function clearTechFavs(ev) {
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  saveTechFavs([]);
+  renderTechFavBar();
+  renderTechDropdown();
+}
+window.runTechItem = runTechItem;
+window.clearTechFavs = clearTechFavs;
 window.toggleTechDropdown = toggleTechDropdown;
 window.closeTechDropdown = closeTechDropdown;
 window.toggleTechFav = toggleTechFav;
@@ -498,7 +580,69 @@ document.addEventListener('pointerdown', function(e) {
 }, true);
 
 // Build the favorites bar once the drawing module is ready
-setTimeout(function() { try { renderTechFavBar(); } catch (e) {} }, 800);
+setTimeout(function() { try { renderTechFavBar(); initTechFavDrag(); } catch (e) {} }, 800);
+
+// --- Make the floating favorites bar draggable anywhere on screen (via the grip) ---
+var _tfavDrag = null;
+function initTechFavDrag() {
+  var bar = document.getElementById('techFavBar');
+  if (!bar || bar._dragInit) return;
+  bar._dragInit = true;
+  // Restore a saved position
+  try {
+    var pos = JSON.parse(localStorage.getItem('nt_techfav_pos') || 'null');
+    if (pos && typeof pos.left === 'number' && typeof pos.top === 'number') {
+      bar.style.left = pos.left + 'px';
+      bar.style.top = pos.top + 'px';
+      bar.style.right = 'auto';
+      bar.style.bottom = 'auto';
+      bar.classList.add('moved');
+    }
+  } catch (e) {}
+
+  function down(e) {
+    var grip = e.target.closest ? e.target.closest('.tfav-grip') : null;
+    if (!grip) return;
+    e.preventDefault();
+    var pt = e.touches ? e.touches[0] : e;
+    var r = bar.getBoundingClientRect();
+    _tfavDrag = { dx: pt.clientX - r.left, dy: pt.clientY - r.top };
+    bar.classList.add('dragging');
+    document.addEventListener('mousemove', move);
+    document.addEventListener('touchmove', move, { passive: false });
+    document.addEventListener('mouseup', up);
+    document.addEventListener('touchend', up);
+  }
+  function move(e) {
+    if (!_tfavDrag) return;
+    e.preventDefault();
+    var pt = e.touches ? e.touches[0] : e;
+    var w = bar.offsetWidth, h = bar.offsetHeight;
+    var left = Math.min(Math.max(4, pt.clientX - _tfavDrag.dx), window.innerWidth - w - 4);
+    var top  = Math.min(Math.max(4, pt.clientY - _tfavDrag.dy), window.innerHeight - h - 4);
+    bar.style.left = left + 'px';
+    bar.style.top = top + 'px';
+    bar.style.right = 'auto';
+    bar.style.bottom = 'auto';
+    bar.classList.add('moved');
+  }
+  function up() {
+    if (!_tfavDrag) return;
+    _tfavDrag = null;
+    bar.classList.remove('dragging');
+    document.removeEventListener('mousemove', move);
+    document.removeEventListener('touchmove', move);
+    document.removeEventListener('mouseup', up);
+    document.removeEventListener('touchend', up);
+    try {
+      var r = bar.getBoundingClientRect();
+      localStorage.setItem('nt_techfav_pos', JSON.stringify({ left: r.left, top: r.top }));
+    } catch (e) {}
+  }
+  bar.addEventListener('mousedown', down);
+  bar.addEventListener('touchstart', down, { passive: false });
+}
+window.initTechFavDrag = initTechFavDrag;
 
 // Close the color picker when clicking elsewhere
 document.addEventListener('click', function(e) {
