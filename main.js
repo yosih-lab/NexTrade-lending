@@ -398,6 +398,12 @@ window.pickTechTool = pickTechTool;
 
 // --- Technical Tools FAVORITES dropdown (combo list) + floating bottom bar ---
 var TECH_STAR_SVG = '<svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 18.9 6.1 21l1.2-6.5L2.5 9.9l6.6-.9z"/></svg>';
+// Eye icons for indicator show/hide toggle (open = visible on chart, slashed = hidden)
+var TECH_EYE_OPEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+var TECH_EYE_OFF  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5 5 12 5c2.2 0 4.1.7 5.7 1.7M22.5 12S19 19 12 19c-2.2 0-4.1-.7-5.7-1.7"/><path d="M9.6 9.6a3 3 0 0 0 4.2 4.2"/><path d="M3 3l18 18"/></svg>';
+
+// Drawing tools that belong in the "Technical Tools" combo (per user spec)
+var TECH_TOOL_WHITELIST = ['trend','hline','vline','ray','rect','ellipse','arrow','text','brush','fib'];
 
 function getTechFavs() {
   try { var a = JSON.parse(localStorage.getItem('nt_tech_favs') || '[]'); return Array.isArray(a) ? a : []; }
@@ -423,11 +429,25 @@ function indIconSvg(color) {
     + 'stroke-linecap="round" stroke-linejoin="round"><path d="M3 16l4-5 4 3 4-7 6 7"/></svg>';
 }
 
-// Unified catalog = indicators (MA / overlay / oscillators) + drawing tools (from NTDraw)
-// Indicators are listed FIRST so they're immediately visible when the dropdown opens.
+// Unified catalog for the tech-tools dropdown.
+// Section 1: the technical DRAWING tools (whitelist, star → floating fav bar).
+// Section 2+: INDICATORS (MA / overlay / oscillators, eye → show/hide on chart).
 function getTechCatalog() {
   var cats = [];
-  // Indicators — only present once the indicator engine has loaded
+  // --- Drawing tools (filtered to the technical-analysis subset) ---
+  var draw = (window.NTDraw && typeof window.NTDraw.getToolCatalog === 'function') ? window.NTDraw.getToolCatalog() : [];
+  var toolItems = [];
+  draw.forEach(function(g) {
+    (g.items || []).forEach(function(it) {
+      if (TECH_TOOL_WHITELIST.indexOf(it.id) !== -1) {
+        toolItems.push({ id: it.id, name: it.name, icon: it.icon, type: 'tool' });
+      }
+    });
+  });
+  toolItems.sort(function(a, b) { return TECH_TOOL_WHITELIST.indexOf(a.id) - TECH_TOOL_WHITELIST.indexOf(b.id); });
+  if (toolItems.length) cats.push({ title: 'כלים טכניים', items: toolItems });
+
+  // --- Indicators (only present once the indicator engine has loaded) ---
   if (typeof MA_CONFIGS !== 'undefined') {
     var maItems = [];
     if (typeof toggleVolume === 'function') {
@@ -448,13 +468,6 @@ function getTechCatalog() {
     if (overlay.length) cats.push({ title: 'אינדיקטורים על הגרף', items: overlay });
     if (osc.length)     cats.push({ title: 'אוסצילטורים', items: osc });
   }
-  // Drawing tools from the NTDraw module
-  var draw = (window.NTDraw && typeof window.NTDraw.getToolCatalog === 'function') ? window.NTDraw.getToolCatalog() : [];
-  draw.forEach(function(g) {
-    cats.push({ title: g.title, items: (g.items || []).map(function(it) {
-      return { id: it.id, name: it.name, icon: it.icon, type: 'tool' };
-    }) });
-  });
   return cats;
 }
 
@@ -483,6 +496,12 @@ function runTechItem(id) {
   }
 }
 
+// Toggle an indicator from its eye button (stops the row click from double-firing)
+function techIndicatorEye(id, ev) {
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  runTechItem(id);
+}
+
 function renderTechDropdown() {
   var box = document.getElementById('ttdList');
   if (!box) return;
@@ -493,14 +512,25 @@ function renderTechDropdown() {
   cats.forEach(function(group) {
     html += '<div class="ttd-group-title">' + group.title + '</div>';
     (group.items || []).forEach(function(it) {
-      var isFav = favs.indexOf(it.id) !== -1;
-      var on = isTechItemActive(it);
-      html += '<div class="ttd-row' + (on ? ' on' : '') + '" onclick="runTechItem(\'' + it.id + '\')">'
-        + '<span class="ttd-ic">' + it.icon + '</span>'
-        + '<span class="ttd-name">' + it.name + '</span>'
-        + '<button class="ttd-star' + (isFav ? ' fav' : '') + '" onclick="toggleTechFav(\'' + it.id + '\',event)" '
-        + 'title="' + (isFav ? 'הסר ממועדפים' : 'הוסף למועדפים') + '" aria-label="מועדפים">' + TECH_STAR_SVG + '</button>'
-        + '</div>';
+      if (it.type === 'indicator') {
+        // Indicators use an EYE toggle: open = visible on chart, slashed = hidden
+        var vis = isTechItemActive(it);
+        html += '<div class="ttd-row' + (vis ? ' on' : '') + '" onclick="runTechItem(\'' + it.id + '\')">'
+          + '<span class="ttd-ic">' + it.icon + '</span>'
+          + '<span class="ttd-name">' + it.name + '</span>'
+          + '<button class="ttd-eye' + (vis ? ' on' : '') + '" onclick="techIndicatorEye(\'' + it.id + '\',event)" '
+          + 'title="' + (vis ? 'הסתר מהגרף' : 'הצג על הגרף') + '" aria-label="הצג/הסתר">' + (vis ? TECH_EYE_OPEN : TECH_EYE_OFF) + '</button>'
+          + '</div>';
+      } else {
+        // Drawing tools use a STAR toggle → floating favorites bar
+        var isFav = favs.indexOf(it.id) !== -1;
+        html += '<div class="ttd-row" onclick="pickTechTool(\'' + it.id + '\')">'
+          + '<span class="ttd-ic">' + it.icon + '</span>'
+          + '<span class="ttd-name">' + it.name + '</span>'
+          + '<button class="ttd-star' + (isFav ? ' fav' : '') + '" onclick="toggleTechFav(\'' + it.id + '\',event)" '
+          + 'title="' + (isFav ? 'הסר ממועדפים' : 'הוסף למועדפים') + '" aria-label="מועדפים">' + TECH_STAR_SVG + '</button>'
+          + '</div>';
+      }
     });
   });
   box.innerHTML = html;
@@ -543,16 +573,18 @@ function renderTechFavBar() {
   if (!bar) return;
   var favs = getTechFavs();
   if (!favs.length) { bar.classList.remove('show'); bar.innerHTML = ''; return; }
-  // Drag grip (six dots) + the favorited tool/indicator buttons
+  // Drag grip (six dots) + the favorited tool buttons (drawing tools only)
   var html = '<span class="tfav-grip" title="גרור את הסרגל" aria-label="גרור">'
     + '<i></i><i></i><i></i><i></i><i></i><i></i></span>';
+  var shown = 0;
   favs.forEach(function(id) {
     var it = techToolById(id);
-    if (!it) return;
-    var on = isTechItemActive(it);
-    html += '<button class="tfav-btn' + (on ? ' on' : '') + '" onclick="runTechItem(\'' + id + '\')" '
+    if (!it || it.type !== 'tool') return;   // indicators use the eye toggle, not the fav bar
+    html += '<button class="tfav-btn" onclick="runTechItem(\'' + id + '\')" '
       + 'title="' + it.name + '" aria-label="' + it.name + '">' + it.icon + '</button>';
+    shown++;
   });
+  if (!shown) { bar.classList.remove('show'); bar.innerHTML = ''; return; }
   // Close button clears the whole favorites bar
   html += '<button class="tfav-close" onclick="clearTechFavs(event)" title="סגור סרגל" aria-label="סגור">✕</button>';
   bar.innerHTML = html;
@@ -569,6 +601,7 @@ window.clearTechFavs = clearTechFavs;
 window.toggleTechDropdown = toggleTechDropdown;
 window.closeTechDropdown = closeTechDropdown;
 window.toggleTechFav = toggleTechFav;
+window.techIndicatorEye = techIndicatorEye;
 window.renderTechFavBar = renderTechFavBar;
 
 // Close the favorites dropdown when clicking/tapping outside it

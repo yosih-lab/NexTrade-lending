@@ -1249,6 +1249,15 @@
     .ttd-star svg { fill:#000; stroke:#777; stroke-width:1.2; }
     /* Favorited = white filled star drawn in white */
     .ttd-star.fav svg { fill:#fff; stroke:#fff; }
+    /* Indicator show/hide EYE toggle */
+    .ttd-eye {
+      flex-shrink:0; width:28px; height:28px; display:flex; align-items:center; justify-content:center;
+      background:transparent; border:none; cursor:pointer; border-radius:6px; transition:background .12s, color .12s;
+      color:#6b7280; /* hidden = muted gray eye-with-slash */
+    }
+    .ttd-eye:hover { background:rgba(255,255,255,.1); }
+    .ttd-eye.on { color:#fff; } /* visible = white open eye */
+    .ttd-eye svg { width:19px; height:19px; }
 
     /* ---- Floating favorites bar (bottom) — draggable ---- */
     #techFavBar {
@@ -2691,11 +2700,11 @@
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20260927ab"></script>
-<script src="main.js?v=20260927ab"></script>
-<script src="drawing.js?v=20260927ab"></script>
-<script src="features.js?v=20260927ab"></script>
-<script src="signals.js?v=20260927ab"></script>
+<script src="scanner-symbols.js?v=20260927ac"></script>
+<script src="main.js?v=20260927ac"></script>
+<script src="drawing.js?v=20260927ac"></script>
+<script src="features.js?v=20260927ac"></script>
+<script src="signals.js?v=20260927ac"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
