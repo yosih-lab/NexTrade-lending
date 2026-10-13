@@ -381,6 +381,19 @@ function completeOnboarding() {
   // Derive the preferred usage mode: 'signals' (signal feed) or 'analysis' (full charts)
   var mode = (answers.usageMode && answers.usageMode.indexOf('נתח בעצמי') !== -1) ? 'analysis' : 'signals';
   localStorage.setItem('nt_user_mode', mode);
+
+  // Persist the mode to the server so the backend knows who to email weekly signals to.
+  try {
+    var apiBase = localStorage.getItem('nt_api_base') || 'https://nextrade-lending.onrender.com';
+    var tok = localStorage.getItem('nt_token');
+    if (tok) {
+      fetch(apiBase + '/api/me/prefs', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+        body: JSON.stringify({ mode: mode, emailAlerts: true })
+      }).catch(function(){});
+    }
+  } catch (e) {}
   
   addBotMessage("תודה רבה! 🎉\nסיימנו את תהליך ההכרות.\nעל סמך התשובות שלך, נתאים את השירות בצורה הטובה ביותר.");
   

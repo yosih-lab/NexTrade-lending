@@ -31,3 +31,18 @@
 
 ## הערה חשובה
 לאחר החיבור, יש להירשם מחדש עם חשבון האדמין (ADMIN_USER/ADMIN_EMAIL/ADMIN_PASS מוגדרים כמשתני סביבה כבר קיימים ב-Render) — הזריעה (seeding) תתבצע אוטומטית בהפעלה הראשונה מול בסיס הנתונים החדש.
+
+## שלב 6 — הגדרת שליחת מיילים (איתותים שבועיים)
+מערכת המייל ניטרלית לספק ועובדת עם כל שרת SMTP (Gmail App Password, SendGrid, Mailgun, Resend וכו׳).
+הוסף ב-Render → **Environment** את המשתנים הבאים:
+   - `SMTP_HOST` = שרת ה-SMTP (למשל `smtp.gmail.com` או `smtp.sendgrid.net`)
+   - `SMTP_PORT` = `587` (STARTTLS) או `465` (SSL)
+   - `SMTP_USER` = שם המשתמש / כתובת המייל לשליחה
+   - `SMTP_PASS` = הסיסמה / App Password / API key
+   - `MAIL_FROM` = *(לא חובה)* כתובת השולח, למשל `NexTrade <alerts@getnexttrade.com>`
+
+לאחר הגדרת המשתנים, גש ל-`admin.html` → **שליחת איתותים שבועיים במייל**:
+- "שלח בדיקה אליי" — שולח מייל בדיקה למנהל בלבד.
+- "שלח לכל הנרשמים" — שולח לכל המשתמשים שבחרו במסלול האיתותים (mode ≠ analysis) ולא ביטלו קבלת מיילים.
+
+> חשוב: יש להריץ מחדש את `supabase-schema.sql` (ה-ALTER TABLE מוסיף את העמודות `mode` ו-`email_alerts`). הקובץ בטוח להרצה חוזרת.

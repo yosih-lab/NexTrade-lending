@@ -1494,6 +1494,17 @@
       align-items:center; justify-content:center;
       box-shadow:0 6px 20px rgba(0,0,0,.5);
     }
+    /* ---- Floating alerts bell (bottom-left of home, signal users only) ---- */
+    #mHomeBell {
+      display:none; position:fixed; left:16px; bottom:18px; z-index:950;
+      width:54px; height:54px; border-radius:50%; border:none; cursor:pointer;
+      background:#2962ff; color:#fff;
+      align-items:center; justify-content:center;
+      box-shadow:0 6px 20px rgba(0,0,0,.5);
+    }
+    #mHomeBell .alert-badge {
+      position:absolute; top:-2px; right:-2px;
+    }
 
     /* ---- Profile screen ---- */
     #mProfile {
@@ -1972,6 +1983,14 @@
       }
       /* Floating user avatar (bottom-right) only on the home list screen */
       body:not(.m-chart) #mHomeAvatar { display:flex; }
+      /* Floating alerts bell (bottom-left) — only for signal/alerts users on the home screen */
+      body:not(.m-chart).mode-signals #mHomeBell { display:flex; }
+      /* Bell alerts popup: full-width sheet centered on mobile */
+      #bellAlertsPopup {
+        top:auto !important; bottom:0 !important; right:0 !important; left:0 !important;
+        width:100% !important; max-width:100% !important; max-height:80vh !important;
+        border-radius:16px 16px 0 0 !important;
+      }
       /* Color-bookmark bar sits above the stock list on the app home */
       body:not(.m-chart) .wl-mgr { padding:.4rem .6rem !important; }
       body:not(.m-chart) .wl-colorbar { justify-content:flex-start; gap:.8rem; padding:.2rem .1rem .5rem; }
@@ -2420,6 +2439,12 @@
   <!-- Mobile-only: floating user avatar (bottom-right of the home screen) -->
   <button id="mHomeAvatar" onclick="openProfile()" title="הפרופיל שלי" aria-label="הפרופיל שלי">Y</button>
 
+  <!-- Mobile-only: floating ALERTS bell (bottom-left of home) — only for signal/alerts users -->
+  <button id="mHomeBell" onclick="toggleBellPopup()" title="התראות מניות" aria-label="התראות מניות">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <span id="mBellBadge" class="alert-badge" style="display:none">0</span>
+  </button>
+
   <!-- Mobile PROFILE screen (opens from the avatar) -->
   <div id="mProfile">
     <div class="mprof-top">
@@ -2717,11 +2742,11 @@
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20260927ad"></script>
-<script src="main.js?v=20260927ad"></script>
-<script src="drawing.js?v=20260927ad"></script>
-<script src="features.js?v=20260927ad"></script>
-<script src="signals.js?v=20260927ad"></script>
+<script src="scanner-symbols.js?v=20260927ae"></script>
+<script src="main.js?v=20260927ae"></script>
+<script src="drawing.js?v=20260927ae"></script>
+<script src="features.js?v=20260927ae"></script>
+<script src="signals.js?v=20260927ae"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
@@ -3068,13 +3093,12 @@ var _alertBadgeCount = 0;
 function updateAlertBadge(count) {
   _alertBadgeCount = count;
   var badge = document.getElementById('alertBadge');
-  if (!badge) return;
-  if (count > 0) {
-    badge.textContent = count;
-    badge.style.display = 'flex';
-  } else {
-    badge.style.display = 'none';
-  }
+  var mBadge = document.getElementById('mBellBadge');
+  [badge, mBadge].forEach(function(b) {
+    if (!b) return;
+    if (count > 0) { b.textContent = count; b.style.display = 'flex'; }
+    else { b.style.display = 'none'; }
+  });
 }
 function incrementAlertBadge() {
   // Don't increment if alerts view is currently open

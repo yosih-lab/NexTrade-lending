@@ -10,6 +10,11 @@ create table if not exists public.users (
   created_at timestamptz not null default now()
 );
 
+-- Onboarding preferences: usage mode ('signals' | 'analysis') + weekly-signals email opt-in.
+-- Safe to re-run — adds the columns only if they don't already exist.
+alter table public.users add column if not exists mode text;
+alter table public.users add column if not exists email_alerts boolean not null default true;
+
 -- Server uses the Service Role key (bypasses RLS), so RLS can stay enabled with no public policies.
 alter table public.users enable row level security;
 

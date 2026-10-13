@@ -4,6 +4,7 @@ const fs      = require('fs');
 const path    = require('path');
 const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 const { createClient } = require('@supabase/supabase-js');
 const app     = express();
 
@@ -15,6 +16,133 @@ const ALLOWED    = ['https://getnexttrade.com','https://www.getnexttrade.com'];
 const JWT_SECRET = process.env.JWT_SECRET || 'nexttrade_jwt_secret_change_me';
 const MAX_USERS  = 100;
 const USERS_FILE = path.join(__dirname, 'users.json');
+
+// ── EMAIL (provider-agnostic SMTP) ───────────────────────────────
+// Set these env vars on Render to enable sending:
+//   SMTP_HOST, SMTP_PORT (465 or 587), SMTP_USER, SMTP_PASS
+//   MAIL_FROM   e.g. "NexTrade <alerts@getnexttrade.com>"  (defaults to SMTP_USER)
+// Works with Gmail (app password), SendGrid, Mailgun, Resend SMTP, etc.
+const SMTP_HOST = process.env.SMTP_HOST;
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587', 10);
+const SMTP_USER = process.env.SMTP_USER;
+const SMTP_PASS = process.env.SMTP_PASS;
+const MAIL_FROM = process.env.MAIL_FROM || (SMTP_USER ? ('NexTrade <' + SMTP_USER + '>') : 'NexTrade <no-reply@getnexttrade.com>');
+
+let _mailer = null;
+function getMailer() {
+  if (_mailer) return _mailer;
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
+  _mailer = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465, // true for 465, false for 587 (STARTTLS)
+    auth: { user: SMTP_USER, pass: SMTP_PASS }
+  });
+  return _mailer;
+}
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Build a responsive, RTL weekly-signals email (Vardan-style: header, signal list,
+// company details, Q&A, disclaimer). `data` = { intro, signals:[{sym,name,changePct,dir,about}], qa:[{q,a}] }
+function buildSignalsEmail(data) {
+  data = data || {};
+  const signals = Array.isArray(data.signals) ? data.signals : [];
+  const qa = Array.isArray(data.qa) ? data.qa : [];
+  const dateTxt = new Date().toLocaleDateString('he-IL', { day: '2-digit', month: 'long', year: 'numeric' });
+  const subject = data.subject || ('NexTrade — איתותים שהתפרסמו השבוע · ' + dateTxt);
+
+  const rows = signals.map(function (s) {
+    const pct = (s.changePct == null || isNaN(s.changePct)) ? null : Number(s.changePct);
+    const up = pct == null ? (s.dir !== 'short') : pct >= 0;
+    const color = up ? '#16a34a' : '#dc2626';
+    const pctTxt = pct == null ? '' : ((pct >= 0 ? '+' : '') + pct.toFixed(2) + '%');
+    const dirTxt = (s.dir === 'short') ? 'שורט' : 'לונג';
+    const sym = esc((s.sym || '').replace('.TA', ''));
+    const about = s.about ? ('<div style="font-size:13px;color:#64748b;line-height:1.6;margin-top:6px">' + esc(s.about) + '</div>') : '';
+    return ''
+      + '<tr>'
+      + '<td style="padding:16px 18px;border-bottom:1px solid #eef2f7;">'
+      +   '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>'
+      +     '<td style="vertical-align:top;">'
+      +       '<div style="font-size:17px;font-weight:800;color:#0f172a;">' + sym + '</div>'
+      +       '<div style="font-size:13px;color:#64748b;margin-top:2px;">' + esc(s.name || '') + '</div>'
+      +     '</td>'
+      +     '<td style="text-align:left;vertical-align:top;white-space:nowrap;">'
+      +       '<span style="display:inline-block;background:' + (up ? '#dcfce7' : '#fee2e2') + ';color:' + color + ';font-weight:800;font-size:14px;padding:4px 10px;border-radius:8px;">' + (pctTxt || dirTxt) + '</span>'
+      +       '<div style="font-size:12px;color:#94a3b8;margin-top:4px;">' + dirTxt + '</div>'
+      +     '</td>'
+      +   '</tr></table>'
+      +   about
+      + '</td>'
+      + '</tr>';
+  }).join('');
+
+  const signalsBlock = signals.length
+    ? '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #eef2f7;border-radius:14px;overflow:hidden;">' + rows + '</table>'
+    : '<div style="text-align:center;color:#94a3b8;padding:24px;">אין איתותים חדשים השבוע.</div>';
+
+  const qaBlock = qa.length ? (''
+    + '<div style="font-size:16px;font-weight:800;color:#0f172a;margin:28px 0 12px;">שאלות ותשובות</div>'
+    + qa.map(function (item) {
+        return '<div style="background:#f8fafc;border:1px solid #eef2f7;border-radius:12px;padding:14px 16px;margin-bottom:10px;">'
+          + '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:6px;">❓ ' + esc(item.q) + '</div>'
+          + '<div style="font-size:13px;color:#475569;line-height:1.7;">' + esc(item.a) + '</div>'
+          + '</div>';
+      }).join('')
+  ) : '';
+
+  const introBlock = data.intro
+    ? '<div style="font-size:15px;color:#334155;line-height:1.8;margin-bottom:22px;">' + esc(data.intro).replace(/\n/g, '<br>') + '</div>'
+    : '';
+
+  const html = ''
+    + '<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="utf-8">'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<meta name="color-scheme" content="light"></head>'
+    + '<body style="margin:0;padding:0;background:#eef2f7;font-family:Arial,Helvetica,sans-serif;">'
+    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f7;padding:24px 12px;"><tr><td align="center">'
+    +   '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 8px 30px rgba(15,23,42,.08);">'
+    // header
+    +     '<tr><td style="background:linear-gradient(135deg,#0b1020,#1e293b);padding:30px 28px;text-align:center;">'
+    +       '<div style="font-size:26px;font-weight:900;letter-spacing:.5px;"><span style="color:#f5b301;">Nex</span><span style="color:#2962ff;">Trade</span></div>'
+    +       '<div style="color:#cbd5e1;font-size:14px;margin-top:8px;">איתותים שהתפרסמו השבוע</div>'
+    +       '<div style="color:#64748b;font-size:12px;margin-top:4px;">' + esc(dateTxt) + '</div>'
+    +     '</td></tr>'
+    // body
+    +     '<tr><td style="padding:28px 24px;">'
+    +       introBlock
+    +       '<div style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:12px;">📈 האיתותים השבוע</div>'
+    +       signalsBlock
+    +       qaBlock
+    +       '<div style="margin-top:28px;text-align:center;">'
+    +         '<a href="https://getnexttrade.com" style="display:inline-block;background:#2962ff;color:#ffffff;text-decoration:none;font-weight:800;font-size:15px;padding:13px 30px;border-radius:12px;">כניסה לפלטפורמה ➤</a>'
+    +       '</div>'
+    +     '</td></tr>'
+    // disclaimer
+    +     '<tr><td style="padding:18px 24px 26px;background:#f8fafc;border-top:1px solid #eef2f7;">'
+    +       '<div style="font-size:11px;color:#94a3b8;line-height:1.7;text-align:center;">'
+    +         'המידע באיתותים אינו מהווה ייעוץ או שיווק השקעות ואינו תחליף לייעוץ אישי המתחשב בנתוניו וצרכיו של כל אדם. מסחר בשוק ההון כרוך בסיכון ואין ערובה לרווחים. אין באמור המלצה לביצוע פעולה כלשהי.'
+    +       '</div>'
+    +       '<div style="font-size:11px;color:#cbd5e1;text-align:center;margin-top:10px;">© NexTrade · getnexttrade.com</div>'
+    +     '</td></tr>'
+    +   '</table>'
+    + '</td></tr></table></body></html>';
+
+  const text = 'NexTrade — איתותים שהתפרסמו השבוע (' + dateTxt + ')\n\n'
+    + (data.intro ? data.intro + '\n\n' : '')
+    + signals.map(function (s) {
+        const pct = (s.changePct == null || isNaN(s.changePct)) ? '' : ((Number(s.changePct) >= 0 ? '+' : '') + Number(s.changePct).toFixed(2) + '%');
+        return '• ' + (s.sym || '').replace('.TA', '') + ' ' + (s.name || '') + ' ' + pct + ' (' + (s.dir === 'short' ? 'שורט' : 'לונג') + ')';
+      }).join('\n')
+    + '\n\nhttps://getnexttrade.com';
+
+  return { subject: subject, html: html, text: text };
+}
 
 // ── BODY PARSER ──────────────────────────────────────────────────
 app.use(express.json());
@@ -67,7 +195,7 @@ function saveUsersMem(users) {
 }
 
 function rowToUser(row) {
-  return { id: row.id, username: row.username, email: row.email, hash: row.hash, role: row.role, createdAt: row.created_at };
+  return { id: row.id, username: row.username, email: row.email, hash: row.hash, role: row.role, createdAt: row.created_at, mode: row.mode || null, emailAlerts: row.email_alerts !== false };
 }
 
 // Get all users (id/username/email/role/createdAt/hash)
@@ -133,6 +261,33 @@ async function updateUserRole(id, role) {
   user.role = role;
   saveUsersMem(users);
   return user;
+}
+
+// Save a user's onboarding/preferences: usage mode ('signals'|'analysis') and email opt-in.
+async function updateUserPrefs(id, { mode, emailAlerts }) {
+  const patch = {};
+  if (mode === 'signals' || mode === 'analysis') patch.mode = mode;
+  if (typeof emailAlerts === 'boolean') patch.email_alerts = emailAlerts;
+  if (!Object.keys(patch).length) return null;
+  if (supabase) {
+    const { data, error } = await supabase.from('users').update(patch).eq('id', id).select().maybeSingle();
+    if (error) throw error;
+    return data ? rowToUser(data) : null;
+  }
+  const users = loadUsersMem();
+  const user = users.find(u => String(u.id) === String(id));
+  if (!user) return null;
+  if (patch.mode != null) user.mode = patch.mode;
+  if (patch.email_alerts != null) user.emailAlerts = patch.email_alerts;
+  saveUsersMem(users);
+  return user;
+}
+
+// Users who should receive the weekly-signals email: opted-in (default true) and NOT
+// explicit "analysis-only" users — i.e. everyone except those who chose chart analysis.
+async function getSignalSubscribers() {
+  const all = await getAllUsers();
+  return all.filter(u => u.email && u.emailAlerts !== false && u.mode !== 'analysis');
 }
 
 async function deleteUserById(id) {
@@ -212,6 +367,7 @@ async function seedAndStart() {
   console.log('[NexTrade] Env check — ADMIN_USER:', adminUser ? '✓ set' : '✗ missing',
               'ADMIN_EMAIL:', adminEmail ? '✓ set' : '✗ missing',
               'ADMIN_PASS:', adminPass ? '✓ set' : '✗ missing');
+  console.log('[NexTrade] Mail check — SMTP:', getMailer() ? '✓ configured' : '✗ not set (emails disabled)');
   if (adminUser && adminEmail && adminPass) {
     const existing = await findByUsername(adminUser);
     if (!existing) {
@@ -303,6 +459,19 @@ app.get('/api/me', requireAuth, (req, res) => {
   res.json({ username: req.user.username, role: req.user.role });
 });
 
+// Save onboarding preferences (usage mode + email opt-in) for the logged-in user.
+app.patch('/api/me/prefs', requireAuth, async (req, res) => {
+  const { mode, emailAlerts } = req.body || {};
+  try {
+    const user = await updateUserPrefs(req.user.id, { mode: mode, emailAlerts: emailAlerts });
+    if (!user) return res.status(400).json({ error: 'אין העדפות לעדכון' });
+    res.json({ ok: true, mode: user.mode, emailAlerts: user.emailAlerts });
+  } catch (e) {
+    console.error('[NexTrade] PATCH /api/me/prefs error:', e.message);
+    res.status(500).json({ error: 'שגיאה בשמירת ההעדפות' });
+  }
+});
+
 // ── WATCHLIST ROUTES ──────────────────────────────────────────────
 // Read the current user's watchlist (symbols array).
 app.get('/api/watchlist', requireAuth, async (req, res) => {
@@ -343,7 +512,7 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
   try {
     const users = (await getAllUsers()).map(u => ({
       id: u.id, username: u.username, email: u.email,
-      role: u.role, createdAt: u.createdAt
+      role: u.role, createdAt: u.createdAt, mode: u.mode, emailAlerts: u.emailAlerts
     }));
     console.log('[NexTrade] GET /api/admin/users — returning', users.length, 'users');
     res.json({ count: users.length, max: MAX_USERS, users });
@@ -386,6 +555,64 @@ app.patch('/api/admin/users/:id', requireAdmin, async (req, res) => {
   } catch(e) {
     console.error('[NexTrade] ✗ Role change error:', e.message);
     res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+// How many users would receive the weekly-signals email + whether SMTP is configured.
+app.get('/api/admin/signal-subscribers', requireAdmin, async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const subs = await getSignalSubscribers();
+    res.json({ count: subs.length, mailReady: !!getMailer() });
+  } catch (e) {
+    console.error('[NexTrade] signal-subscribers error:', e.message);
+    res.status(500).json({ error: 'שגיאת שרת' });
+  }
+});
+
+// Send the weekly-signals email to all subscribers.
+// Body: { subject?, intro?, signals:[{sym,name,changePct,dir,about}], qa:[{q,a}], test? }
+app.post('/api/admin/send-signals', requireAdmin, async (req, res) => {
+  const mailer = getMailer();
+  if (!mailer) {
+    return res.status(503).json({ error: 'שירות המייל לא מוגדר. יש להגדיר SMTP_HOST / SMTP_USER / SMTP_PASS בשרת.' });
+  }
+  const body = req.body || {};
+  const signals = Array.isArray(body.signals) ? body.signals : [];
+  if (!signals.length) return res.status(400).json({ error: 'יש להוסיף לפחות איתות אחד' });
+
+  const mail = buildSignalsEmail(body);
+
+  try {
+    // Test mode: send only to the admin's own email.
+    if (body.test) {
+      const admin = await findByUsername(req.user.username);
+      const to = admin && admin.email;
+      if (!to) return res.status(400).json({ error: 'לא נמצאה כתובת מייל למנהל' });
+      await mailer.sendMail({ from: MAIL_FROM, to: to, subject: '[בדיקה] ' + mail.subject, html: mail.html, text: mail.text });
+      return res.json({ ok: true, test: true, sent: 1, to: to });
+    }
+
+    const subs = await getSignalSubscribers();
+    if (!subs.length) return res.json({ ok: true, sent: 0, message: 'אין נמענים רשומים לאיתותים' });
+
+    let sent = 0;
+    const failed = [];
+    // Send sequentially to stay within SMTP rate limits.
+    for (const u of subs) {
+      try {
+        await mailer.sendMail({ from: MAIL_FROM, to: u.email, subject: mail.subject, html: mail.html, text: mail.text });
+        sent++;
+      } catch (err) {
+        console.error('[NexTrade] send-signals mail fail to', u.email, '-', err.message);
+        failed.push(u.email);
+      }
+    }
+    console.log('[NexTrade] ✓ Weekly signals sent:', sent, '/', subs.length);
+    res.json({ ok: true, sent: sent, total: subs.length, failed: failed });
+  } catch (e) {
+    console.error('[NexTrade] send-signals error:', e.message);
+    res.status(500).json({ error: 'שגיאה בשליחת המיילים: ' + e.message });
   }
 });
 

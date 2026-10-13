@@ -136,6 +136,40 @@
   </table>
 </div>
 
+<!-- ── Weekly signals email composer ── -->
+<div class="container" style="margin-top:2rem">
+  <h1 style="margin-bottom:1rem">📧 שליחת איתותים שבועיים במייל</h1>
+  <div class="server-cfg" style="margin-bottom:1rem">
+    <div id="mailStatus" style="font-size:.85rem;color:#8899aa">בודק נמענים...</div>
+  </div>
+  <div id="sendMsg" class="msg"></div>
+
+  <div style="background:#0a0d16;border:1px solid #1e2637;border-radius:10px;padding:1.2rem">
+    <label style="color:#8899aa;font-size:.78rem;display:block;margin-bottom:.3rem">כותרת (נושא המייל) — לא חובה</label>
+    <input id="mailSubject" placeholder="NexTrade — איתותים שהתפרסמו השבוע" style="background:#0f1420;border:1px solid #1e2637;border-radius:6px;color:#fff;padding:.5rem .7rem;font-family:Heebo,sans-serif;font-size:.85rem;width:100%;outline:none;box-sizing:border-box"/>
+
+    <label style="color:#8899aa;font-size:.78rem;display:block;margin:.9rem 0 .3rem">מבוא / פתיח — לא חובה</label>
+    <textarea id="mailIntro" rows="3" placeholder="שלום, לפניכם האיתותים שהתפרסמו השבוע..." style="background:#0f1420;border:1px solid #1e2637;border-radius:6px;color:#fff;padding:.5rem .7rem;font-family:Heebo,sans-serif;font-size:.85rem;width:100%;outline:none;box-sizing:border-box;resize:vertical"></textarea>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:1.2rem 0 .5rem">
+      <span style="font-weight:800;font-size:.95rem">📈 איתותים</span>
+      <button class="btn btn-primary" onclick="addSignalRow()" style="margin:0">＋ הוסף איתות</button>
+    </div>
+    <div id="signalRows"></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:1.4rem 0 .5rem">
+      <span style="font-weight:800;font-size:.95rem">❓ שאלות ותשובות</span>
+      <button class="btn btn-primary" onclick="addQaRow()" style="margin:0">＋ הוסף שאלה</button>
+    </div>
+    <div id="qaRows"></div>
+
+    <div style="display:flex;gap:.7rem;margin-top:1.4rem;flex-wrap:wrap">
+      <button class="btn" onclick="sendSignals(true)">✉️ שלח בדיקה אליי</button>
+      <button class="btn btn-primary" onclick="sendSignals(false)">🚀 שלח לכל הנרשמים</button>
+    </div>
+  </div>
+</div>
+
 <script>
 var API_BASE = localStorage.getItem('nt_api_base') || 'https://nextrade-lending.onrender.com';
 var token    = localStorage.getItem('nt_token');
@@ -283,6 +317,110 @@ async function changeRole(id, role) {
     loadUsers();
   } catch(e) { alert('שגיאה: ' + e.message); setMsg('❌ ' + e.message, 'err'); }
 }
+
+// ── Weekly signals email composer ──
+var SIG_INPUT = 'background:#0f1420;border:1px solid #1e2637;border-radius:6px;color:#fff;padding:.45rem .6rem;font-family:Heebo,sans-serif;font-size:.82rem;outline:none;box-sizing:border-box';
+
+function sendMsg(text, type) {
+  var el = document.getElementById('sendMsg');
+  el.textContent = text;
+  el.className = 'msg ' + (type || '');
+  if (!type) el.style.display = 'none';
+}
+
+async function loadMailStatus() {
+  var el = document.getElementById('mailStatus');
+  try {
+    var r = await fetch(API_BASE + '/api/admin/signal-subscribers', { cache: 'no-store', headers: { 'Authorization': 'Bearer ' + token } });
+    var d = await r.json();
+    if (!r.ok) { el.textContent = 'שגיאה בטעינת נתוני נמענים'; return; }
+    el.innerHTML = '👥 נמענים רשומים לאיתותים: <b style="color:#fff">' + d.count + '</b> &nbsp;·&nbsp; '
+      + (d.mailReady ? '<span style="color:#26a69a">✓ שירות מייל מוגדר</span>'
+                     : '<span style="color:#ef5350">✗ שירות מייל לא מוגדר (הגדר SMTP_HOST / SMTP_USER / SMTP_PASS בשרת)</span>');
+  } catch (e) { el.textContent = '⏳ לא ניתן לאמת מול השרת'; }
+}
+
+function addSignalRow(s) {
+  s = s || {};
+  var wrap = document.createElement('div');
+  wrap.className = 'sig-row';
+  wrap.style.cssText = 'display:grid;grid-template-columns:90px 1fr 80px 90px 28px;gap:.5rem;margin-bottom:.5rem;align-items:start';
+  wrap.innerHTML =
+      '<input class="sig-sym" placeholder="HALO" value="' + (s.sym||'') + '" style="' + SIG_INPUT + '"/>'
+    + '<div style="display:flex;flex-direction:column;gap:.4rem">'
+    +   '<input class="sig-name" placeholder="שם החברה" value="' + (s.name||'') + '" style="' + SIG_INPUT + '"/>'
+    +   '<textarea class="sig-about" rows="2" placeholder="מה החברה עושה / במה היא עוסקת..." style="' + SIG_INPUT + ';resize:vertical"></textarea>'
+    + '</div>'
+    + '<input class="sig-pct" placeholder="+0.50" value="' + (s.changePct!=null?s.changePct:'') + '" style="' + SIG_INPUT + '"/>'
+    + '<select class="sig-dir" style="' + SIG_INPUT + '"><option value="long">לונג</option><option value="short">שורט</option></select>'
+    + '<button class="btn btn-danger" onclick="this.closest(\'.sig-row\').remove()" style="margin:0;padding:.3rem .5rem">✕</button>';
+  document.getElementById('signalRows').appendChild(wrap);
+}
+
+function addQaRow() {
+  var wrap = document.createElement('div');
+  wrap.className = 'qa-row';
+  wrap.style.cssText = 'display:grid;grid-template-columns:1fr 28px;gap:.5rem;margin-bottom:.5rem;align-items:start';
+  wrap.innerHTML =
+      '<div style="display:flex;flex-direction:column;gap:.4rem">'
+    +   '<input class="qa-q" placeholder="שאלה" style="' + SIG_INPUT + '"/>'
+    +   '<textarea class="qa-a" rows="2" placeholder="תשובה" style="' + SIG_INPUT + ';resize:vertical"></textarea>'
+    + '</div>'
+    + '<button class="btn btn-danger" onclick="this.closest(\'.qa-row\').remove()" style="margin:0;padding:.3rem .5rem">✕</button>';
+  document.getElementById('qaRows').appendChild(wrap);
+}
+
+function collectPayload() {
+  var signals = [];
+  document.querySelectorAll('#signalRows .sig-row').forEach(function (row) {
+    var sym = row.querySelector('.sig-sym').value.trim();
+    if (!sym) return;
+    var pctRaw = row.querySelector('.sig-pct').value.trim().replace('%', '');
+    signals.push({
+      sym: sym,
+      name: row.querySelector('.sig-name').value.trim(),
+      about: row.querySelector('.sig-about').value.trim(),
+      changePct: pctRaw === '' ? null : parseFloat(pctRaw),
+      dir: row.querySelector('.sig-dir').value
+    });
+  });
+  var qa = [];
+  document.querySelectorAll('#qaRows .qa-row').forEach(function (row) {
+    var q = row.querySelector('.qa-q').value.trim();
+    var a = row.querySelector('.qa-a').value.trim();
+    if (q || a) qa.push({ q: q, a: a });
+  });
+  return {
+    subject: document.getElementById('mailSubject').value.trim() || undefined,
+    intro: document.getElementById('mailIntro').value.trim() || undefined,
+    signals: signals,
+    qa: qa
+  };
+}
+
+async function sendSignals(test) {
+  var payload = collectPayload();
+  if (!payload.signals.length) { sendMsg('יש להוסיף לפחות איתות אחד', 'err'); return; }
+  if (!test && !confirm('לשלוח את המייל לכל הנרשמים לאיתותים?')) return;
+  payload.test = !!test;
+  sendMsg('⏳ שולח...', 'ok');
+  try {
+    var r = await fetch(API_BASE + '/api/admin/send-signals', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    var d = await r.json();
+    if (!r.ok) { sendMsg('❌ ' + (d.error || 'שגיאה בשליחה'), 'err'); return; }
+    if (test) sendMsg('✅ נשלח מייל בדיקה אל ' + (d.to || 'המנהל'), 'ok');
+    else sendMsg('✅ נשלחו ' + d.sent + ' מתוך ' + d.total + ' מיילים' + (d.failed && d.failed.length ? ' (' + d.failed.length + ' נכשלו)' : ''), 'ok');
+  } catch (e) { sendMsg('❌ ' + e.message, 'err'); }
+}
+
+// Seed one empty signal + Q&A row, and load subscriber status
+addSignalRow();
+addQaRow();
+loadMailStatus();
 </script>
 </body>
 </html>

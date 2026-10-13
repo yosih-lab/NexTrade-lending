@@ -190,6 +190,13 @@ function loginSuccess(user) {
   var backOfficeBtn = document.getElementById('backOfficeBtn');
   if (backOfficeBtn) backOfficeBtn.style.display = (user.role === 'admin') ? '' : 'none';
 
+  // Mark the body for signal-oriented users so the mobile alerts bell shows (bottom-left).
+  // Analysis users (chose "נתח בעצמי" in onboarding) get only the watchlists.
+  try {
+    var umode = localStorage.getItem('nt_user_mode');
+    document.body.classList.toggle('mode-signals', umode !== 'analysis');
+  } catch (e) {}
+
   console.log('[NexTrade] About to call init()...');
   // defer init so the browser finishes layout before the chart measures width.
   // Use setTimeout (fires even when tab is not focused) instead of requestAnimationFrame,
