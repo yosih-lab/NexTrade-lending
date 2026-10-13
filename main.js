@@ -423,15 +423,10 @@ function indIconSvg(color) {
     + 'stroke-linecap="round" stroke-linejoin="round"><path d="M3 16l4-5 4 3 4-7 6 7"/></svg>';
 }
 
-// Unified catalog = drawing tools (from NTDraw) + indicators (MA / overlay / oscillators)
+// Unified catalog = indicators (MA / overlay / oscillators) + drawing tools (from NTDraw)
+// Indicators are listed FIRST so they're immediately visible when the dropdown opens.
 function getTechCatalog() {
   var cats = [];
-  var draw = (window.NTDraw && typeof window.NTDraw.getToolCatalog === 'function') ? window.NTDraw.getToolCatalog() : [];
-  draw.forEach(function(g) {
-    cats.push({ title: g.title, items: (g.items || []).map(function(it) {
-      return { id: it.id, name: it.name, icon: it.icon, type: 'tool' };
-    }) });
-  });
   // Indicators — only present once the indicator engine has loaded
   if (typeof MA_CONFIGS !== 'undefined') {
     var maItems = [];
@@ -453,6 +448,13 @@ function getTechCatalog() {
     if (overlay.length) cats.push({ title: 'אינדיקטורים על הגרף', items: overlay });
     if (osc.length)     cats.push({ title: 'אוסצילטורים', items: osc });
   }
+  // Drawing tools from the NTDraw module
+  var draw = (window.NTDraw && typeof window.NTDraw.getToolCatalog === 'function') ? window.NTDraw.getToolCatalog() : [];
+  draw.forEach(function(g) {
+    cats.push({ title: g.title, items: (g.items || []).map(function(it) {
+      return { id: it.id, name: it.name, icon: it.icon, type: 'tool' };
+    }) });
+  });
   return cats;
 }
 
