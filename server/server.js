@@ -36,7 +36,11 @@ function getMailer() {
     host: SMTP_HOST,
     port: SMTP_PORT,
     secure: SMTP_PORT === 465, // true for 465, false for 587 (STARTTLS)
-    auth: { user: SMTP_USER, pass: SMTP_PASS }
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+    // Fail fast instead of hanging if the SMTP host/credentials are wrong or blocked.
+    connectionTimeout: 10000, // 10s to establish the TCP connection
+    greetingTimeout: 10000,   // 10s to receive the SMTP greeting
+    socketTimeout: 20000      // 20s overall socket inactivity
   });
   return _mailer;
 }
@@ -589,6 +593,14 @@ app.post('/api/admin/send-signals', requireAdmin, async (req, res) => {
       const admin = await findByUsername(req.user.username);
       const to = admin && admin.email;
       if (!to) return res.status(400).json({ error: 'לא נמצאה כתובת מייל למנהל' });
+      // Verify the SMTP connection first so we return a clear error (auth/host) fast
+      // instead of appearing to hang.
+      try {
+        await mailer.verify();
+      } catch (ve) {
+        console.error('[NexTrade] SMTP verify failed:', ve.message);
+        return res.status(502).json({ error: 'החיבור לשרת המייל נכשל: ' + ve.message + ' — בדוק SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS.' });
+      }
       await mailer.sendMail({ from: MAIL_FROM, to: to, subject: '[בדיקה] ' + mail.subject, html: mail.html, text: mail.text });
       return res.json({ ok: true, test: true, sent: 1, to: to });
     }
