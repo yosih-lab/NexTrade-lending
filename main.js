@@ -1506,10 +1506,20 @@ async function fetchYahooChartDirect(symbol, tf) {
   var yfInterval = { '1H':'1h','4H':'1h','8H':'1h','1D':'1d','1W':'1wk','1M':'1mo','3M':'1mo','6M':'1mo' }[tf];
   var yfRange    = { '1H':'5d','4H':'60d','8H':'60d','1D':'2y','1W':'5y','1M':'10y','3M':'10y','6M':'10y' }[tf];
   try {
-    var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' +
-              encodeURIComponent(symbol) + '?interval=' + yfInterval + '&range=' + yfRange;
-    var d = await fetchYahooProxyJson(url);
-    if (!d.chart || !d.chart.result || !d.chart.result[0]) return [];
+    var d = null;
+    // Prefer our own server-side Yahoo proxy (reliable, works for indices/forex/futures
+    // like ^GSPC, XAUUSD=X, XAGUSD=X, ES=F). Fall back to the public text proxy.
+    try {
+      var sr = await fetch(API_BASE + '/yahoo/chart?symbol=' + encodeURIComponent(symbol) +
+                           '&interval=' + yfInterval + '&range=' + yfRange, { cache: 'no-store' });
+      if (sr.ok) d = await sr.json();
+    } catch (e1) { d = null; }
+    if (!d || !d.chart || !d.chart.result) {
+      var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' +
+                encodeURIComponent(symbol) + '?interval=' + yfInterval + '&range=' + yfRange;
+      d = await fetchYahooProxyJson(url);
+    }
+    if (!d || !d.chart || !d.chart.result || !d.chart.result[0]) return [];
     var result = d.chart.result[0];
     var ts     = result.timestamp;
     var quote  = result.indicators.quote[0];
@@ -4354,7 +4364,11 @@ function smGetItems(tab, q) {
       .map(function(s) { return { sym: s, short: s, name: NAMES[s] || s, typeLabel: 'מניה', exch: 'US' }; });
   };
   var idxSrc = function() {
-    return SM_INDICES.map(function(it) { return { sym: it.sym, short: it.short, name: it.name, typeLabel: 'מדד', exch: 'TASE' }; });
+    var tase = SM_INDICES.map(function(it) { return { sym: it.sym, short: it.short, name: it.name, typeLabel: 'מדד', exch: 'TASE' }; });
+    // Also surface the global markets (S&P/SPX, futures, gold/silver, forex, crypto)
+    // under the "מדדים" tab so they aren't buried only under "הכל".
+    var markets = genSrc().filter(function(it) { return it.typeLabel !== 'מניה'; });
+    return markets.concat(tase);
   };
   var genSrc = function() {
     return SM_GENERAL.map(function(it) {
@@ -4372,7 +4386,10 @@ function smGetItems(tab, q) {
   if (tab === 'indices') source = idxSrc();
   else if (tab === 'general') source = genSrc();
   else if (tab === 'us') source = usSrc();
-  else if (tab === 'all') source = taseSrc().concat(usSrc()).concat(idxSrc()).concat(genSrc());
+  else if (tab === 'all') {
+    var taseIdx = SM_INDICES.map(function(it) { return { sym: it.sym, short: it.short, name: it.name, typeLabel: 'מדד', exch: 'TASE' }; });
+    source = taseSrc().concat(usSrc()).concat(taseIdx).concat(genSrc());
+  }
   else source = taseSrc();
 
   if (!q) return source.slice(0, 40);

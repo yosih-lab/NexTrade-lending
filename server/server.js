@@ -729,6 +729,47 @@ app.get('/td/*', async (req, res) => {
   }
 });
 
+// Yahoo Finance chart proxy — server-side so it works for ALL symbols
+// (indices ^GSPC, forex XAUUSD=X/XAGUSD=X/EURUSD=X, futures ES=F/CL=F) without
+// browser CORS limits or flaky third-party text proxies.
+// GET /yahoo/chart?symbol=XAGUSD=X&interval=1wk&range=5y
+function fetchYahoo(symbol, interval, range) {
+  return new Promise((resolve, reject) => {
+    const host = 'query1.finance.yahoo.com';
+    const path = '/v8/finance/chart/' + encodeURIComponent(symbol) +
+                 '?interval=' + encodeURIComponent(interval) + '&range=' + encodeURIComponent(range);
+    const opts = {
+      host: host, path: path, method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36',
+        'Accept': 'application/json'
+      }
+    };
+    const r = https.request(opts, resp => {
+      let body = '';
+      resp.on('data', d => body += d);
+      resp.on('end', () => { try { resolve(JSON.parse(body)); } catch (e) { reject(e); } });
+    });
+    r.on('error', reject);
+    r.setTimeout(12000, function () { r.destroy(); reject(new Error('timeout')); });
+    r.end();
+  });
+}
+
+app.get('/yahoo/chart', async (req, res) => {
+  const symbol   = (req.query.symbol || '').trim();
+  const interval = (req.query.interval || '1d').trim();
+  const range    = (req.query.range || '1y').trim();
+  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+  try {
+    const data = await fetchYahoo(symbol, interval, range);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(data);
+  } catch (e) {
+    res.status(502).json({ error: 'upstream error', detail: e.message });
+  }
+});
+
 // ── START ──────────────────────────────────────────────────────────
 seedAndStart().catch(err => {
   console.error('[NexTrade] FATAL startup error:', err);
