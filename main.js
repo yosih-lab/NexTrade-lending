@@ -1537,17 +1537,28 @@ async function getBarsForTF(symbol, tf) {
   var cfg = TF_CONFIG[tf];
   var raw;
 
+  // Some "spot" tickers don't exist on Yahoo's chart API (e.g. XAUUSD=X / XAGUSD=X
+  // return "No data found, symbol may be delisted"). Map them to the equivalent
+  // continuous futures symbol, which Yahoo DOES serve, so the chart shows real data
+  // instead of falling back to synthetic demo bars.
+  var fetchSym = (YAHOO_FETCH_ALIAS[symbol] || symbol);
+
   // Yahoo first for live-like updates (avoids TwelveData quota throttling)
-  raw = await fetchYahooChartDirect(symbol, tf);
+  raw = await fetchYahooChartDirect(fetchSym, tf);
 
   if (!raw || !raw.length) {
     // Fallback: TwelveData
-    raw = await fetchTDChart(symbol, tf);
+    raw = await fetchTDChart(fetchSym, tf);
   }
 
   if (cfg.aggregate) raw = aggregateBars(raw, cfg.aggregate);
   return raw;
 }
+// Data-source aliases: display symbol (left) → symbol actually fetched (right).
+var YAHOO_FETCH_ALIAS = {
+  'XAUUSD=X': 'GC=F',  // Gold spot → Gold futures (Yahoo has data)
+  'XAGUSD=X': 'SI=F'   // Silver spot → Silver futures
+};
 
 function extractJsonPayload(text) {
   if (!text) return null;
