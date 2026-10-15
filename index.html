@@ -40,7 +40,7 @@
     :root {
       --bg:#04060c; --surface:#0a0d16; --surface2:#0f1420; --border:#1e2637;
       --accent:#2962ff; --green:#26a69a; --red:#ef5350; --text:#ffffff;
-      --text-muted:#8b9ab5; --gold:#f5a623; --sidebar-w:242px;
+      --text-muted:#8b9ab5; --gold:#f5a623; --sidebar-w:278px;
     }
     body { font-family:'Heebo',sans-serif; background:var(--bg); color:var(--text); font-weight:600; min-height:100vh; overflow-x:hidden; }
 
@@ -281,7 +281,7 @@
       border-bottom:1px solid rgba(255,255,255,0.22);
     }
     .watch-item:last-child { border-bottom:none; }
-    .watch-item:hover { background:rgba(255,255,255,0.04); }
+    .watch-item:hover { background:rgba(41,98,255,0.16); box-shadow:inset 2px 0 0 0 var(--accent); }
     .watch-icon-wrap { position:relative; flex-shrink:0; width:20px; height:20px; }
     .watch-icon {
       width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center;
@@ -1465,7 +1465,7 @@
     .idea-pnl { font-size:.76rem; font-weight:800; width:54px; text-align:left; }
     .idea-del { background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:.7rem; }
     .idea-del:hover { color:var(--red); }
-    @media (max-width:1100px) { :root { --sidebar-w:196px; } }
+    @media (max-width:1100px) { :root { --sidebar-w:225px; } }
 
     /* ===== MOBILE TF BAR (desktop hidden) ===== */
     #mobileTfBar { display:none; }
@@ -1505,6 +1505,35 @@
     #mHomeBell .alert-badge {
       position:absolute; top:-2px; right:-2px;
     }
+
+    /* ---- Persistent mobile BOTTOM BAR (avatar + name + 3-dots) — home & chart ---- */
+    #mBottomBar { display:none; }
+    .mbb-avatar {
+      width:48px; height:48px; border-radius:50%; border:none; cursor:pointer; flex-shrink:0;
+      background:#7bd88f; color:#0a2a14; font-family:'Heebo',sans-serif;
+      font-size:1.05rem; font-weight:900; letter-spacing:.5px;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .mbb-name { font-size:.95rem; font-weight:800; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:42vw; }
+    .mbb-more {
+      width:44px; height:44px; border-radius:12px; flex-shrink:0; cursor:pointer;
+      background:var(--surface2); border:1px solid var(--border); color:var(--text);
+      font-size:1.5rem; line-height:1; display:flex; align-items:center; justify-content:center;
+    }
+    .mbb-more:hover { border-color:var(--accent); color:var(--accent); }
+    #mbbMoreMenu {
+      display:none; position:fixed; left:10px; bottom:72px; z-index:980;
+      background:var(--surface); border:1px solid var(--border); border-radius:14px;
+      box-shadow:0 10px 34px rgba(0,0,0,.6); padding:.4rem; min-width:190px; direction:rtl;
+    }
+    #mbbMoreMenu.open { display:block; }
+    .mbb-menu-item {
+      display:flex; align-items:center; gap:.7rem; width:100%; text-align:right;
+      padding:.75rem .8rem; border-radius:10px; background:transparent; border:none; cursor:pointer;
+      color:var(--text); font-family:'Heebo',sans-serif; font-size:.95rem; font-weight:700;
+    }
+    .mbb-menu-item:hover { background:var(--surface2); }
+    .mbb-menu-ico { font-size:1.05rem; width:22px; text-align:center; }
 
     /* ---- Profile screen ---- */
     #mProfile {
@@ -1568,15 +1597,33 @@
       font-family:'Heebo',sans-serif; font-size:1rem; font-weight:700;
     }
     .mfav-row.active { border-color:var(--accent); background:rgba(41,98,255,.12); }
-    /* Bookmark-shaped color swatch */
+    /* Bookmark-shaped color swatch — horizontal ribbon */
     .mfav-swatch {
-      width:18px; height:24px; flex-shrink:0;
-      clip-path:polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+      width:28px; height:18px; flex-shrink:0;
+      clip-path:polygon(0 0,100% 0,100% 100%,0 100%,22% 50%);
     }
     .mfav-swatch.all {
       clip-path:none; width:20px; height:20px; border-radius:50%;
     }
-    .mfav-count { margin-right:auto; font-size:.85rem; color:var(--text-muted); font-weight:700; }
+    .mfav-name { flex:1; min-width:0; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .mfav-count { font-size:.85rem; color:var(--text-muted); font-weight:700; }
+    .mfav-edit {
+      background:transparent; border:none; color:var(--text-muted); cursor:pointer;
+      font-size:1rem; padding:.2rem .35rem; border-radius:7px; flex-shrink:0;
+    }
+    .mfav-edit:hover { color:var(--accent); background:rgba(41,98,255,.12); }
+    .mfav-editwrap { display:flex; align-items:center; gap:.4rem; flex:1; min-width:0; }
+    .mfav-editinp {
+      flex:1; min-width:0; background:var(--bg); border:1px solid var(--accent);
+      border-radius:8px; padding:.45rem .6rem; color:var(--text);
+      font-family:'Heebo',sans-serif; font-size:.95rem; direction:rtl; outline:none;
+    }
+    .mfav-editbtn {
+      background:var(--surface2); border:1px solid var(--border); color:var(--text);
+      border-radius:8px; padding:.4rem .55rem; cursor:pointer; font-size:.9rem; flex-shrink:0;
+    }
+    .mfav-editbtn.save { background:rgba(41,98,255,.18); border-color:var(--accent); color:var(--accent); }
+    .mfav-editbtn.del  { background:rgba(239,83,80,.12); border-color:rgba(239,83,80,.4); color:var(--red); }
 
     /* ---- Inline color picker popup + per-row color dot ---- */
     #wlColorPicker {
@@ -1981,10 +2028,24 @@
         display:flex;
         position:absolute; right:8px; top:50%; transform:translateY(-50%);
       }
-      /* Floating user avatar (bottom-right) only on the home list screen */
-      body:not(.m-chart) #mHomeAvatar { display:flex; }
+      /* Floating user avatar (bottom-right) — replaced by the persistent bottom bar */
+      body:not(.m-chart) #mHomeAvatar { display:none; }
+      /* Persistent bottom bar — shown on BOTH home and chart screens */
+      #mBottomBar {
+        display:flex; align-items:center; gap:.6rem;
+        position:fixed; left:0; right:0; bottom:0; z-index:960; height:60px;
+        padding:0 12px; direction:rtl;
+        background:var(--surface); border-top:1px solid var(--border);
+        box-shadow:0 -4px 20px rgba(0,0,0,.4);
+      }
+      #mBottomBar .mbb-spacer { flex:1; }
+      /* List home: watchlist sits above the bottom bar */
+      body:not(.m-chart) .sidebar { bottom:60px !important; }
+      /* Chart screen: lift the symbol switcher + its sheet above the bottom bar */
+      body.m-chart #mSymSwitch { bottom:60px !important; }
+      body.m-chart #mSymSheet { bottom:116px !important; }
       /* Floating alerts bell (bottom-left) — only for signal/alerts users on the home screen */
-      body:not(.m-chart).mode-signals #mHomeBell { display:flex; }
+      body:not(.m-chart).mode-signals #mHomeBell { display:flex; bottom:72px; }
       /* Bell alerts popup: full-width sheet centered on mobile */
       #bellAlertsPopup {
         top:auto !important; bottom:0 !important; right:0 !important; left:0 !important;
@@ -2445,6 +2506,19 @@
     <span id="mBellBadge" class="alert-badge" style="display:none">0</span>
   </button>
 
+  <!-- Mobile-only: persistent BOTTOM BAR (three-dots · spacer · username + avatar) — home & chart -->
+  <div id="mBottomBar">
+    <button class="mbb-more" id="mbbMore" onclick="toggleBottomMore(event)" title="עוד אפשרויות" aria-label="עוד אפשרויות">⋮</button>
+    <div class="mbb-spacer"></div>
+    <span class="mbb-name" id="mbbName" onclick="openProfile()"></span>
+    <button class="mbb-avatar" id="mbbAvatar" onclick="openProfile()" title="הפרופיל שלי" aria-label="הפרופיל שלי">Y</button>
+  </div>
+  <div id="mbbMoreMenu">
+    <button class="mbb-menu-item" onclick="openProfile();closeBottomMore()"><span class="mbb-menu-ico">👤</span><span>הפרופיל שלי</span></button>
+    <button class="mbb-menu-item" onclick="openFavLists();closeBottomMore()"><span class="mbb-menu-ico">🔖</span><span>רשימות מועדפים</span></button>
+    <button class="mbb-menu-item" onclick="openSearchModal();closeBottomMore()"><span class="mbb-menu-ico">🔍</span><span>חיפוש מניה</span></button>
+  </div>
+
   <!-- Mobile PROFILE screen (opens from the avatar) -->
   <div id="mProfile">
     <div class="mprof-top">
@@ -2742,11 +2816,11 @@
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20260927af"></script>
-<script src="main.js?v=20260927af"></script>
-<script src="drawing.js?v=20260927af"></script>
-<script src="features.js?v=20260927af"></script>
-<script src="signals.js?v=20260927af"></script>
+<script src="scanner-symbols.js?v=20260927ag"></script>
+<script src="main.js?v=20260927ag"></script>
+<script src="drawing.js?v=20260927ag"></script>
+<script src="features.js?v=20260927ag"></script>
+<script src="signals.js?v=20260927ag"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">

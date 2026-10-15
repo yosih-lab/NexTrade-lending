@@ -187,6 +187,12 @@ function loginSuccess(user) {
   if (mProfNm) mProfNm.textContent = user.name || 'משתמש';
   if (mProfSb) mProfSb.textContent = (user.email || '') + (user.role === 'admin' ? ' · מנהל' : '');
 
+  // Persistent mobile bottom bar
+  var mbbAv = document.getElementById('mbbAvatar');
+  var mbbNm = document.getElementById('mbbName');
+  if (mbbAv) mbbAv.textContent = inits;
+  if (mbbNm) mbbNm.textContent = user.name || 'משתמש';
+
   var backOfficeBtn = document.getElementById('backOfficeBtn');
   if (backOfficeBtn) backOfficeBtn.style.display = (user.role === 'admin') ? '' : 'none';
 
@@ -271,9 +277,39 @@ try { wlColorMap = JSON.parse(localStorage.getItem('nt_wl_colors') || '{}') || {
 var wlColorFilter = ''; // '' = show all; otherwise a color key
 var _wlPickerSym = null; // symbol currently being colored
 
+// Custom names for the colored watchlists (key -> user-chosen name).
+var wlColorNames = {};
+try { wlColorNames = JSON.parse(localStorage.getItem('nt_wl_colornames') || '{}') || {}; } catch (e) { wlColorNames = {}; }
+function saveWlColorNames() {
+  try { localStorage.setItem('nt_wl_colornames', JSON.stringify(wlColorNames)); } catch (e) {}
+}
+function wlColorLabel(key) {
+  if (wlColorNames[key]) return wlColorNames[key];
+  for (var i = 0; i < WL_COLORS.length; i++) if (WL_COLORS[i].key === key) return WL_COLORS[i].label;
+  return key;
+}
+
 function saveWlColors() {
   try { localStorage.setItem('nt_wl_colors', JSON.stringify(wlColorMap)); } catch (e) {}
 }
+
+// Persistent bottom-bar "more" menu
+function toggleBottomMore(ev) {
+  if (ev) ev.stopPropagation();
+  var m = document.getElementById('mbbMoreMenu');
+  if (m) m.classList.toggle('open');
+}
+function closeBottomMore() {
+  var m = document.getElementById('mbbMoreMenu');
+  if (m) m.classList.remove('open');
+}
+document.addEventListener('click', function(ev) {
+  var menu = document.getElementById('mbbMoreMenu');
+  var btn  = document.getElementById('mbbMore');
+  if (!menu || !menu.classList.contains('open')) return;
+  if (menu.contains(ev.target) || (btn && btn.contains(ev.target))) return;
+  menu.classList.remove('open');
+});
 
 function openFavLists() {
   renderFavLists();
@@ -298,23 +334,64 @@ function renderFavLists() {
   var rows = '';
   rows += '<button class="mfav-row' + (wlColorFilter === '' ? ' active' : '') + '" onclick="setFavFilter(\'\')">'
     + '<span class="mfav-swatch all" style="background:linear-gradient(135deg,#ef5350,#26a69a,#2962ff)"></span>'
-    + '<span>הצג הכל</span>'
+    + '<span class="mfav-name">הצג הכל</span>'
     + '<span class="mfav-count">' + (watchlist ? watchlist.length : 0) + '</span>'
     + '</button>';
   WL_COLORS.forEach(function(c) {
-    rows += '<button class="mfav-row' + (wlColorFilter === c.key ? ' active' : '') + '" onclick="setFavFilter(\'' + c.key + '\')" title="' + c.label + '" aria-label="' + c.label + '">'
-      + '<span class="mfav-swatch" style="background:' + c.hex + '"></span>'
-      + '<span class="mfav-count">' + (counts[c.key] || 0) + '</span>'
-      + '</button>';
+    rows += '<div class="mfav-row' + (wlColorFilter === c.key ? ' active' : '') + '" id="mfavRow-' + c.key + '">'
+      + '<span class="mfav-swatch" style="background:' + c.hex + '" onclick="setFavFilter(\'' + c.key + '\')"></span>'
+      + '<span class="mfav-name" onclick="setFavFilter(\'' + c.key + '\')">' + wlColorLabel(c.key) + '</span>'
+      + '<span class="mfav-count" onclick="setFavFilter(\'' + c.key + '\')">' + (counts[c.key] || 0) + '</span>'
+      + '<button class="mfav-edit" onclick="editFavRow(\'' + c.key + '\')" title="ערוך שם" aria-label="ערוך שם">✏️</button>'
+      + '</div>';
   });
   box.innerHTML = rows;
+}
+
+// Inline rename editor for a colored watchlist row.
+function editFavRow(key) {
+  var row = document.getElementById('mfavRow-' + key);
+  if (!row) return;
+  var current = wlColorLabel(key);
+  var def = (WL_COLORS.filter(function(c){ return c.key === key; })[0] || {}).label || key;
+  var hex = wlColorHex(key);
+  row.innerHTML =
+      '<span class="mfav-swatch" style="background:' + hex + '"></span>'
+    + '<div class="mfav-editwrap">'
+    +   '<input class="mfav-editinp" id="mfavInp-' + key + '" value="' + current.replace(/"/g, '&quot;') + '" maxlength="22" placeholder="שם הרשימה" />'
+    +   '<button class="mfav-editbtn save" onclick="saveFavName(\'' + key + '\')" title="שמור">✓</button>'
+    +   '<button class="mfav-editbtn del" onclick="resetFavName(\'' + key + '\')" title="אפס לברירת מחדל (' + def + ')">🗑</button>'
+    +   '<button class="mfav-editbtn" onclick="renderFavLists()" title="ביטול">✕</button>'
+    + '</div>';
+  var inp = document.getElementById('mfavInp-' + key);
+  if (inp) {
+    inp.focus();
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') saveFavName(key);
+      if (e.key === 'Escape') renderFavLists();
+    });
+  }
+}
+function saveFavName(key) {
+  var inp = document.getElementById('mfavInp-' + key);
+  var v = inp ? inp.value.trim() : '';
+  if (v) wlColorNames[key] = v; else delete wlColorNames[key];
+  saveWlColorNames();
+  renderFavLists();
+  if (typeof renderColorBar === 'function') renderColorBar();
+}
+function resetFavName(key) {
+  delete wlColorNames[key];
+  saveWlColorNames();
+  renderFavLists();
+  if (typeof renderColorBar === 'function') renderColorBar();
 }
 function setFavFilter(key) {
   wlColorFilter = key;
   closeFavLists();
   renderWatchlist();
   if (typeof ntToast === 'function') {
-    var lbl = key ? ('מציג רשימת ' + (WL_COLORS.filter(function(c){return c.key===key;})[0]||{}).label) : 'מציג את כל הרשימה';
+    var lbl = key ? ('מציג רשימת ' + wlColorLabel(key)) : 'מציג את כל הרשימה';
     ntToast(lbl);
   }
 }
@@ -334,7 +411,7 @@ function renderColorBar() {
     + '<span class="wlcb-count">' + (watchlist ? watchlist.length : 0) + '</span>'
     + '</button>';
   WL_COLORS.forEach(function(c) {
-    html += '<button class="wlcb-chip' + (wlColorFilter === c.key ? ' active' : '') + '" onclick="setFavFilter(\'' + c.key + '\')" title="' + c.label + '" aria-label="' + c.label + '">'
+    html += '<button class="wlcb-chip' + (wlColorFilter === c.key ? ' active' : '') + '" onclick="setFavFilter(\'' + c.key + '\')" title="' + wlColorLabel(c.key) + '" aria-label="' + wlColorLabel(c.key) + '">'
       + '<span class="wlcb-bm" style="background:' + c.hex + '"></span>'
       + '<span class="wlcb-count">' + (counts[c.key] || 0) + '</span>'
       + '</button>';
