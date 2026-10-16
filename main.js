@@ -2984,7 +2984,7 @@ function renderWatchlist() {
     var favCol = wlColorMap[sym] || '';
     var favStyle = favCol ? ('background:' + wlColorHex(favCol) + ';border-color:' + wlColorHex(favCol)) : '';
     return '<li class="watch-item" onclick="selectSymbol(\'' + sym + '\')">'
-      + '<button class="watch-color-dot" style="' + favStyle + '" title="סמן בצבע מועדפים" onclick="openColorPicker(event,\'' + sym + '\')"></button>'
+      + '<button class="watch-bookmark-dot" style="' + favStyle + '" title="סמן בצבע מועדפים" onclick="openColorPicker(event,\'' + sym + '\')"></button>'
       + '<div class="watch-icon-wrap">'
       + '<div class="watch-icon" style="background:' + iconBg + '">' + initials + '</div>'
       + logoImg

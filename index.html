@@ -121,7 +121,7 @@
     .topbar { position:fixed; top:0; left:0; right:34px; z-index:1001; height:42px; background:var(--surface); border-bottom:1px solid var(--border); padding:0; display:flex; align-items:center; direction:ltr; }
     .topbar-left { display:flex; gap:.22rem; align-items:center; flex-direction:row; padding:0 .45rem; flex:1; min-width:0; }
     .search-box { display:flex; gap:.45rem; align-items:center; position:relative; }
-    .search-box input { background:#2a2e3a; border:1px solid var(--border); border-radius:10px; padding:.27rem .58rem; color:#fff; font-size:.93rem; font-family:'Heebo',sans-serif; width:179px; direction:rtl; height:29px; cursor:pointer; }
+    .search-box input { background:#2a2e3a; border:1px solid var(--border); border-radius:10px; padding:.18rem .32rem; color:#fff; font-size:.62rem; font-family:'Heebo',sans-serif; width:67px; direction:rtl; height:22px; cursor:pointer; }
     .search-box input:focus { outline:none; border-color:var(--accent); }
     .search-box input::placeholder { color:#fff; opacity:.95; }
     /* OLD dropdown hidden — replaced by search modal */
@@ -170,10 +170,11 @@
     .sm-empty { text-align:center; color:#555; padding:2rem 1rem; font-size:.86rem; }
     .sm-tabs { border-bottom-color:#2a2e3a; }
     .user-menu { position:relative; }
-    .user-btn { background:var(--surface2); border:1px solid var(--border); border-radius:999px; padding:.06rem; display:flex; gap:0; align-items:center; cursor:pointer; }
+    .user-btn { background:transparent; border:1px solid transparent; border-radius:999px; padding:.06rem; display:flex; gap:0; align-items:center; cursor:pointer; }
     .user-btn:hover { border-color:var(--accent); }
-    .topbar .user-avatar { width:27px; height:27px; font-size:.85rem; }
+    .topbar .user-avatar { width:27px; height:27px; font-size:.85rem; background:#7bd88f; color:#0a2a14; display:flex; }
     .topbar .user-name { display:none; }
+    .topbar .user-btn { width:27px; height:27px; padding:0; }
     .user-dropdown {
       position:absolute; top:110%; right:0; left:auto;
       min-width:150px; max-width:calc(100vw - 14px);
@@ -183,6 +184,16 @@
     }
     .user-dropdown.open { display:block; }
     .user-dd-btn { width:100%; border:1px solid var(--border); background:transparent; color:var(--text-muted); border-radius:8px; padding:.4rem .5rem; font-size:.76rem; font-family:'Heebo',sans-serif; cursor:pointer; }
+    @media (min-width:769px) {
+      .search-box input { width:67px; }
+      .topbar-bell {
+        width:37px; height:37px; font-size:1.42rem;
+      }
+      .topbar-modebtn {
+        padding:.44rem .98rem;
+        font-size:1.11rem;
+      }
+    }
     .user-dd-btn:hover { border-color:var(--red); color:var(--red); }
     .btn { background:var(--accent); color:#fff; border:none; border-radius:8px; padding:.45rem 1rem; font-size:.82rem; font-family:'Heebo',sans-serif; cursor:pointer; transition:opacity .2s; }
     .btn:hover { opacity:.85; }
@@ -198,7 +209,7 @@
       width:var(--sidebar-w);
       flex:0 0 var(--sidebar-w);
       background:#010204; border-left:1px solid var(--border);
-      overflow:hidden; display:flex; flex-direction:column;
+      overflow:visible; display:flex; flex-direction:column;
       min-width:0; z-index:2;
       box-shadow:none;
     }
@@ -209,11 +220,11 @@
     }
     .sidebar-hdr-title { display:flex; align-items:center; gap:.4rem; }
     .sidebar-body {
-      flex:1; overflow-y:auto; padding:0;
+      flex:1; overflow-y:auto; overflow-x:visible; padding:0;
       padding-top:0;
       display:flex; flex-direction:column;
     }
-    .sidebar-view { display:none; flex:1; overflow-y:auto; padding:.65rem .75rem; flex-direction:column; gap:.5rem; }
+    .sidebar-view { display:none; flex:1; overflow-y:auto; overflow-x:visible; padding:.65rem .75rem; flex-direction:column; gap:.5rem; }
     .sidebar-view.active { display:flex; }
     .sidebar::-webkit-scrollbar { width:4px; }
     .sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
@@ -279,9 +290,22 @@
       direction:rtl;
       background:transparent;
       border-bottom:1px solid rgba(255,255,255,0.22);
+      position:relative;
+      overflow:visible;
     }
     .watch-item:last-child { border-bottom:none; }
     .watch-item:hover { background:rgba(41,98,255,0.16); box-shadow:inset 2px 0 0 0 var(--accent); }
+    .watch-bookmark-dot {
+      position:absolute;
+      left:-8px;
+      right:auto;
+      top:50%;
+      transform:translateY(-50%);
+      width:14px; height:18px; flex-shrink:0; cursor:pointer;
+      border:1.5px solid var(--border); background:transparent;
+      clip-path:polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+      z-index:2;
+    }
     .watch-icon-wrap { position:relative; flex-shrink:0; width:20px; height:20px; }
     .watch-icon {
       width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center;
@@ -331,14 +355,15 @@
     }
     /* Desktop: enlarge the right-sidebar watchlist by ~50% */
     @media (min-width:769px) {
-      .watch-item { padding:.54rem .57rem; gap:.57rem; }
-      .watch-icon-wrap { width:30px; height:30px; }
-      .watch-icon { width:30px; height:30px; font-size:.77rem; }
-      .watch-dot { width:12px; height:12px; }
-      .watch-sym { font-size:.9rem; }
-      .watch-name { font-size:.77rem; }
-      .watch-price { font-size:.89rem; }
-      .watch-chg { font-size:.8rem; }
+      .watch-item { padding:.32rem .56rem .32rem .42rem; gap:.42rem; min-height:40px; }
+      .watch-bookmark-dot { left:-9px; right:auto; width:14px; height:18px; }
+      .watch-icon-wrap { width:24px; height:24px; }
+      .watch-icon { width:24px; height:24px; font-size:.63rem; }
+      .watch-dot { width:9px; height:9px; }
+      .watch-sym { font-size:.76rem; }
+      .watch-name { font-size:.64rem; line-height:1.02; }
+      .watch-price { font-size:.78rem; }
+      .watch-chg { font-size:.69rem; }
       .watch-remove-btn { width:24px; height:24px; font-size:.96rem; }
     }
     /* PORTFOLIO FULL PAGE */
@@ -684,6 +709,7 @@
       border:none;
       background:transparent;
     }
+    .ib svg{display:block}
     .ib:hover{background:var(--surface2);color:var(--accent)}
     .ib.active{background:rgba(41,98,255,.12);color:var(--accent)}
     /* Bottom group: all non-hamburger icons drop to the bottom-right corner */
@@ -739,13 +765,20 @@
       transition:opacity .15s;
     }
     .ib-hamburger:hover .ib-tip{opacity:1}
+    #ib-clock {
+      color:#fff;
+    }
+    #ib-clock svg {
+      width:22px;
+      height:22px;
+    }
     /* sidebar hidden state */
     .sidebar.collapsed{display:none!important}
     .ib-sep{width:18px;height:1px;background:var(--border);margin:2px 0;pointer-events:none}
     /* Topbar bell button */
     .topbar-bell {
-      background:transparent; border:none; font-size:1.5rem; cursor:pointer; position:relative;
-      display:flex; align-items:center; justify-content:center; width:39px; height:39px; border-radius:50%;
+      background:transparent; border:none; font-size:1.42rem; cursor:pointer; position:relative;
+      display:flex; align-items:center; justify-content:center; width:37px; height:37px; border-radius:50%;
       transition:background .15s;
     }
     .topbar-bell:hover { background:var(--surface2); }
@@ -2020,7 +2053,7 @@
       #pwaInstallClose { bottom:84px; }
 
       /* User avatar */
-      .topbar .user-avatar { width:20px; height:20px; font-size:.57rem; }
+      .topbar .user-avatar { width:27px; height:27px; font-size:.85rem; background:#7bd88f; color:#0a2a14; }
 
       /* Position panel: fits within chart area on mobile */
       #positionPanel { width:calc(100vw - 74px) !important; left:16px !important; top:86px !important; right:auto !important; }
@@ -2104,21 +2137,27 @@
       body:not(.m-chart) #taseBadge,
       body:not(.m-chart) #toSignalsBtn,
       body:not(.m-chart) #ib-alerts,
-      body:not(.m-chart) .search-box,
-      body:not(.m-chart) .user-menu { display:none !important; }
+      body:not(.m-chart) .search-box { display:none !important; }
+      /* User avatar (light green) shown on the list home, next to the hamburger */
+      body:not(.m-chart) .user-menu {
+        display:block !important;
+        position:absolute; right:54px; top:50%; transform:translateY(-50%);
+      }
+      body:not(.m-chart) .topbar .user-avatar { width:27px; height:27px; font-size:.85rem; background:#7bd88f; color:#0a2a14; display:flex; }
       body:not(.m-chart) .topbar-left { justify-content:space-between; padding:0 .3rem; }
 
-      /* ---- LIST HOME: watchlist rows 2× bigger ---- */
-      body:not(.m-chart) .watch-item { padding:.72rem .6rem; gap:.7rem; }
-      body:not(.m-chart) .watch-icon-wrap { width:40px; height:40px; }
-      body:not(.m-chart) .watch-icon { width:40px; height:40px; font-size:1rem; }
-      body:not(.m-chart) .wl-logo { width:40px !important; height:40px !important; }
-      body:not(.m-chart) .watch-dot { width:12px; height:12px; }
-      body:not(.m-chart) .watch-sym { font-size:1.15rem; }
-      body:not(.m-chart) .watch-name { font-size:.9rem; }
-      body:not(.m-chart) .watch-price { font-size:1.08rem; }
-      body:not(.m-chart) .watch-chg { font-size:.9rem; }
-      body:not(.m-chart) .watch-remove-btn { width:28px; height:28px; font-size:1rem; }
+      /* ---- LIST HOME: compact watchlist rows ---- */
+      body:not(.m-chart) .watch-item { padding:.28rem .5rem .28rem .4rem; gap:.36rem; min-height:36px; }
+      body:not(.m-chart) .watch-bookmark-dot { left:-9px; right:auto; width:13px; height:17px; }
+      body:not(.m-chart) .watch-icon-wrap { width:25px; height:25px; }
+      body:not(.m-chart) .watch-icon { width:25px; height:25px; font-size:.66rem; }
+      body:not(.m-chart) .wl-logo { width:25px !important; height:25px !important; }
+      body:not(.m-chart) .watch-dot { width:9px; height:9px; }
+      body:not(.m-chart) .watch-sym { font-size:.76rem; }
+      body:not(.m-chart) .watch-name { font-size:.63rem; }
+      body:not(.m-chart) .watch-price { font-size:.78rem; }
+      body:not(.m-chart) .watch-chg { font-size:.68rem; }
+      body:not(.m-chart) .watch-remove-btn { width:22px; height:22px; font-size:.84rem; }
 
       /* ================================================================
          CHART SCREEN (body.m-chart): clean — chart + price scale only.
@@ -2225,7 +2264,7 @@
     /* ===== SIGNAL FEED (Mode A) ===== */
     .topbar-modebtn {
       background:rgba(41,98,255,.14); border:1px solid rgba(41,98,255,.4); color:var(--accent);
-      border-radius:8px; padding:.48rem 1.05rem; font-size:1.17rem; font-weight:700; cursor:pointer;
+      border-radius:8px; padding:.44rem .98rem; font-size:1.11rem; font-weight:700; cursor:pointer;
       font-family:Heebo,sans-serif; margin-left:.4rem; white-space:nowrap; transition:background .15s;
     }
     .topbar-modebtn:hover { background:rgba(41,98,255,.28); }
@@ -2861,7 +2900,7 @@
 </div>
 
 <script src="scanner-symbols.js?v=20260927ai"></script>
-<script src="main.js?v=20260927ai"></script>
+<script src="main.js?v=20261016b"></script>
 <script src="drawing.js?v=20260927ai"></script>
 <script src="features.js?v=20260927ai"></script>
 <script src="signals.js?v=20260927ai"></script>
@@ -3031,7 +3070,12 @@
     <span class="ib-tip">Watchlist</span>
   </button>
   <button class="ib" id="ib-clock" onclick="ibToggle('clock')" title="">
-    ⏰<span class="ib-tip">התראות גרף</span><span class="ib-badge" id="chartAlertBadge" style="display:none">0</span>
+    <svg class="ib-clock-ico" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.25" fill="#0b0d13" stroke="currentColor" stroke-width="1.8"/>
+      <path d="M12 7.2v4.6l3.1 1.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12 4.9v1.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+    </svg>
+    <span class="ib-tip">התראות גרף</span><span class="ib-badge" id="chartAlertBadge" style="display:none">0</span>
   </button>
   <button class="ib" id="ib-layers" onclick="ibToggle('layers')" title="">
     ◫<span class="ib-tip">אובייקטים על הגרף</span>
