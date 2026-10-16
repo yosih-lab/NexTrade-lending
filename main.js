@@ -3735,7 +3735,7 @@ async function init() {
 }
 
 // ============================================
-//   BACKGROUND SCANNER — MA16 Uptrend + Pullback to MA
+//   BACKGROUND SCANNER — SMA30 method (scanner-engine.js)
 //   Runs silently every 5 minutes, scans TASE + US + Commodities
 // ============================================
 
@@ -3829,6 +3829,14 @@ function calcMA(bars, period) {
   return sum / period;
 }
 
+// Compact price formatter for scanner alert messages.
+function fmtNum(x) {
+  if (x == null || isNaN(x)) return '-';
+  var abs = Math.abs(x);
+  var dp = abs >= 100 ? 2 : (abs >= 1 ? 2 : 4);
+  return (Math.round(x * Math.pow(10, dp)) / Math.pow(10, dp)).toFixed(dp);
+}
+
 async function runBackgroundScanner() {
   if (_scannerRunning) return;
   _scannerRunning = true;
@@ -3839,7 +3847,7 @@ async function runBackgroundScanner() {
   var errors = 0;
   var symbols = (typeof ALL_SCANNER_SYMBOLS !== 'undefined') ? ALL_SCANNER_SYMBOLS : TASE_SYMBOLS;
 
-  console.log('[Scanner] Starting background scan of', symbols.length, 'symbols (MA16 logic)...');
+  console.log('[Scanner] Starting background scan of', symbols.length, 'symbols (SMA30 method engine)...');
 
   // Process in batches of 10
   for (var batch = 0; batch < symbols.length; batch += 10) {
@@ -3849,15 +3857,6 @@ async function runBackgroundScanner() {
         var bars = await fetchYahooChartDirect(sym, '1W');
         scanned++;
         if (!bars || bars.length < 21) { errors++; return; }
-
-        // Calculate current MA16
-        var ma16now = calcMA(bars, 16);
-        if (!ma16now) return;
-
-        // Calculate MA16 from 4 weeks ago (to check if rising/falling)
-        var bars4ago = bars.slice(0, -4);
-        var ma16prev = calcMA(bars4ago, 16);
-        if (!ma16prev) return;
 
         var currentPrice = bars[bars.length - 1].close;
 
@@ -3869,99 +3868,52 @@ async function runBackgroundScanner() {
         var avgVol8 = last8.reduce(function(s, b) { return s + (b.volume || 0); }, 0) / last8.length;
         if (avgVol8 < 1000) return;
 
-        var prevClose = bars[bars.length - 2] ? bars[bars.length - 2].close : null;
-        var weekReturn = prevClose ? (currentPrice - prevClose) / prevClose : 0;
-
-        // ===== Trend definition: last 16 weeks (~4 months) of highs/lows =====
-        // "מגמת עלייה" = highs AND lows over the period are rising or not falling.
-        // "מגמת ירידה" = highs AND lows over the period are falling or not rising.
-        // Excludes the current (still forming) week — looks 16 weeks back from the last closed week.
-        var lookback16 = bars.slice(-17, -1);
-        var isUptrend16 = false, isDowntrend16 = false, recentHigh16 = null, recentLow16 = null;
-        if (lookback16.length === 16) {
-          var firstHalf = lookback16.slice(0, 8);
-          var secondHalf = lookback16.slice(8, 16);
-          var avgHighFirst = firstHalf.reduce(function(s,b){return s+b.high;},0) / 8;
-          var avgHighSecond = secondHalf.reduce(function(s,b){return s+b.high;},0) / 8;
-          var avgLowFirst = firstHalf.reduce(function(s,b){return s+b.low;},0) / 8;
-          var avgLowSecond = secondHalf.reduce(function(s,b){return s+b.low;},0) / 8;
-          isUptrend16 = (avgHighSecond >= avgHighFirst) && (avgLowSecond >= avgLowFirst);
-          isDowntrend16 = (avgHighSecond <= avgHighFirst) && (avgLowSecond <= avgLowFirst);
-          recentHigh16 = Math.max.apply(null, lookback16.map(function(b){return b.high;}));
-          recentLow16 = Math.min.apply(null, lookback16.map(function(b){return b.low;}));
-        }
-
-        var trendType = isUptrend16 ? 'עלייה' : (isDowntrend16 ? 'ירידה' : 'דישדוש');
-
         // Determine currency
         var isTASE = sym.endsWith('.TA');
         var curr = isTASE ? '₪' : '$';
 
-        // ===== BUY (long) signal =====
-        // MA16 pullback: price above a rising MA16, corrected back down near it (within 2%)
-        // PLUS trend confirmation (16-week uptrend) PLUS price reached the last 16-week high (retest of prior high as support)
-        var buyOk = true;
-        if (currentPrice < ma16now) buyOk = false;
-        if (buyOk && ma16now <= ma16prev) buyOk = false;
-        var distFromMA = (currentPrice - ma16now) / ma16now;
-        if (buyOk && distFromMA > 0.02) buyOk = false; // price too far above MA — not a pullback
-        var maGainNum = ((ma16now - ma16prev) / ma16prev * 100);
-        if (buyOk && maGainNum < 0.5) buyOk = false; // MA rise too weak/noisy
-        if (buyOk && weekReturn < -0.08) buyOk = false; // falling knife, not a healthy pullback
-        if (buyOk && !isUptrend16) buyOk = false; // 16-week HH/HL trend must confirm uptrend
-        var highDistPct = recentHigh16 ? Math.abs(currentPrice - recentHigh16) / recentHigh16 : 1;
-        if (buyOk && (recentHigh16 === null || highDistPct > 0.03)) buyOk = false; // must reach the last 16-week high
-
-        // ===== SELL/SHORT signal (mirror pattern) =====
-        // MA16 rally: price below a falling MA16, corrected back up near it (within 2%)
-        // PLUS trend confirmation (16-week downtrend) PLUS price reached the last 16-week low (retest of prior low as resistance)
-        var sellOk = true;
-        if (currentPrice > ma16now) sellOk = false;
-        if (sellOk && ma16now >= ma16prev) sellOk = false;
-        var distFromMASell = (ma16now - currentPrice) / ma16now;
-        if (sellOk && distFromMASell > 0.02) sellOk = false; // price too far below MA — not a relief rally
-        var maLossNum = ((ma16prev - ma16now) / ma16prev * 100);
-        if (sellOk && maLossNum < 0.5) sellOk = false; // MA drop too weak/noisy
-        if (sellOk && weekReturn > 0.08) sellOk = false; // rising knife, not a healthy rally
-        if (sellOk && !isDowntrend16) sellOk = false; // 16-week HH/HL trend must confirm downtrend
-        var lowDistPct = recentLow16 ? Math.abs(currentPrice - recentLow16) / recentLow16 : 1;
-        if (sellOk && (recentLow16 === null || lowDistPct > 0.03)) sellOk = false; // must reach the last 16-week low
-
-        if (buyOk) {
-          var last5 = bars.slice(-5);
-          var support5 = Math.min.apply(null, last5.map(function(b) { return b.low; }));
-          var supportDistPct = ((currentPrice - support5) / support5 * 100);
-          results.push({
-            sym: sym,
-            name: NAMES[sym] || sym.replace('.TA', ''),
-            price: currentPrice,
-            ma16: ma16now,
-            maGain: maGainNum.toFixed(1),
-            trendType: trendType,
-            direction: 'long',
-            support5: support5,
-            supportDistPct: supportDistPct,
-            distPct: (distFromMA * 100).toFixed(1),
-            curr: curr
-          });
-        }
-        if (sellOk) {
-          var last5s = bars.slice(-5);
-          var resistance5 = Math.max.apply(null, last5s.map(function(b) { return b.high; }));
-          var resistDistPct = ((resistance5 - currentPrice) / resistance5 * 100);
-          results.push({
-            sym: sym,
-            name: NAMES[sym] || sym.replace('.TA', ''),
-            price: currentPrice,
-            ma16: ma16now,
-            maGain: (-maLossNum).toFixed(1),
-            trendType: trendType,
-            direction: 'short',
-            support5: resistance5,
-            supportDistPct: resistDistPct,
-            distPct: (distFromMASell * 100).toFixed(1),
-            curr: curr
-          });
+        // ===== SMA30 METHOD ENGINE (scanner-engine.js) =====
+        // Runs Yosi's weekly method: SMA30 + S/R flips + 5-candle breakout/retest +
+        // volume health + ATR stops + 1:2 targets + pre-entry alert timing.
+        if (typeof window.NTScanner === 'undefined') return;
+        var a = window.NTScanner.analyze(bars, {
+          symbol: sym,
+          name: NAMES[sym] || sym.replace('.TA', ''),
+          curr: curr
+        });
+        if (a && a.direction && a.entry != null) {
+          // "armed" = price has reached the pre-entry alert buffer near the level.
+          var armed = a.alertLevel != null && Math.abs(a.price - a.alertLevel) / a.alertLevel <= 0.015;
+          if (a.status === 'entry' || armed) {
+            var trendType = a.trend === 'up' ? 'עלייה' : (a.trend === 'down' ? 'ירידה' : 'דישדוש');
+            results.push({
+              sym: sym,
+              name: a.name,
+              price: a.price,
+              curr: curr,
+              direction: a.direction,        // 'long' | 'short'
+              setup: a.setup,
+              status: a.status,              // 'entry' | 'watch'
+              trendType: trendType,
+              sma30: a.sma30,
+              atr: a.atr,
+              level: a.level,
+              levelTouches: a.levelTouches,
+              entry: a.entry,
+              stop: a.stop,
+              target: a.target,
+              rr: a.rr,
+              alertLevel: a.alertLevel,
+              alertSide: a.alertSide,
+              reasons: a.reasons,
+              // back-compat fields consumed by the existing bell / signals.js
+              ma16: a.sma30,
+              maGain: '0',
+              support5: a.stop,
+              supportDistPct: a.level ? ((a.price - a.level) / a.level * 100) : 0,
+              distPct: a.level ? (((a.price - a.level) / a.level) * 100).toFixed(1) : '0'
+            });
+          }
         }
 
         // ===== TREND STRUCTURE REVERSAL (swing highs/lows — Dow-theory structure) =====
@@ -3987,7 +3939,12 @@ async function runBackgroundScanner() {
 
   // Fire buy/sell signals
   if (results.length) {
-    results.sort(function(a, b) { return Math.abs(parseFloat(b.maGain)) - Math.abs(parseFloat(a.maGain)); });
+    // Prioritise ready entries over watch/armed setups, then stronger levels.
+    results.sort(function(a, b) {
+      var sa = a.status === 'entry' ? 0 : 1, sb = b.status === 'entry' ? 0 : 1;
+      if (sa !== sb) return sa - sb;
+      return (b.levelTouches || 0) - (a.levelTouches || 0);
+    });
 
     results.forEach(function(r) {
       var isShort = r.direction === 'short';
@@ -3999,9 +3956,23 @@ async function runBackgroundScanner() {
       var time = now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
       var date = now.toLocaleDateString('he-IL');
       var ts = now.getTime();
-      var msg = isShort
-        ? ('🔴 מכירה (שורט): ' + r.sym.replace('.TA', '') + ' — מגמה ' + r.trendType + ' | חזרה להתנגדות שבועית')
-        : ('🟢 קנייה: ' + r.sym.replace('.TA', '') + ' — מגמה ' + r.trendType + ' | חזרה לתמיכה שבועית');
+      var sideIcon = isShort ? '🔴' : '🟢';
+      var sideWord = isShort ? 'שורט' : 'לונג';
+      var statusWord = r.status === 'entry' ? 'כניסה' : 'מתקרב';
+      var setupMap = {
+        pullback: 'Pullback לתמיכה',
+        breakout_retest: 'פריצה + ריטסט',
+        breakdown_retest: 'שבירה + ריטסט',
+        range_breakout: 'פריצת Range',
+        sma30_reclaim: 'החזרת SMA30',
+        sma30_rejection: 'דחייה מ-SMA30'
+      };
+      var setupTxt = setupMap[r.setup] || r.setup || '';
+      var lvls = '';
+      if (r.entry != null) {
+        lvls = ' | כניסה ' + r.curr + fmtNum(r.entry) + ' · סטופ ' + r.curr + fmtNum(r.stop) + ' · יעד ' + r.curr + fmtNum(r.target) + ' (1:' + r.rr + ')';
+      }
+      var msg = sideIcon + ' ' + sideWord + ' (' + statusWord + '): ' + r.sym.replace('.TA', '') + ' — ' + setupTxt + ' | מגמה ' + r.trendType + lvls;
       var stored = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
       stored.unshift({
         sym: r.sym,
@@ -4010,7 +3981,21 @@ async function runBackgroundScanner() {
         curr: r.curr,
         condition: isShort ? 'sell_signal' : 'buy_signal',
         direction: r.direction,
+        setup: r.setup,
+        status: r.status,
         trendType: r.trendType,
+        sma30: r.sma30,
+        atr: r.atr,
+        level: r.level,
+        levelTouches: r.levelTouches,
+        entry: r.entry,
+        stop: r.stop,
+        target: r.target,
+        rr: r.rr,
+        alertLevel: r.alertLevel,
+        alertSide: r.alertSide,
+        reasons: r.reasons,
+        // back-compat fields consumed by signals.js computeLevels / cards
         ma16: r.ma16,
         maGain: r.maGain,
         support5: r.support5,
