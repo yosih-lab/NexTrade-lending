@@ -776,6 +776,45 @@
       transition:opacity .15s;
     }
     .ib:hover .ib-tip{opacity:1}
+    .ib-badge{
+      position:absolute; top:4px; right:4px;
+      min-width:15px; height:15px; border-radius:999px;
+      background:#ef5350; color:#fff; font-size:.58rem; font-weight:900;
+      display:flex; align-items:center; justify-content:center;
+      padding:0 3px; line-height:1; pointer-events:none;
+      box-shadow:0 0 0 2px var(--surface);
+    }
+    .ca-list,.layers-list{display:flex;flex-direction:column;gap:.45rem}
+    .ca-item,.layer-row{
+      display:flex; align-items:center; gap:.6rem;
+      padding:.62rem .68rem; border-radius:12px;
+      background:#11141d; border:1px solid rgba(255,255,255,.06);
+    }
+    .ca-item:hover,.layer-row:hover{background:#151a26;border-color:rgba(41,98,255,.18)}
+    .ca-main,.layer-main{flex:1;min-width:0;cursor:pointer}
+    .ca-title,.layer-title{font-size:.9rem;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ca-sub,.layer-sub{font-size:.73rem;color:var(--text-muted);margin-top:.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ca-dot,.layer-dot{
+      width:32px;height:32px;border-radius:50%;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;
+      background:#24304a;color:#fff;font-weight:900;font-size:.78rem;
+    }
+    .ca-del,.layer-del{
+      background:transparent;border:none;color:var(--text-muted);cursor:pointer;
+      width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+      border-radius:8px;font-size:1rem;flex-shrink:0;
+    }
+    .ca-del:hover,.layer-del:hover{background:rgba(239,83,80,.12);color:var(--red)}
+    .layers-head{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:.1rem .1rem .35rem;font-size:.72rem;font-weight:800;color:var(--text-muted);
+      text-transform:uppercase;letter-spacing:.35px;
+    }
+    .layers-empty,.ca-empty{
+      padding:1.2rem .7rem;text-align:center;color:var(--text-muted);font-size:.78rem;
+      background:#11141d;border:1px dashed rgba(255,255,255,.08);border-radius:12px;
+    }
+    .layer-row.muted .layer-title,.layer-row.muted .layer-sub{opacity:.8}
     /* TOOLBAR PANELS */
     .ib-panel{
       position:fixed;
@@ -2631,7 +2670,12 @@
 
         <!-- VIEW: Clock -->
         <div class="sidebar-view" id="sview-clock">
-          <div id="ibClockBody2"></div>
+          <div id="chartAlertsBody" class="ca-list"></div>
+        </div>
+
+        <!-- VIEW: Layers -->
+        <div class="sidebar-view" id="sview-layers">
+          <div id="layersBody" class="layers-list"></div>
         </div>
 
         <!-- VIEW: Tasks -->
@@ -2816,11 +2860,11 @@
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20260927ah"></script>
-<script src="main.js?v=20260927ah"></script>
-<script src="drawing.js?v=20260927ah"></script>
-<script src="features.js?v=20260927ah"></script>
-<script src="signals.js?v=20260927ah"></script>
+<script src="scanner-symbols.js?v=20260927ai"></script>
+<script src="main.js?v=20260927ai"></script>
+<script src="drawing.js?v=20260927ai"></script>
+<script src="features.js?v=20260927ai"></script>
+<script src="signals.js?v=20260927ai"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
@@ -2985,6 +3029,12 @@
   <button class="ib-hamburger active" id="ib-sidebar" onclick="ibToggleSidebar()" title="">
     <span></span><span></span><span></span>
     <span class="ib-tip">Watchlist</span>
+  </button>
+  <button class="ib" id="ib-clock" onclick="ibToggle('clock')" title="">
+    ⏰<span class="ib-tip">התראות גרף</span><span class="ib-badge" id="chartAlertBadge" style="display:none">0</span>
+  </button>
+  <button class="ib" id="ib-layers" onclick="ibToggle('layers')" title="">
+    ◫<span class="ib-tip">אובייקטים על הגרף</span>
   </button>
   <!-- All other tools drop to the bottom-right, leaving a gap below the hamburger -->
   <div class="ib-bottom-group">
@@ -3157,7 +3207,8 @@ var _sidebarViews = {
   calendar:    { title: '📅 לוח אירועים', render: function(){ if(window.NTFeatures) NTFeatures.renderCalendar(); } },
   lab:         { title: '🧪 מעבדה', render: function(){ if(window.NTFeatures) NTFeatures.renderLab(); } },
   chat:        { title: '💬 צ\'אט' },
-  clock:       { title: '🕐 שעון', render: function(){ ibRenderClock2(); } },
+  clock:       { title: '⏰ התראות גרף', render: function(){ renderChartAlertsSidebar(); } },
+  layers:      { title: '◫ אובייקטים על הגרף', render: function(){ renderLayersSidebar(); } },
   tasks:       { title: '🗒️ משימות', render: function(){ ibRenderTasks2(); } },
   news:        { title: '📰 חדשות', render: function(){ if(typeof loadNews==='function') loadNews(typeof currentSymbol!=='undefined'?currentSymbol:''); } }
 };
@@ -3201,7 +3252,7 @@ function sidebarOpen(viewName) {
   if (titleEl && _sidebarViews[viewName]) titleEl.textContent = _sidebarViews[viewName].title;
   _currentSidebarView = viewName;
   // Activate icon button highlight
-  ['chat','alerts','indicators','insights','risk','calendar','lab','news'].forEach(function(p) {
+  ['clock','layers','chat','alerts','indicators','insights','risk','calendar','lab','news'].forEach(function(p) {
     var b = document.getElementById('ib-' + p);
     if (b) b.classList.toggle('active', p === viewName);
   });
@@ -3234,7 +3285,7 @@ function ibToggle(name) {
     // Same icon clicked again → collapse sidebar
     sidebar.classList.add('collapsed');
     document.getElementById('ib-sidebar').classList.remove('active');
-    ['chat','alerts','indicators','insights','risk','calendar','lab','news'].forEach(function(p) {
+    ['clock','layers','chat','alerts','indicators','insights','risk','calendar','lab','news'].forEach(function(p) {
       var b = document.getElementById('ib-' + p);
       if (b) b.classList.remove('active');
     });
@@ -3293,29 +3344,111 @@ function ibDelTask2(i) {
   ibRenderTasks2();
 }
 
-// CLOCK
-function ibRenderClock2() {
-  var el = document.getElementById('ibClockBody2'); if (!el) return;
-  function tick() {
-    var now = new Date();
-    var ilOff = now.getTimezoneOffset() + 180;
-    var il  = new Date(now.getTime() + ilOff * 60000);
-    var nyOff = now.getTimezoneOffset() - 240;
-    var ny  = new Date(now.getTime() + nyOff * 60000);
-    function fmt(d) { return d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
-    el.innerHTML = '<div style="text-align:center;padding:.6rem 0">'
-      + '<div style="font-size:1.45rem;font-weight:900;color:var(--accent);letter-spacing:2px">'+fmt(il)+'</div>'
-      + '<div style="font-size:.68rem;color:var(--text-muted);margin-bottom:.9rem">שעון ישראל (UTC+3)</div>'
-      + '<div style="font-size:1rem;font-weight:700;color:var(--text)">'+fmt(ny)+'</div>'
-      + '<div style="font-size:.68rem;color:var(--text-muted)">ניו יורק (NYSE)</div>'
-      + '</div>';
+function syncChartAlertBadge() {
+  var badge = document.getElementById('chartAlertBadge');
+  var count = (typeof alerts !== 'undefined' && Array.isArray(alerts)) ? alerts.length : 0;
+  if (!badge) return;
+  if (count > 0) {
+    badge.textContent = count > 99 ? '99+' : String(count);
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
   }
-  tick();
-  clearInterval(window._ibClockInt);
-  window._ibClockInt = setInterval(function() {
-    if (_currentSidebarView === 'clock') tick();
-    else clearInterval(window._ibClockInt);
-  }, 1000);
+}
+
+function chartAlertIcon(sym) {
+  var t = (sym || '').replace('.TA', '').toUpperCase();
+  return t.slice(0, 2) || 'A';
+}
+
+function renderChartAlertsSidebar() {
+  var el = document.getElementById('chartAlertsBody');
+  if (!el) return;
+  syncChartAlertBadge();
+  if (typeof alerts === 'undefined' || !alerts.length) {
+    el.innerHTML = '<div class="ca-empty">אין התראות שהוגדרו על הגרף עדיין</div>';
+    return;
+  }
+  el.innerHTML = alerts.map(function(a, i) {
+    var cond = a.condition === 'above' ? 'מעל' : 'מתחת';
+    var kind = a.kind === 'sma' ? 'SMA' : 'מחיר';
+    return '<div class="ca-item">'
+      + '<div class="ca-dot">' + chartAlertIcon(a.symbol) + '</div>'
+      + '<div class="ca-main" onclick="selectSymbol(\'' + a.symbol + '\')">'
+      + '<div class="ca-title">' + a.symbol.replace('.TA', '') + ' ' + cond + ' ' + formatPrice(a.price) + '</div>'
+      + '<div class="ca-sub">' + kind + (a.email ? (' · ✉️ ' + a.email) : '') + '</div>'
+      + '</div>'
+      + '<button class="ca-del" onclick="removeAlert(' + i + ');renderChartAlertsSidebar();if(_currentSidebarView===\'layers\')renderLayersSidebar()" title="מחק">🗑</button>'
+      + '</div>';
+  }).join('');
+}
+
+function layersDrawingSummary() {
+  if (!window.NTDraw || typeof window.NTDraw.getObjectsSummary !== 'function') return [];
+  try { return window.NTDraw.getObjectsSummary(); } catch (e) { return []; }
+}
+
+function layerRowHtml(item) {
+  return '<div class="layer-row' + (item.muted ? ' muted' : '') + '">'
+    + '<div class="layer-dot">' + (item.dot || '◫') + '</div>'
+    + '<div class="layer-main"' + (item.onclick ? ' onclick="' + item.onclick + '"' : '') + '>'
+    + '<div class="layer-title">' + item.title + '</div>'
+    + '<div class="layer-sub">' + item.sub + '</div>'
+    + '</div>'
+    + (item.del ? '<button class="layer-del" onclick="' + item.del + '" title="הסר">🗑</button>' : '')
+    + '</div>';
+}
+
+function renderLayersSidebar() {
+  var el = document.getElementById('layersBody');
+  if (!el) return;
+  var html = '';
+  var sym = (typeof currentSymbol !== 'undefined' && currentSymbol) ? currentSymbol.replace('.TA', '') : '—';
+  html += '<div class="layers-head"><span>Chart</span><span>' + sym + '</span></div>';
+
+  var indicatorRows = [];
+  if (typeof volumeVisible !== 'undefined' && volumeVisible) {
+    indicatorRows.push(layerRowHtml({ title: 'Vol (60)', sub: 'נפח עסקאות', dot: '∿', del: 'toggleVolume();renderLayersSidebar()' }));
+  }
+  if (typeof maActive !== 'undefined') {
+    Object.keys(maActive).forEach(function(period) {
+      if (!maActive[period]) return;
+      indicatorRows.push(layerRowHtml({ title: 'SMA (' + period + ', close)', sub: 'ממוצע נע על הגרף', dot: '∿', del: 'toggleMA(' + period + ');renderLayersSidebar()' }));
+    });
+  }
+  if (typeof indActive !== 'undefined') {
+    Object.keys(indActive).forEach(function(id) {
+      if (!indActive[id]) return;
+      var cfg = (typeof indCfg === 'function') ? indCfg(id) : null;
+      indicatorRows.push(layerRowHtml({ title: cfg ? cfg.label : id.toUpperCase(), sub: cfg && cfg.kind === 'osc' ? 'אינדיקטור אוסצילטור' : 'אינדיקטור על הגרף', dot: '∿', del: 'toggleIndicator(\'' + id + '\');renderLayersSidebar()' }));
+    });
+  }
+  html += '<div class="layers-head"><span>Indicators</span><span>' + indicatorRows.length + '</span></div>';
+  html += indicatorRows.length ? indicatorRows.join('') : '<div class="layers-empty">אין אינדיקטורים פעילים כרגע</div>';
+
+  var drawRows = layersDrawingSummary().map(function(obj) {
+    return layerRowHtml({ title: obj.name, sub: obj.sub || 'אובייקט ציור על הגרף', dot: obj.dot || '✎', del: 'deleteLayerObject(' + obj.id + ')' });
+  });
+  html += '<div class="layers-head"><span>Drawings</span><span>' + drawRows.length + '</span></div>';
+  html += drawRows.length ? drawRows.join('') : '<div class="layers-empty">אין כלים טכניים/ציורים שהונחו על הגרף</div>';
+  el.innerHTML = html;
+}
+
+function deleteLayerObject(id) {
+  if (window.NTDraw && typeof window.NTDraw.deleteShapeById === 'function') {
+    window.NTDraw.deleteShapeById(id);
+  }
+  renderLayersSidebar();
+}
+
+if (typeof renderAlerts === 'function') {
+  var _origRenderAlerts = renderAlerts;
+  renderAlerts = function() {
+    _origRenderAlerts();
+    syncChartAlertBadge();
+    if (_currentSidebarView === 'clock') renderChartAlertsSidebar();
+    if (_currentSidebarView === 'layers') renderLayersSidebar();
+  };
 }
 
 // OBJECT TREE

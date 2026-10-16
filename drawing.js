@@ -1543,6 +1543,31 @@
   function clearAllShapes() {
     shapes = []; selectedId = null; save(); hideActionBar(); scheduleDraw();
   }
+  function deleteShapeById(id) {
+    var before = shapes.length;
+    shapes = shapes.filter(function (s) { return s.id !== id; });
+    if (shapes.length !== before) {
+      if (selectedId === id) selectedId = null;
+      save(); hideActionBar(); scheduleDraw();
+    }
+  }
+  function getObjectsSummary() {
+    var names = {};
+    TOOL_CATALOG.forEach(function (grp) {
+      grp.items.forEach(function (it) { names[it.id] = it.name; });
+    });
+    return shapes.map(function (s, idx) {
+      var nm = names[s.type] || (s.type === 'position' ? (s.dir === 'short' ? 'עסקת שורט' : 'עסקת לונג') : s.type);
+      var sub = 'אובייקט #' + (idx + 1);
+      var dot = '✎';
+      if (s.type === 'hline' && s.p != null) { sub = 'מחיר ' + Number(s.p).toFixed(2); dot = '—'; }
+      else if (s.type === 'vline') { sub = 'קו אנכי'; dot = '│'; }
+      else if (s.type === 'position') { sub = 'Entry ' + Number(s.entry || 0).toFixed(2); dot = s.dir === 'short' ? '⌄' : '⌃'; }
+      else if (s.type === 'text') { sub = s.text || 'טקסט'; dot = 'T'; }
+      else if (s.type === 'brush') { sub = 'ציור חופשי'; dot = '∿'; }
+      return { id: s.id, type: s.type, name: nm, sub: sub, dot: dot };
+    });
+  }
 
   // ===== expose toggle for icon toolbar =====
   function openPositionPanel() {
@@ -1690,10 +1715,12 @@
     addHLine: addHLine,
     shapeCount: shapeCount,
     clearAllShapes: clearAllShapes,
+    deleteShapeById: deleteShapeById,
     toggleFloating: function () { ensureDom(); toggleFloating(); },
     showToolbar: function () { ensureDom(); showToolbar(); },
     hideToolbar: function () { ensureDom(); hideToolbar(); },
     pickTool: function (t) { ensureDom(); showToolbar(); pickTool(t); },
-    getToolCatalog: function () { return TOOL_CATALOG; }
+    getToolCatalog: function () { return TOOL_CATALOG; },
+    getObjectsSummary: getObjectsSummary
   };
 })();
