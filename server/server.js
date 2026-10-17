@@ -521,6 +521,15 @@ async function seedAndStart() {
   }
   const total = await countUsers();
   app.listen(PORT, () => console.log('[NexTrade] ✓ Server ready on port', PORT, '— users:', total));
+
+  // Start the server-side signal scanner: load any persisted signals, then scan
+  // the universe in rotating chunks on a schedule (also woken on-demand by /api/signals).
+  if (NTScanner) {
+    await loadSignalsFromDB();
+    setTimeout(() => { scanSignalsChunk().catch(e => console.error('[Signals] first scan:', e.message)); }, 8000);
+    setInterval(() => { scanSignalsChunk().catch(e => console.error('[Signals] cycle:', e.message)); }, SIG_CYCLE_MS);
+    console.log('[NexTrade] ✓ Signal scanner scheduled every', Math.round(SIG_CYCLE_MS / 60000), 'min · universe', scanUniverse().length, 'symbols');
+  }
 }
 
 // ── AUTH MIDDLEWARE ───────────────────────────────────────────────
@@ -651,6 +660,33 @@ app.post('/api/billing/checkout', requireAuth, async (req, res) => {
   } catch (e) {
     console.error('[NexTrade] POST /api/billing/checkout error:', e.message);
     res.status(500).json({ error: 'שגיאה ביצירת עמוד התשלום' });
+  }
+});
+
+// ── SIGNALS ROUTE (plan-enforced delivery) ────────────────────────
+// The authoritative signal feed. Free users get delayed + capped signals;
+// premium users get everything in real time. Enforcement lives HERE, on the
+// server, so editing localStorage in the browser cannot unlock more.
+app.get('/api/signals', requireAuth, async (req, res) => {
+  try {
+    const user = await getUserById(req.user.id);
+    const info = resolvePlan(user);
+    // Kick a refresh if the store is stale (wakes a sleeping free-tier instance).
+    if (NTScanner && Date.now() - _lastSigScan > SIG_CYCLE_MS) { scanSignalsChunk().catch(() => {}); }
+    const payload = signalsForPlan(info.isPremium);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({
+      plan: info.plan,
+      isPremium: info.isPremium,
+      total: payload.total,       // how many exist overall (for the upsell count)
+      shown: payload.signals.length,
+      delayedMs: payload.delayedMs,
+      lastScan: _lastSigScan,
+      signals: payload.signals
+    });
+  } catch (e) {
+    console.error('[NexTrade] GET /api/signals error:', e.message);
+    res.status(500).json({ error: 'שגיאה בטעינת האיתותים' });
   }
 });
 
@@ -852,6 +888,179 @@ async function runScan(symbols) {
     console.error('[scan error]', e.message);
     return scannerCache.data; // return stale data on error
   }
+}
+
+// ── SERVER-SIDE SIGNAL SCANNER (real paywall enforcement) ─────────────────────
+// Runs Yosi's SMA30 method ON THE SERVER so signal DELIVERY can be gated by plan.
+// Produces the same signal objects the browser used to store in `ib_alerts2`;
+// the feed now reads these via the plan-gated GET /api/signals endpoint.
+let NTScanner = null, SYMS = null;
+try {
+  NTScanner = require(path.join(__dirname, '..', 'scanner-engine.js'));
+  SYMS = require(path.join(__dirname, '..', 'scanner-symbols.js'));
+  console.log('[NexTrade] ✓ Signal scanner engine loaded');
+} catch (e) {
+  console.error('[NexTrade] ⚠ Could not load scanner engine — server signals disabled:', e.message);
+}
+
+// Which universe to scan on the server. US list is ~5000 symbols — too heavy for a
+// free tier + Yahoo limits — so default to TASE + commodities (~250). Override with
+// SCAN_UNIVERSE=all to include US.
+function scanUniverse() {
+  if (!SYMS) return [];
+  if ((process.env.SCAN_UNIVERSE || 'tase') === 'all') return SYMS.ALL_SCANNER_SYMBOLS;
+  return SYMS.TASE_SYMBOLS.concat(SYMS.COMMODITIES_SYMBOLS || []);
+}
+
+const SIG_CHUNK      = parseInt(process.env.SCAN_CHUNK || '60', 10);   // symbols per cycle
+const SIG_CONCURRENCY= parseInt(process.env.SCAN_CONCURRENCY || '6', 10);
+const SIG_CYCLE_MS   = parseInt(process.env.SCAN_CYCLE_MS || String(5 * 60 * 1000), 10);
+const SIG_MAX_AGE_MS = parseInt(process.env.SIGNAL_MAX_AGE_MS || String(7 * 24 * 3600 * 1000), 10);
+
+let _sigStore   = [];   // authoritative signals, newest-first
+let _sigByKey   = {};   // key -> signal (dedupe one per symbol/day)
+let _scanOffset = 0;    // rotates through the universe across cycles
+let _scanBusy   = false;
+let _lastSigScan= 0;
+
+function barsFromYahoo(json) {
+  const r = json && json.chart && json.chart.result && json.chart.result[0];
+  if (!r || !r.timestamp || !r.indicators || !r.indicators.quote || !r.indicators.quote[0]) return [];
+  const ts = r.timestamp, q = r.indicators.quote[0], out = [];
+  for (let i = 0; i < ts.length; i++) {
+    if (q.open[i] == null || q.close[i] == null) continue;
+    const d = new Date(ts[i] * 1000);
+    const time = d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
+    out.push({ time: time, open: q.open[i], high: q.high[i], low: q.low[i], close: q.close[i], volume: q.volume[i] || 0 });
+  }
+  return out;
+}
+
+const SETUP_HE = {
+  pullback: 'Pullback לתמיכה', breakout_retest: 'פריצה + ריטסט',
+  breakdown_retest: 'שבירה + ריטסט', range_breakout: 'פריצת Range',
+  sma30_reclaim: 'החזרת SMA30', sma30_rejection: 'דחייה מ-SMA30'
+};
+
+// Build the stored signal object from an analyze() result (mirrors main.js).
+function buildSignalObject(sym, a) {
+  const isTASE = sym.endsWith('.TA');
+  const curr = isTASE ? '₪' : '$';
+  const isShort = a.direction === 'short';
+  const trendType = a.trend === 'up' ? 'עלייה' : (a.trend === 'down' ? 'ירידה' : 'דישדוש');
+  const now = new Date();
+  const key = (isShort ? 'sell_' : 'buy_') + sym + '_' + now.toDateString();
+  const statusWord = a.status === 'entry' ? 'כניסה' : 'מתקרב';
+  const setupTxt = SETUP_HE[a.setup] || a.setup || '';
+  const fmtN = (x) => (x == null ? '' : (Math.round(x * 100) / 100));
+  let lvls = '';
+  if (a.entry != null) lvls = ' | כניסה ' + curr + fmtN(a.entry) + ' · סטופ ' + curr + fmtN(a.stop) + ' · יעד ' + curr + fmtN(a.target) + ' (1:' + a.rr + ')';
+  const msg = (isShort ? '🔴' : '🟢') + ' ' + (isShort ? 'שורט' : 'לונג') + ' (' + statusWord + '): ' +
+              sym.replace('.TA', '') + ' — ' + setupTxt + ' | מגמה ' + trendType + lvls;
+  return {
+    sym: sym, name: a.name || sym.replace('.TA', ''), price: a.price, curr: curr,
+    condition: isShort ? 'sell_signal' : 'buy_signal', direction: a.direction,
+    setup: a.setup, status: a.status, trendType: trendType,
+    sma30: a.sma30, atr: a.atr, level: a.level, levelTouches: a.levelTouches,
+    entry: a.entry, stop: a.stop, target: a.target, rr: a.rr,
+    alertLevel: a.alertLevel, alertSide: a.alertSide, reasons: a.reasons,
+    ma16: a.sma30, maGain: '0', support5: a.stop,
+    supportDistPct: a.level ? ((a.price - a.level) / a.level * 100) : 0,
+    distPct: a.level ? (((a.price - a.level) / a.level) * 100).toFixed(1) : '0',
+    date: now.toLocaleDateString('he-IL'), time: now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
+    ts: now.getTime(), key: key, msg: msg, severity: isShort ? 'red' : 'green'
+  };
+}
+
+function pruneSignals() {
+  const cutoff = Date.now() - SIG_MAX_AGE_MS;
+  _sigStore = _sigStore.filter(s => s.ts >= cutoff);
+  _sigByKey = {};
+  _sigStore.forEach(s => { _sigByKey[s.key] = s; });
+  _sigStore.sort((a, b) => b.ts - a.ts);
+  if (_sigStore.length > 400) _sigStore = _sigStore.slice(0, 400);
+}
+
+// Scan the next chunk of the universe. Called on a schedule and on-demand.
+async function scanSignalsChunk() {
+  if (_scanBusy || !NTScanner) return;
+  _scanBusy = true;
+  try {
+    const universe = scanUniverse();
+    if (!universe.length) return;
+    const chunk = [];
+    for (let i = 0; i < SIG_CHUNK; i++) chunk.push(universe[(_scanOffset + i) % universe.length]);
+    _scanOffset = (_scanOffset + SIG_CHUNK) % universe.length;
+
+    let added = 0;
+    for (let i = 0; i < chunk.length; i += SIG_CONCURRENCY) {
+      const group = chunk.slice(i, i + SIG_CONCURRENCY);
+      await Promise.all(group.map(async (sym) => {
+        try {
+          const json = await fetchYahoo(sym, '1wk', '5y');
+          const bars = barsFromYahoo(json);
+          if (!bars || bars.length < 21) return;
+          const price = bars[bars.length - 1].close;
+          if (price < 1) return;
+          const last8 = bars.slice(-8);
+          const avgVol8 = last8.reduce((s, b) => s + (b.volume || 0), 0) / last8.length;
+          if (avgVol8 < 1000) return;
+          const a = NTScanner.analyze(bars, { symbol: sym, name: sym.replace('.TA', ''), curr: sym.endsWith('.TA') ? '₪' : '$' });
+          if (!a || !a.direction || a.entry == null) return;
+          const armed = a.alertLevel != null && Math.abs(a.price - a.alertLevel) / a.alertLevel <= 0.015;
+          if (a.status !== 'entry' && !armed) return;
+          const sig = buildSignalObject(sym, a);
+          if (!_sigByKey[sig.key]) added++;
+          _sigByKey[sig.key] = sig;
+        } catch (e) { /* skip symbol on error */ }
+      }));
+    }
+    // rebuild store from the dedupe map
+    _sigStore = Object.keys(_sigByKey).map(k => _sigByKey[k]);
+    pruneSignals();
+    _lastSigScan = Date.now();
+    if (added) console.log('[Signals] +' + added + ' new · total', _sigStore.length, '· offset', _scanOffset);
+    // best-effort persistence
+    if (supabase && added) { persistSignals().catch(() => {}); }
+  } finally {
+    _scanBusy = false;
+  }
+}
+
+// ---- optional Supabase persistence (durable across restarts) ----
+async function persistSignals() {
+  if (!supabase) return;
+  try {
+    const rows = _sigStore.slice(0, 300).map(s => ({ key: s.key, ts: s.ts, sym: s.sym, payload: s }));
+    await supabase.from('signals').upsert(rows, { onConflict: 'key' });
+  } catch (e) { console.error('[Signals] persist error:', e.message); }
+}
+async function loadSignalsFromDB() {
+  if (!supabase) return;
+  try {
+    const cutoff = Date.now() - SIG_MAX_AGE_MS;
+    const { data, error } = await supabase.from('signals').select('payload,ts').gte('ts', cutoff).order('ts', { ascending: false }).limit(400);
+    if (error) { console.error('[Signals] load error:', error.message); return; }
+    (data || []).forEach(r => { const s = r.payload; if (s && s.key) _sigByKey[s.key] = s; });
+    _sigStore = Object.keys(_sigByKey).map(k => _sigByKey[k]);
+    pruneSignals();
+    console.log('[Signals] loaded', _sigStore.length, 'from DB');
+  } catch (e) { console.error('[Signals] load exception:', e.message); }
+}
+
+// Return signals a user is ENTITLED to, by plan:
+//   premium → everything, real-time.
+//   free    → only signals older than FREE_DELAY (default 24h) AND capped to FREE_MAX,
+//             so tampering with the client cannot unlock fresh/extra signals.
+const FREE_DELAY_MS = parseInt(process.env.FREE_SIGNAL_DELAY_MS || String(24 * 3600 * 1000), 10);
+const FREE_MAX      = parseInt(process.env.FREE_SIGNAL_MAX || '3', 10);
+function signalsForPlan(isPremium) {
+  pruneSignals();
+  if (isPremium) return { signals: _sigStore, total: _sigStore.length, delayedMs: 0, capped: false };
+  const cutoff = Date.now() - FREE_DELAY_MS;
+  const eligible = _sigStore.filter(s => s.ts <= cutoff);
+  const total = _sigStore.length;
+  return { signals: eligible.slice(0, FREE_MAX), total: total, delayedMs: FREE_DELAY_MS, capped: eligible.length > FREE_MAX || total > eligible.length };
 }
 
 // ── ROUTES ────────────────────────────────────────────────────────

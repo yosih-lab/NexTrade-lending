@@ -37,3 +37,20 @@ create table if not exists public.watchlists (
 
 alter table public.watchlists enable row level security;
 
+-- Server-generated trading signals (authoritative feed). The server scanner writes
+-- here; GET /api/signals serves them gated by plan. Durable across restarts.
+--   key     : dedupe key, one per symbol/direction/day (e.g. buy_TEVA.TA_Fri Oct 18 2026)
+--   ts      : unix ms when the signal fired (used for the free-tier delay window)
+--   payload : the full signal object the client renders
+create table if not exists public.signals (
+  key        text primary key,
+  ts         bigint not null,
+  sym        text,
+  payload    jsonb not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists signals_ts_idx on public.signals (ts desc);
+
+alter table public.signals enable row level security;
+
+

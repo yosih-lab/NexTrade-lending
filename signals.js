@@ -12,9 +12,15 @@
   var TRADES_KEY = 'nt_trades';          // open + closed trades
   var MODE_KEY   = 'nt_user_mode';       // 'signals' | 'analysis' (current view)
   var PLAN_KEY   = 'nt_user_plan';       // 'signals' | 'analysis' (stable onboarding choice)
-  var ALERTS_KEY = 'ib_alerts2';         // scanner signals (written by main.js)
+  var ALERTS_KEY = 'ib_alerts2';         // scanner signals (written by main.js, local fallback)
+  var SERVER_KEY = 'nt_server_signals';  // authoritative signals fetched from the server
   var FAVS_KEY   = 'nt_sig_favs';        // symbols the user wants alerts for
   var EARN_KEY   = 'nt_earnings';        // optional { SYM: 'YYYY-MM-DD' } earnings dates
+
+  // When the server feed is in use, this holds its plan/total metadata so the
+  // upsell banner can show the REAL hidden-count (enforced server-side).
+  var _serverInfo = null;
+  var _lastSync = 0;
 
   // Signals-only users are LOCKED to the feed (no switching to analysis).
   function isSignalsLocked() {
@@ -94,10 +100,57 @@
   }
   function saveTrades(t) { localStorage.setItem(TRADES_KEY, JSON.stringify(t)); }
 
-  // Read scanner signals and normalize into a rich signal object.
+  // ---------- server signal feed (authoritative, plan-enforced) ----------
+  function apiBase() {
+    try {
+      return (typeof window.API_BASE === 'string' && window.API_BASE) ||
+             localStorage.getItem('nt_api_base') ||
+             'https://nextrade-lending.onrender.com';
+    } catch (e) { return 'https://nextrade-lending.onrender.com'; }
+  }
+  function authToken() { try { return localStorage.getItem('nt_token'); } catch (e) { return null; } }
+  function loadServerCache() {
+    try { return JSON.parse(localStorage.getItem(SERVER_KEY) || 'null'); } catch (e) { return null; }
+  }
+
+  // Pull the plan-gated signal feed from the server and cache it. The server
+  // decides WHICH signals this user is entitled to — the client cannot unlock more.
+  function syncServerSignals(force) {
+    var token = authToken();
+    if (!token) return; // demo / offline — fall back to the local scanner feed
+    if (!force && Date.now() - _lastSync < 45000) return;
+    _lastSync = Date.now();
+    fetch(apiBase() + '/api/signals', {
+      headers: { 'Authorization': 'Bearer ' + token },
+      cache: 'no-store'
+    }).then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !Array.isArray(d.signals)) return;
+        try {
+          localStorage.setItem(SERVER_KEY, JSON.stringify({
+            ts: Date.now(), data: d.signals, total: d.total,
+            isPremium: d.isPremium, delayedMs: d.delayedMs, lastScan: d.lastScan
+          }));
+        } catch (e) {}
+        // keep the plan badge/UI honest with the server's authoritative answer
+        try { if (window.NTPlan) window.NTPlan.applyServerPlan({ plan: d.isPremium ? 'premium' : 'free' }); } catch (e) {}
+        render();
+      })
+      .catch(function () {});
+  }
+
+  // Read scanner signals and normalize into a rich signal object. Prefers the
+  // server feed (authoritative) and falls back to the local scanner (ib_alerts2).
   function loadSignals() {
     var raw;
-    try { raw = JSON.parse(localStorage.getItem(ALERTS_KEY) || '[]'); } catch (e) { raw = []; }
+    var sc = loadServerCache();
+    if (sc && Array.isArray(sc.data)) {
+      raw = sc.data;
+      _serverInfo = { total: sc.total, isPremium: sc.isPremium, delayedMs: sc.delayedMs, lastScan: sc.lastScan };
+    } else {
+      _serverInfo = null;
+      try { raw = JSON.parse(localStorage.getItem(ALERTS_KEY) || '[]'); } catch (e) { raw = []; }
+    }
     var out = [];
     raw.forEach(function (a) {
       var cond = a.condition || '';
@@ -364,19 +417,34 @@
       return perf + filterBar + '<div class="sf-empty">' + emptyMsg + '</div>';
     }
 
-    // Free-tier cap: show only the first N signals, tease the rest.
+    // Free-tier cap + upsell. When the SERVER feed is active, enforcement already
+    // happened server-side (delayed + capped), so we tease using the real total it
+    // reported. Otherwise (local fallback) we cap client-side.
     var upsell = '';
-    var cap = sigCap();
-    if (cap !== Infinity && list.length > cap) {
-      var hidden = list.length - cap;
-      list = list.slice(0, cap);
-      upsell = '<div class="sf-upsell">' +
-        '<div class="sf-upsell-txt">' +
-          '<div class="sf-upsell-title">🔒 יש עוד ' + hidden + ' איתותים חדשים</div>' +
-          '<div class="sf-upsell-sub">במסלול החינם מוצגים ' + cap + ' איתותים. שדרג כדי לראות את כולם בזמן אמת.</div>' +
-        '</div>' +
-        '<button class="sf-upsell-btn" onclick="NTSignals.openUpgrade()">⭐ שדרג</button>' +
-      '</div>';
+    if (_serverInfo) {
+      if (!_serverInfo.isPremium && _serverInfo.total > list.length && !favFilter && !searchQuery) {
+        var hiddenS = _serverInfo.total - list.length;
+        upsell = '<div class="sf-upsell">' +
+          '<div class="sf-upsell-txt">' +
+            '<div class="sf-upsell-title">🔒 יש עוד ' + hiddenS + ' איתותים</div>' +
+            '<div class="sf-upsell-sub">במסלול החינם האיתותים מוצגים בעיכוב ובכמות מוגבלת. שדרג כדי לקבל הכל בזמן אמת.</div>' +
+          '</div>' +
+          '<button class="sf-upsell-btn" onclick="NTSignals.openUpgrade()">⭐ שדרג</button>' +
+        '</div>';
+      }
+    } else {
+      var cap = sigCap();
+      if (cap !== Infinity && list.length > cap) {
+        var hidden = list.length - cap;
+        list = list.slice(0, cap);
+        upsell = '<div class="sf-upsell">' +
+          '<div class="sf-upsell-txt">' +
+            '<div class="sf-upsell-title">🔒 יש עוד ' + hidden + ' איתותים חדשים</div>' +
+            '<div class="sf-upsell-sub">במסלול החינם מוצגים ' + cap + ' איתותים. שדרג כדי לראות את כולם בזמן אמת.</div>' +
+          '</div>' +
+          '<button class="sf-upsell-btn" onclick="NTSignals.openUpgrade()">⭐ שדרג</button>' +
+        '</div>';
+      }
     }
 
     return perf + hero + filterBar + '<div class="sf-grid">' + list.map(signalCard).join('') + '</div>' + upsell;
@@ -475,7 +543,10 @@
       '</div>';
     }
     var raw;
-    try { raw = JSON.parse(localStorage.getItem(ALERTS_KEY) || '[]'); } catch (e) { raw = []; }
+    // Prefer the authoritative server feed (premium users), else the local log.
+    var sc = loadServerCache();
+    if (sc && Array.isArray(sc.data) && sc.data.length) { raw = sc.data; }
+    else { try { raw = JSON.parse(localStorage.getItem(ALERTS_KEY) || '[]'); } catch (e) { raw = []; } }
     if (!raw.length) {
       return '<div class="sf-empty">יומן ההתראות ריק.<br>כאן יופיע תיעוד כרונולוגי של כל איתות שהסורק שלח.</div>';
     }
@@ -660,15 +731,17 @@
 
   function startAutoRefresh() {
     stopAutoRefresh();
+    syncServerSignals(true); // pull the authoritative feed immediately
     refreshTimer = setInterval(function () {
       var feed = document.getElementById('signalFeed');
-      if (feed && feed.style.display !== 'none') render();
+      if (feed && feed.style.display !== 'none') { syncServerSignals(); render(); }
     }, 20000);
   }
   function stopAutoRefresh() { if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; } }
 
   // Called after the app is logged-in and ready
   function onAppReady() {
+    syncServerSignals(true); // fetch the server feed as soon as we're logged in
     var plan = localStorage.getItem(PLAN_KEY);
     // Analysis users never see the feed; signals users are shown it.
     if (plan === 'analysis') { setMode('analysis'); return; }
@@ -685,6 +758,7 @@
     analyze: analyze, render: render,
     toggleFav: toggleFav, setFavFilter: setFavFilter, setAlert: setAlert,
     onSearch: onSearch, addWatchFromSearch: addWatchFromSearch,
+    syncServerSignals: syncServerSignals,
     openUpgrade: function (ctx) { openUpgrade(ctx); }
   };
 })();

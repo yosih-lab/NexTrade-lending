@@ -493,8 +493,9 @@
 
   function fmt(x) { return (Math.round(x * 100) / 100).toString(); }
 
-  // Public API
-  window.NTScanner = {
+  // Public API — works in the browser (window.NTScanner) and in Node (module.exports),
+  // so the exact same method runs client-side and on the server.
+  var NTScanner = {
     analyze: analyze,
     config: CFG,
     // low-level helpers exposed for testing / tuning
@@ -503,4 +504,6 @@
     _buildLevels: buildLevels, _breakoutRetest: breakoutRetest,
     _volumeTrend: volumeTrend, _candle: candle
   };
+  if (typeof window !== 'undefined') window.NTScanner = NTScanner;
+  if (typeof module !== 'undefined' && module.exports) module.exports = NTScanner;
 })();

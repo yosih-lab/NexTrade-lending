@@ -256,3 +256,13 @@ var US_SYMBOLS = [
 
 // Combined scanner list
 var ALL_SCANNER_SYMBOLS = TASE_SYMBOLS.concat(COMMODITIES_SYMBOLS).concat(US_SYMBOLS);
+
+// Node export (server-side scanner) — harmless in the browser.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    TASE_SYMBOLS: TASE_SYMBOLS,
+    US_SYMBOLS: US_SYMBOLS,
+    COMMODITIES_SYMBOLS: COMMODITIES_SYMBOLS,
+    ALL_SCANNER_SYMBOLS: ALL_SCANNER_SYMBOLS
+  };
+}
