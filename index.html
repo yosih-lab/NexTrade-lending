@@ -2337,8 +2337,59 @@
     .sig-rr { font-size:.76rem; font-weight:800; color:var(--gold); }
     .sig-status { font-size:.72rem; font-weight:700; padding:.22rem .6rem; border-radius:20px; }
     .sig-status.waiting { background:rgba(245,166,35,.14); color:var(--gold); }
+    .sig-status.armed   { background:rgba(245,166,35,.28); color:#ffd27a; }
     .sig-status.active  { background:rgba(41,98,255,.16); color:var(--accent); }
     .sig-status.hit     { background:rgba(38,166,154,.16); color:var(--green); }
+    .sig-status.stopped { background:rgba(239,83,80,.16); color:var(--red); }
+    /* distance-to-entry chip */
+    .sig-dist { font-size:.72rem; font-weight:700; color:var(--text-muted); }
+    .sig-dist.near { color:#ffd27a; }
+    /* setup chip on the symbol line */
+    .sig-setup { font-size:.62rem; font-weight:700; color:var(--accent); background:rgba(41,98,255,.12);
+      padding:.1rem .4rem; border-radius:6px; vertical-align:middle; }
+    /* why / explanation line */
+    .sig-why { font-size:.74rem; color:var(--text-muted); line-height:1.4; background:var(--surface2);
+      border:1px dashed var(--border); border-radius:8px; padding:.4rem .55rem; }
+    /* earnings warning */
+    .sig-earn { font-size:.74rem; font-weight:700; color:var(--gold); }
+    .sig-earn.warn { color:var(--red); }
+    /* favorite star + head layout */
+    .sig-head-right { display:flex; align-items:center; gap:.5rem; }
+    .sig-fav { background:none; border:none; cursor:pointer; font-size:1.2rem; color:var(--gold);
+      line-height:1; padding:0; }
+    .sig-fav.on { color:var(--gold); }
+    /* favorites filter bar */
+    .sf-filter { display:flex; gap:.5rem; max-width:1000px; margin:0 auto .8rem; }
+    .sf-filter-btn { background:var(--surface2); border:1px solid var(--border); color:var(--text-muted);
+      border-radius:999px; padding:.4rem .9rem; font-size:.8rem; font-weight:800; cursor:pointer; font-family:Heebo,sans-serif; }
+    .sf-filter-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+    /* "what to do now" hero */
+    .sf-hero { max-width:1000px; margin:0 auto 1rem; border-radius:14px; padding:1rem 1.1rem;
+      background:linear-gradient(135deg, rgba(41,98,255,.18), rgba(41,98,255,.04));
+      border:1px solid rgba(41,98,255,.4); }
+    .sf-hero.short { background:linear-gradient(135deg, rgba(239,83,80,.18), rgba(239,83,80,.04)); border-color:rgba(239,83,80,.4); }
+    .sf-hero-tag { font-size:.72rem; font-weight:900; color:var(--gold); letter-spacing:.5px; }
+    .sf-hero-sym { font-size:1.3rem; font-weight:900; color:#fff; margin:.2rem 0; }
+    .sf-hero-action { font-size:.86rem; color:var(--text); margin-bottom:.3rem; }
+    .sf-hero-levels { font-size:.8rem; color:var(--text-muted); font-weight:700; margin-bottom:.6rem; }
+    .sf-hero-foot { display:flex; gap:.5rem; }
+    /* performance summary */
+    .sf-perf { display:flex; gap:.7rem; max-width:1000px; margin:0 auto 1rem; flex-wrap:wrap; }
+    .sf-perf-item { flex:1; min-width:110px; background:var(--surface); border:1px solid var(--border);
+      border-radius:12px; padding:.7rem .8rem; text-align:center; }
+    .sf-perf-label { font-size:.68rem; color:var(--text-muted); font-weight:700; margin-bottom:.25rem; }
+    .sf-perf-val { font-size:1.2rem; font-weight:900; color:#fff; }
+    .sf-perf-val.pos { color:var(--green); }
+    .sf-perf-val.neg { color:var(--red); }
+    /* alerts log */
+    .sf-log { max-width:1000px; margin:0 auto; display:flex; flex-direction:column; gap:.5rem; }
+    .sf-log-row { display:flex; gap:.7rem; align-items:flex-start; background:var(--surface);
+      border:1px solid var(--border); border-radius:10px; padding:.6rem .75rem; }
+    .sf-log-icon { font-size:1rem; flex-shrink:0; }
+    .sf-log-body { flex:1; min-width:0; }
+    .sf-log-sym { font-size:.9rem; font-weight:900; color:#fff; }
+    .sf-log-msg { font-size:.76rem; color:var(--text-muted); line-height:1.4; }
+    .sf-log-when { font-size:.68rem; color:var(--text-muted); margin-top:.2rem; opacity:.8; }
     .sig-card-foot { display:flex; gap:.5rem; }
     .sig-btn {
       flex:1; background:var(--accent); border:none; color:#fff; border-radius:9px;
@@ -2899,16 +2950,17 @@
     <button class="sf-tab active" data-tab="signals" onclick="NTSignals.switchTab('signals')">איתותים</button>
     <button class="sf-tab" data-tab="trades" onclick="NTSignals.switchTab('trades')">העסקאות שלי</button>
     <button class="sf-tab" data-tab="history" onclick="NTSignals.switchTab('history')">היסטוריה</button>
+    <button class="sf-tab" data-tab="alerts" onclick="NTSignals.switchTab('alerts')">🔔 יומן</button>
   </nav>
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20261018a"></script>
-<script src="scanner-engine.js?v=20261018a"></script>
-<script src="main.js?v=20261018a"></script>
-<script src="drawing.js?v=20261018a"></script>
-<script src="features.js?v=20261018a"></script>
-<script src="signals.js?v=20261018a"></script>
+<script src="scanner-symbols.js?v=20261018b"></script>
+<script src="scanner-engine.js?v=20261018b"></script>
+<script src="main.js?v=20261018b"></script>
+<script src="drawing.js?v=20261018b"></script>
+<script src="features.js?v=20261018b"></script>
+<script src="signals.js?v=20261018b"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">

@@ -13,6 +13,8 @@
   var MODE_KEY   = 'nt_user_mode';       // 'signals' | 'analysis' (current view)
   var PLAN_KEY   = 'nt_user_plan';       // 'signals' | 'analysis' (stable onboarding choice)
   var ALERTS_KEY = 'ib_alerts2';         // scanner signals (written by main.js)
+  var FAVS_KEY   = 'nt_sig_favs';        // symbols the user wants alerts for
+  var EARN_KEY   = 'nt_earnings';        // optional { SYM: 'YYYY-MM-DD' } earnings dates
 
   // Signals-only users are LOCKED to the feed (no switching to analysis).
   function isSignalsLocked() {
@@ -22,6 +24,38 @@
 
   var activeTab = 'signals';
   var refreshTimer = null;
+  var favFilter = false; // when true, show only favorite symbols in the signals tab
+
+  // ---------- favorites (alert watch) ----------
+  function loadFavs() {
+    try { return JSON.parse(localStorage.getItem(FAVS_KEY) || '[]') || []; } catch (e) { return []; }
+  }
+  function saveFavs(a) { try { localStorage.setItem(FAVS_KEY, JSON.stringify(a)); } catch (e) {} }
+  function isFav(sym) { return loadFavs().indexOf(sym) !== -1; }
+  function toggleFav(sym) {
+    var f = loadFavs();
+    var i = f.indexOf(sym);
+    if (i === -1) { f.push(sym); } else { f.splice(i, 1); }
+    saveFavs(f);
+    render();
+  }
+
+  // ---------- earnings ----------
+  // Reads an optional local map of upcoming earnings dates. Degrades gracefully
+  // when unknown. Rule: exit ONE DAY BEFORE the report.
+  function loadEarnings() {
+    try { return JSON.parse(localStorage.getItem(EARN_KEY) || '{}') || {}; } catch (e) { return {}; }
+  }
+  function earningsInfo(sym) {
+    var map = loadEarnings();
+    var d = map[sym] || map[(sym || '').replace('.TA', '')];
+    if (!d) return null;
+    var when = new Date(d + 'T00:00:00');
+    if (isNaN(when.getTime())) return null;
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var days = Math.round((when - today) / 86400000);
+    return { date: d, days: days, exitToday: days <= 1 };
+  }
 
   // ---------- helpers ----------
   function fmt(n, curr) {
@@ -45,7 +79,7 @@
   }
   function saveTrades(t) { localStorage.setItem(TRADES_KEY, JSON.stringify(t)); }
 
-  // Read scanner signals and normalize into {sym,name,dir,entry,stop,tp,rr,curr,ts,status}
+  // Read scanner signals and normalize into a rich signal object.
   function loadSignals() {
     var raw;
     try { raw = JSON.parse(localStorage.getItem(ALERTS_KEY) || '[]'); } catch (e) { raw = []; }
@@ -60,16 +94,36 @@
       out.push({
         sym: a.sym, name: a.name || (a.sym || '').replace('.TA', ''),
         dir: dir, curr: a.curr || '',
+        price: a.price,
         entry: levels.entry, stop: levels.stop, tp: levels.tp, rr: levels.rr,
         ts: a.ts || 0, date: a.date || '', time: a.time || '',
-        trendType: a.trendType || ''
+        trendType: a.trendType || '',
+        setup: a.setup || '',
+        reasons: Array.isArray(a.reasons) ? a.reasons : [],
+        alertLevel: (a.alertLevel != null ? a.alertLevel : null),
+        alertSide: a.alertSide || '',
+        scanStatus: a.status || ''
       });
     });
     return out;
   }
 
-  // Entry / Stop / TP from the scanner payload, using the 1:2 R:R method.
+  // Human label for the setup type.
+  var SETUP_TXT = {
+    pullback: 'Pullback לתמיכה',
+    breakout_retest: 'פריצה + ריטסט',
+    breakdown_retest: 'שבירה + ריטסט',
+    range_breakout: 'פריצת טווח',
+    sma30_reclaim: 'החזרת SMA30',
+    sma30_rejection: 'דחייה מ-SMA30'
+  };
+
+  // Entry / Stop / TP — prefer the scanner's own levels (SMA30 method), else
+  // fall back to the legacy 1:2 computation from price + 5-week structure.
   function computeLevels(a, dir) {
+    if (a.entry != null && a.stop != null && a.target != null) {
+      return { entry: a.entry, stop: a.stop, tp: a.target, rr: '1:' + (a.rr || 2) };
+    }
     var entry = a.price;
     var stop, tp, risk;
     var struct = a.support5; // long: 5-wk support low; short: 5-wk resistance high
@@ -85,21 +139,37 @@
     return { entry: entry, stop: stop, tp: tp, rr: '1:2' };
   }
 
-  // Status of a signal relative to the live price.
+  // Status of a signal relative to the live price, with distance-to-entry.
+  // waiting → armed (within ~1.5% of entry) → active (past entry) → hit / stopped.
   function signalStatus(s) {
     var live = livePrice(s.sym);
-    if (live == null) return 'waiting';
+    if (live == null) {
+      // No live price: lean on the scanner's own armed/entry status if present.
+      if (s.scanStatus === 'entry') return { key: 'armed', dist: null };
+      return { key: 'waiting', dist: null };
+    }
+    var dist = ((live - s.entry) / s.entry) * 100; // +above / -below entry
     if (s.dir === 'long') {
-      if (live >= s.tp) return 'hit';
-      if (live >= s.entry) return 'active';
-      return 'waiting';
+      if (live <= s.stop) return { key: 'stopped', dist: dist };
+      if (live >= s.tp) return { key: 'hit', dist: dist };
+      if (live >= s.entry) return { key: 'active', dist: dist };
+      if (Math.abs(dist) <= 1.5) return { key: 'armed', dist: dist };
+      return { key: 'waiting', dist: dist };
     } else {
-      if (live <= s.tp) return 'hit';
-      if (live <= s.entry) return 'active';
-      return 'waiting';
+      if (live >= s.stop) return { key: 'stopped', dist: dist };
+      if (live <= s.tp) return { key: 'hit', dist: dist };
+      if (live <= s.entry) return { key: 'active', dist: dist };
+      if (Math.abs(dist) <= 1.5) return { key: 'armed', dist: dist };
+      return { key: 'waiting', dist: dist };
     }
   }
-  var STATUS_TXT = { waiting: 'ממתין לכניסה', active: 'פעיל', hit: 'הגיע ליעד' };
+  var STATUS_TXT = {
+    waiting: 'ממתין לכניסה',
+    armed: 'מזומן — קרוב לכניסה',
+    active: 'פעיל',
+    hit: 'הגיע ליעד ✓',
+    stopped: 'נפגע סטופ ✕'
+  };
 
   // ---------- rendering ----------
   function miniChart(dir) {
@@ -116,13 +186,41 @@
   }
 
   function signalCard(s) {
-    var st = signalStatus(s);
+    var stt = signalStatus(s);
+    var st = stt.key;
     var dirTxt = s.dir === 'long' ? '🟢 לונג' : '🔴 שורט';
+    var fav = isFav(s.sym);
+    var earn = earningsInfo(s.sym);
+    var setupTxt = SETUP_TXT[s.setup] || s.setup || '';
+
+    // distance-to-entry chip
+    var distTxt = '';
+    if (stt.dist != null) {
+      var near = Math.abs(stt.dist) <= 1.5;
+      distTxt = '<span class="sig-dist ' + (near ? 'near' : '') + '">' +
+        (stt.dist >= 0 ? '+' : '') + stt.dist.toFixed(1) + '% מהכניסה</span>';
+    }
+    // earnings warning (exit 1 day before)
+    var earnTxt = '';
+    if (earn) {
+      earnTxt = '<div class="sig-earn ' + (earn.exitToday ? 'warn' : '') + '">📅 דוח בעוד ' + earn.days + ' ימים' +
+        (earn.exitToday ? ' — מומלץ לצאת יום לפני!' : '') + '</div>';
+    }
+    // short explanation (why) from the scanner reasons
+    var whyTxt = '';
+    if (s.reasons && s.reasons.length) {
+      whyTxt = '<div class="sig-why">💡 ' + s.reasons.slice(0, 2).join(' · ') + '</div>';
+    }
+
     return '<div class="sig-card ' + s.dir + '">' +
       '<div class="sig-head">' +
-        '<div><div class="sig-sym">' + (s.sym || '').replace('.TA', '') + '</div>' +
+        '<div><div class="sig-sym">' + (s.sym || '').replace('.TA', '') +
+          (setupTxt ? ' <span class="sig-setup">' + setupTxt + '</span>' : '') + '</div>' +
         '<div class="sig-name">' + s.name + '</div></div>' +
-        '<span class="sig-dir ' + s.dir + '">' + dirTxt + '</span>' +
+        '<div class="sig-head-right">' +
+          '<button class="sig-fav ' + (fav ? 'on' : '') + '" title="קבל התראה על מניה זו" onclick="NTSignals.toggleFav(\'' + s.sym + '\')">' + (fav ? '★' : '☆') + '</button>' +
+          '<span class="sig-dir ' + s.dir + '">' + dirTxt + '</span>' +
+        '</div>' +
       '</div>' +
       miniChart(s.dir) +
       '<div class="sig-levels">' +
@@ -130,22 +228,75 @@
         '<div class="sig-lvl stop"><div class="sig-lvl-label">סטופ</div><div class="sig-lvl-val">' + fmt(s.stop, s.curr) + '</div></div>' +
         '<div class="sig-lvl tp"><div class="sig-lvl-label">יעד</div><div class="sig-lvl-val">' + fmt(s.tp, s.curr) + '</div></div>' +
       '</div>' +
+      whyTxt +
+      earnTxt +
       '<div class="sig-meta">' +
         '<span class="sig-rr">יחס סיכוי/סיכון ' + s.rr + '</span>' +
+        distTxt +
         '<span class="sig-status ' + st + '">' + STATUS_TXT[st] + '</span>' +
       '</div>' +
       '<div class="sig-card-foot">' +
         '<button class="sig-btn" onclick="NTSignals.addTrade(\'' + s.sym + '\')">הוסף לתיק</button>' +
-        '<button class="sig-btn ghost" onclick="NTSignals.analyze(\'' + s.sym + '\')">הצג בגרף</button>' +
+        '<button class="sig-btn ghost" onclick="NTSignals.setAlert(\'' + s.sym + '\')">🔔 קבע התראה</button>' +
       '</div>' +
+    '</div>';
+  }
+
+  // "What to do now" hero: the single most actionable signal (armed/active).
+  function heroCard(sigs) {
+    var ranked = sigs.slice().map(function (s) {
+      var k = signalStatus(s).key;
+      var score = k === 'active' ? 3 : (k === 'armed' ? 2 : 0);
+      return { s: s, score: score };
+    }).filter(function (x) { return x.score > 0; })
+      .sort(function (a, b) { return b.score - a.score || b.s.ts - a.s.ts; });
+    if (!ranked.length) return '';
+    var s = ranked[0].s;
+    var stt = signalStatus(s);
+    var action = stt.key === 'active'
+      ? 'המחיר בטווח הכניסה — אפשר להוסיף לתיק עכשיו'
+      : 'המחיר קרוב מאוד לכניסה — היכון וקבע התראה';
+    return '<div class="sf-hero ' + s.dir + '">' +
+      '<div class="sf-hero-tag">⚡ מה עושים עכשיו</div>' +
+      '<div class="sf-hero-sym">' + (s.sym || '').replace('.TA', '') + ' · ' + (s.dir === 'long' ? 'לונג' : 'שורט') + '</div>' +
+      '<div class="sf-hero-action">' + action + '</div>' +
+      '<div class="sf-hero-levels">כניסה ' + fmt(s.entry, s.curr) + ' · סטופ ' + fmt(s.stop, s.curr) + ' · יעד ' + fmt(s.tp, s.curr) + '</div>' +
+      '<div class="sf-hero-foot">' +
+        '<button class="sig-btn" onclick="NTSignals.addTrade(\'' + s.sym + '\')">הוסף לתיק</button>' +
+        '<button class="sig-btn ghost" onclick="NTSignals.setAlert(\'' + s.sym + '\')">🔔 קבע התראה</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // Performance summary: win rate, avg R, current win streak (from closed trades).
+  function perfSummary() {
+    var closed = loadTrades().filter(function (t) { return t.status === 'closed'; })
+                             .sort(function (a, b) { return (a.closeTs || 0) - (b.closeTs || 0); });
+    if (!closed.length) return '';
+    var wins = 0, rSum = 0, rCount = 0, streak = 0, bestStreak = 0, cur = 0;
+    closed.forEach(function (t) {
+      var win = (t.pnl || 0) >= 0;
+      if (win) wins++;
+      // R multiple = pnl% / risk%; approximate R from entry/stop if available
+      if (t.entry != null && t.stop != null && t.pnlPct != null) {
+        var riskPct = Math.abs((t.entry - t.stop) / t.entry) * 100;
+        if (riskPct > 0) { rSum += (t.pnlPct / riskPct); rCount++; }
+      }
+      if (win) { cur++; if (cur > bestStreak) bestStreak = cur; } else { cur = 0; }
+    });
+    streak = cur;
+    var winRate = Math.round(wins / closed.length * 100);
+    var avgR = rCount ? (rSum / rCount) : null;
+    return '<div class="sf-perf">' +
+      '<div class="sf-perf-item"><div class="sf-perf-label">אחוז הצלחה</div><div class="sf-perf-val">' + winRate + '%</div></div>' +
+      '<div class="sf-perf-item"><div class="sf-perf-label">ממוצע R</div><div class="sf-perf-val ' + (avgR != null && avgR >= 0 ? 'pos' : 'neg') + '">' + (avgR != null ? (avgR >= 0 ? '+' : '') + avgR.toFixed(2) + 'R' : '--') + '</div></div>' +
+      '<div class="sf-perf-item"><div class="sf-perf-label">רצף נצחונות</div><div class="sf-perf-val">' + streak + '</div></div>' +
+      '<div class="sf-perf-item"><div class="sf-perf-label">רצף שיא</div><div class="sf-perf-val">' + bestStreak + '</div></div>' +
     '</div>';
   }
 
   function renderSignals() {
     var sigs = loadSignals();
-    if (!sigs.length) {
-      return '<div class="sf-empty">אין איתותים פעילים כרגע.<br>הסורק רץ ברקע ומעדכן אוטומטית — איתותים חדשים יופיעו כאן.</div>';
-    }
     // de-dupe by symbol+dir, keep newest
     var seen = {}, uniq = [];
     sigs.sort(function (a, b) { return b.ts - a.ts; });
@@ -153,7 +304,27 @@
       var k = s.sym + '_' + s.dir;
       if (seen[k]) return; seen[k] = true; uniq.push(s);
     });
-    return '<div class="sf-grid">' + uniq.map(signalCard).join('') + '</div>';
+
+    // Favorites filter toggle bar
+    var favCount = loadFavs().length;
+    var filterBar = '<div class="sf-filter">' +
+      '<button class="sf-filter-btn ' + (!favFilter ? 'active' : '') + '" onclick="NTSignals.setFavFilter(false)">הכל</button>' +
+      '<button class="sf-filter-btn ' + (favFilter ? 'active' : '') + '" onclick="NTSignals.setFavFilter(true)">★ מועדפים' + (favCount ? ' (' + favCount + ')' : '') + '</button>' +
+    '</div>';
+
+    var list = uniq;
+    if (favFilter) list = uniq.filter(function (s) { return isFav(s.sym); });
+
+    var perf = perfSummary();
+    var hero = favFilter ? '' : heroCard(uniq);
+
+    if (!list.length) {
+      var emptyMsg = favFilter
+        ? 'אין איתותים במניות המועדפות שלך כרגע.<br>סמן מניות בכוכב כדי לקבל עליהן התראות.'
+        : 'אין איתותים פעילים כרגע.<br>הסורק רץ ברקע ומעדכן אוטומטית — איתותים חדשים יופיעו כאן.';
+      return perf + filterBar + '<div class="sf-empty">' + emptyMsg + '</div>';
+    }
+    return perf + hero + filterBar + '<div class="sf-grid">' + list.map(signalCard).join('') + '</div>';
   }
 
   function tradePnl(t, live) {
@@ -237,12 +408,38 @@
     return html;
   }
 
+  // Alerts log (bell): chronological list of every signal the scanner fired.
+  function renderAlertsLog() {
+    var raw;
+    try { raw = JSON.parse(localStorage.getItem(ALERTS_KEY) || '[]'); } catch (e) { raw = []; }
+    if (!raw.length) {
+      return '<div class="sf-empty">יומן ההתראות ריק.<br>כאן יופיע תיעוד כרונולוגי של כל איתות שהסורק שלח.</div>';
+    }
+    var rows = raw.slice(0, 80).map(function (a) {
+      var isShort = a.direction === 'short' || a.direction === 'bearish' || a.condition === 'sell_signal';
+      var icon = isShort ? '🔴' : '🟢';
+      var sym = (a.sym || '').replace('.TA', '');
+      var when = (a.date || '') + (a.time ? ' · ' + a.time : '');
+      var line = a.msg || (icon + ' ' + sym);
+      return '<div class="sf-log-row">' +
+        '<div class="sf-log-icon">' + icon + '</div>' +
+        '<div class="sf-log-body">' +
+          '<div class="sf-log-sym">' + sym + '</div>' +
+          '<div class="sf-log-msg">' + line + '</div>' +
+          '<div class="sf-log-when">' + when + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    return '<div class="sf-log">' + rows + '</div>';
+  }
+
   function render() {
     var body = document.getElementById('sfBody');
     if (!body) return;
     if (activeTab === 'signals') body.innerHTML = renderSignals();
     else if (activeTab === 'trades') body.innerHTML = renderTrades();
     else if (activeTab === 'history') body.innerHTML = renderHistory();
+    else if (activeTab === 'alerts') body.innerHTML = renderAlertsLog();
     var nameEl = document.getElementById('sfUserName');
     if (nameEl) {
       var u = document.getElementById('userNameDisplay');
@@ -305,6 +502,18 @@
     try { if (typeof window.selectSymbol === 'function') window.selectSymbol(sym); } catch (e) {}
   }
 
+  // Toggle the favorites filter in the signals tab.
+  function setFavFilter(on) { favFilter = !!on; render(); }
+
+  // "Set alert" — mark the symbol as a favorite (so it's watched) and confirm.
+  function setAlert(sym) {
+    if (!isFav(sym)) {
+      var f = loadFavs(); f.push(sym); saveFavs(f);
+    }
+    try { if (typeof window.ntToast === 'function') window.ntToast('התראה נקבעה על ' + (sym || '').replace('.TA', '') + ' 🔔'); } catch (e) {}
+    render();
+  }
+
   function show() { setMode('signals'); }
   function hide() { if (isSignalsLocked()) return; setMode('analysis'); }
 
@@ -351,6 +560,7 @@
     onAppReady: onAppReady,
     show: show, hide: hide, setMode: setMode,
     switchTab: switchTab, addTrade: addTrade, closeTrade: closeTrade,
-    analyze: analyze, render: render
+    analyze: analyze, render: render,
+    toggleFav: toggleFav, setFavFilter: setFavFilter, setAlert: setAlert
   };
 })();
