@@ -2292,7 +2292,13 @@
       position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); white-space:nowrap; }
     .sf-logo .lg-nex { color:var(--gold); }
     .sf-logo .lg-trade { color:#2962ff; }
-    /* RIGHT (RTL start): green user avatar + logout dropdown */
+    /* RIGHT (RTL start): green user avatar + logout dropdown + admin back button */
+    .sf-right { display:flex; align-items:center; gap:.6rem; flex-shrink:0; }
+    .sf-backbtn { display:none; align-items:center; gap:.35rem; background:var(--accent); color:#fff; border:none;
+      border-radius:999px; padding:.42rem .9rem; font-size:.8rem; font-weight:800; cursor:pointer;
+      font-family:Heebo,sans-serif; white-space:nowrap; }
+    .sf-backbtn:hover { filter:brightness(1.1); }
+    body.mode-admin .sf-backbtn { display:inline-flex; }
     .sf-user { position:relative; flex-shrink:0; }
     .sf-avatar { width:34px; height:34px; border-radius:50%; background:#7bd88f; color:#0a2a14;
       border:none; font-size:1rem; font-weight:900; cursor:pointer; display:flex; align-items:center;
@@ -2538,6 +2544,7 @@
       .sf-trial { padding:.35rem .6rem; font-size:.7rem; gap:.25rem; }
       .sf-trial-ic { font-size:.8rem; }
       .sf-modetoggle { display:none; }
+      .sf-backbtn { padding:.35rem .6rem; font-size:.72rem; }
       .sf-mode { flex:1; text-align:center; padding:.5rem .4rem; font-size:.8rem; }
       .sf-search { padding:.5rem .7rem; gap:.4rem; }
       #sfSearchInput { font-size:.82rem; padding:.45rem .6rem; }
@@ -3043,21 +3050,20 @@
 <!-- SIGNAL FEED (Mode A — clean signals board for signal-only users) -->
 <div id="signalFeed" style="display:none">
   <header class="sf-top">
-    <!-- RIGHT (RTL start): green user avatar → logout menu -->
-    <div class="sf-user" id="sfUserWrap">
-      <button class="sf-avatar" id="sfAvatar" onclick="NTSignals.toggleUserMenu(event)" title="החשבון שלי">?</button>
-      <div class="sf-usermenu" id="sfUserMenu">
-        <div class="sf-usermenu-name" id="sfUserMenuName"></div>
-        <div class="sf-usermenu-plan" id="sfUserMenuPlan"></div>
-        <button class="sf-usermenu-logout" onclick="handleLogout()">🚪 התנתקות</button>
+    <!-- RIGHT (RTL start): green user avatar → logout menu, + admin back-to-site button -->
+    <div class="sf-right">
+      <div class="sf-user" id="sfUserWrap">
+        <button class="sf-avatar" id="sfAvatar" onclick="NTSignals.toggleUserMenu(event)" title="החשבון שלי">?</button>
+        <div class="sf-usermenu" id="sfUserMenu">
+          <div class="sf-usermenu-name" id="sfUserMenuName"></div>
+          <div class="sf-usermenu-plan" id="sfUserMenuPlan"></div>
+          <button class="sf-usermenu-logout" onclick="handleLogout()">🚪 התנתקות</button>
+        </div>
       </div>
+      <button class="sf-backbtn" id="sfBackBtn" onclick="if(window.NTSignals)NTSignals.setMode('analysis')" title="חזרה לאתר הרגיל">📊 <span>לאתר הרגיל</span></button>
     </div>
     <!-- CENTER: brand logo in its standard colors -->
     <div class="sf-logo"><span class="lg-nex">Nex</span><span class="lg-trade">Trade</span></div>
-    <div class="sf-modetoggle">
-      <button class="sf-mode active" onclick="if(window.NTSignals)NTSignals.setMode('signals')">🔔 איתותים</button>
-      <button class="sf-mode" onclick="if(window.NTSignals)NTSignals.setMode('analysis')">📊 ניתוח</button>
-    </div>
     <!-- LEFT (RTL end): trial / upgrade banner -->
     <button class="sf-trial" id="sfTrialBanner" onclick="if(window.NTPlan)NTPlan.openUpgrade()">
       <span class="sf-trial-ic">🎁</span>
