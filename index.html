@@ -2138,26 +2138,22 @@
       body:not(.m-chart) #toSignalsBtn,
       body:not(.m-chart) #ib-alerts,
       body:not(.m-chart) .search-box { display:none !important; }
-      /* User avatar (light green) shown on the list home, next to the hamburger */
-      body:not(.m-chart) .user-menu {
-        display:block !important;
-        position:absolute; right:54px; top:50%; transform:translateY(-50%);
-      }
-      body:not(.m-chart) .topbar .user-avatar { width:27px; height:27px; font-size:.85rem; background:#7bd88f; color:#0a2a14; display:flex; }
+      /* User avatar removed from the home header (redundant — shown in the bottom bar) */
+      body:not(.m-chart) .user-menu { display:none !important; }
       body:not(.m-chart) .topbar-left { justify-content:space-between; padding:0 .3rem; }
 
-      /* ---- LIST HOME: compact watchlist rows ---- */
-      body:not(.m-chart) .watch-item { padding:.28rem .5rem .28rem .4rem; gap:.36rem; min-height:36px; }
-      body:not(.m-chart) .watch-bookmark-dot { left:-9px; right:auto; width:13px; height:17px; }
-      body:not(.m-chart) .watch-icon-wrap { width:25px; height:25px; }
-      body:not(.m-chart) .watch-icon { width:25px; height:25px; font-size:.66rem; }
-      body:not(.m-chart) .wl-logo { width:25px !important; height:25px !important; }
-      body:not(.m-chart) .watch-dot { width:9px; height:9px; }
-      body:not(.m-chart) .watch-sym { font-size:.76rem; }
-      body:not(.m-chart) .watch-name { font-size:.63rem; }
-      body:not(.m-chart) .watch-price { font-size:.78rem; }
-      body:not(.m-chart) .watch-chg { font-size:.68rem; }
-      body:not(.m-chart) .watch-remove-btn { width:22px; height:22px; font-size:.84rem; }
+      /* ---- LIST HOME: watchlist rows (enlarged 1.5x) ---- */
+      body:not(.m-chart) .watch-item { padding:.42rem .75rem .42rem .6rem; gap:.54rem; min-height:54px; }
+      body:not(.m-chart) .watch-bookmark-dot { left:-9px; right:auto; width:20px; height:26px; }
+      body:not(.m-chart) .watch-icon-wrap { width:38px; height:38px; }
+      body:not(.m-chart) .watch-icon { width:38px; height:38px; font-size:.99rem; }
+      body:not(.m-chart) .wl-logo { width:38px !important; height:38px !important; }
+      body:not(.m-chart) .watch-dot { width:13px; height:13px; }
+      body:not(.m-chart) .watch-sym { font-size:1.14rem; }
+      body:not(.m-chart) .watch-name { font-size:.95rem; }
+      body:not(.m-chart) .watch-price { font-size:1.17rem; }
+      body:not(.m-chart) .watch-chg { font-size:1.02rem; }
+      body:not(.m-chart) .watch-remove-btn { width:33px; height:33px; font-size:1.26rem; }
 
       /* ================================================================
          CHART SCREEN (body.m-chart): clean — chart + price scale only.
@@ -2586,7 +2582,7 @@
 
   <!-- Mobile-only: persistent BOTTOM BAR (three-dots · spacer · username + avatar) — home & chart -->
   <div id="mBottomBar">
-    <button class="mbb-more" id="mbbMore" onclick="toggleBottomMore(event)" title="עוד אפשרויות" aria-label="עוד אפשרויות">⋮</button>
+    <button class="mbb-more" id="mbbMore" onclick="toggleBottomMore(event)" title="עוד אפשרויות" aria-label="עוד אפשרויות">⋯</button>
     <div class="mbb-spacer"></div>
     <span class="mbb-name" id="mbbName" onclick="openProfile()"></span>
     <button class="mbb-avatar" id="mbbAvatar" onclick="openProfile()" title="הפרופיל שלי" aria-label="הפרופיל שלי">Y</button>
