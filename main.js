@@ -149,6 +149,12 @@ function handleLogin(e) {
     if (result.ok) {
       localStorage.setItem('nt_token', result.data.token);
       localStorage.setItem('nt_user', JSON.stringify({ username: result.data.username, role: result.data.role }));
+      // Apply the authoritative plan from the server (overrides local trial state).
+      try {
+        if (window.NTPlan && result.data.plan) {
+          window.NTPlan.applyServerPlan({ plan: result.data.plan, premiumUntil: result.data.premiumUntil, trialUsed: result.data.trialUsed });
+        }
+      } catch (e2) {}
       loginSuccess({ name: result.data.username, email: email, role: result.data.role });
     } else {
       errEl.textContent = result.data.error || 'אימייל או סיסמה שגויים';
@@ -277,6 +283,9 @@ function loginSuccess(user) {
   // Load THIS user's own watchlist + colored lists (prevents a new user from
   // inheriting the previous user's list on the same device).
   loadUserScopedData();
+
+  // Apply the monetization plan: admins get full access; new users get a trial.
+  try { if (window.NTPlan) window.NTPlan.onLogin({ role: user.role }); } catch (e) {}
 
   console.log('[NexTrade] About to call init()...');
   // defer init so the browser finishes layout before the chart measures width.

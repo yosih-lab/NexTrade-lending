@@ -2295,6 +2295,26 @@
     }
     .sf-mode.active { background:var(--accent); color:#fff; }
     .sf-userbox { font-size:.82rem; color:var(--text-muted); font-weight:600; }
+    /* plan badge + upgrade button */
+    .nt-plan-badge { font-size:.7rem; font-weight:900; padding:.22rem .6rem; border-radius:999px; white-space:nowrap; }
+    .nt-plan-badge.free { background:var(--surface2); color:var(--text-muted); border:1px solid var(--border); }
+    .nt-plan-badge.premium { background:linear-gradient(135deg,#f5a623,#f7c76b); color:#1a1205; }
+    .sf-upgrade-btn { background:linear-gradient(135deg,#f5a623,#f7c76b); color:#1a1205; border:none;
+      border-radius:999px; padding:.4rem .9rem; font-size:.8rem; font-weight:900; cursor:pointer;
+      font-family:Heebo,sans-serif; white-space:nowrap; box-shadow:0 2px 10px rgba(245,166,35,.35); }
+    .sf-upgrade-btn:hover { filter:brightness(1.05); }
+    /* in-feed search */
+    .sf-search { display:flex; align-items:center; gap:.5rem; padding:.6rem 1.1rem; background:var(--surface);
+      border-bottom:1px solid var(--border); flex-shrink:0; }
+    .sf-search-ic { font-size:.9rem; opacity:.7; flex-shrink:0; }
+    #sfSearchInput { flex:1; min-width:0; background:var(--surface2); border:1px solid var(--border);
+      border-radius:10px; padding:.5rem .7rem; color:var(--text); font-size:.85rem; font-family:Heebo,sans-serif;
+      direction:rtl; }
+    #sfSearchInput:focus { outline:none; border-color:var(--accent); }
+    .sf-search-add { background:var(--surface2); border:1px solid var(--border); color:var(--text);
+      border-radius:10px; padding:.5rem .8rem; font-size:.78rem; font-weight:800; cursor:pointer;
+      font-family:Heebo,sans-serif; white-space:nowrap; flex-shrink:0; }
+    .sf-search-add:hover { border-color:var(--accent); color:var(--accent); }
     .sf-tabs {
       display:flex; gap:.3rem; padding:.6rem 1.1rem 0; background:var(--surface);
       border-bottom:1px solid var(--border); flex-shrink:0;
@@ -2425,6 +2445,49 @@
     .tr-close-btn { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:.35rem .6rem; font-size:.74rem; font-weight:700; cursor:pointer; font-family:Heebo,sans-serif; }
     .tr-close-btn:hover { border-color:var(--red); color:var(--red); }
     .sf-rows-head { display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr 1fr auto; gap:.6rem; padding:0 .9rem .4rem; font-size:.68rem; color:var(--text-muted); font-weight:700; }
+    /* ---- Paywall: upgrade banner + locked panels ---- */
+    .sf-upsell { max-width:1000px; margin:0 auto 1rem; display:flex; align-items:center; gap:.8rem;
+      background:linear-gradient(135deg, rgba(245,166,35,.16), rgba(245,166,35,.04));
+      border:1px solid rgba(245,166,35,.45); border-radius:14px; padding:.9rem 1.1rem; }
+    .sf-upsell-txt { flex:1; min-width:0; }
+    .sf-upsell-title { font-size:.95rem; font-weight:900; color:#fff; }
+    .sf-upsell-sub { font-size:.78rem; color:var(--text-muted); margin-top:.15rem; }
+    .sf-upsell-btn { background:linear-gradient(135deg,#f5a623,#f7c76b); color:#1a1205; border:none;
+      border-radius:999px; padding:.55rem 1rem; font-size:.82rem; font-weight:900; cursor:pointer;
+      font-family:Heebo,sans-serif; white-space:nowrap; }
+    .sf-locked { max-width:1000px; margin:0 auto; text-align:center; padding:2.4rem 1.2rem;
+      background:var(--surface); border:1px dashed var(--border); border-radius:16px; }
+    .sf-locked-ic { font-size:2.2rem; margin-bottom:.5rem; }
+    .sf-locked-title { font-size:1.05rem; font-weight:900; color:#fff; margin-bottom:.3rem; }
+    .sf-locked-sub { font-size:.85rem; color:var(--text-muted); line-height:1.5; margin-bottom:1rem; }
+    .sf-locked-btn { background:linear-gradient(135deg,#f5a623,#f7c76b); color:#1a1205; border:none;
+      border-radius:999px; padding:.6rem 1.3rem; font-size:.88rem; font-weight:900; cursor:pointer;
+      font-family:Heebo,sans-serif; }
+    /* ---- Upgrade modal ---- */
+    body.nt-modal-open { overflow:hidden; }
+    .nt-upgrade-modal { position:fixed; inset:0; z-index:9000; display:none; align-items:center; justify-content:center;
+      background:rgba(0,0,0,.72); backdrop-filter:blur(4px); direction:rtl; padding:1rem; }
+    .nt-upgrade-modal.open { display:flex; }
+    .nt-upgrade-card { position:relative; width:100%; max-width:440px; background:var(--surface);
+      border:1px solid var(--border); border-radius:20px; padding:1.6rem 1.5rem; text-align:center;
+      box-shadow:0 20px 60px rgba(0,0,0,.5); max-height:92vh; overflow-y:auto; }
+    .nt-upgrade-x { position:absolute; top:.9rem; left:1rem; background:none; border:none; color:var(--text-muted);
+      font-size:1.1rem; cursor:pointer; }
+    .nt-upgrade-crown { font-size:2.6rem; }
+    .nt-upgrade-title { font-size:1.35rem; font-weight:900; color:#fff; margin:.3rem 0; }
+    .nt-upgrade-sub { font-size:.88rem; color:var(--text-muted); margin-bottom:1rem; }
+    .nt-upgrade-list { list-style:none; padding:0; margin:0 0 1.2rem; text-align:right; display:flex; flex-direction:column; gap:.5rem; }
+    .nt-upgrade-list li { font-size:.85rem; color:var(--text); }
+    .nt-plan-options { display:flex; gap:.7rem; }
+    .nt-plan-opt { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:14px;
+      padding:.9rem .7rem; cursor:pointer; font-family:Heebo,sans-serif; transition:border-color .15s,transform .1s; }
+    .nt-plan-opt:hover { transform:translateY(-2px); }
+    .nt-plan-opt.primary { border-color:var(--gold); background:rgba(245,166,35,.1); }
+    .nt-plan-opt-name { font-size:.82rem; font-weight:800; color:var(--text-muted); }
+    .nt-plan-opt-price { font-size:1.4rem; font-weight:900; color:#fff; margin:.2rem 0; }
+    .nt-plan-opt-price span { font-size:.7rem; font-weight:700; color:var(--text-muted); }
+    .nt-plan-opt-tag { font-size:.68rem; font-weight:800; color:var(--gold); }
+    .nt-upgrade-foot { font-size:.72rem; color:var(--text-muted); margin-top:1rem; }
     /* iOS safe-area insets (notch / home indicator) for the Signal Feed */
     #signalFeed { padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
     .sf-top { padding-right:calc(1.1rem + env(safe-area-inset-right)); padding-left:calc(1.1rem + env(safe-area-inset-left)); }
@@ -2441,8 +2504,13 @@
       .sf-top { flex-wrap:wrap; gap:.5rem .6rem; padding:.6rem .9rem; }
       .sf-logo { font-size:1.1rem; }
       .sf-userbox { font-size:.74rem; order:2; margin-right:auto; }
+      .nt-plan-badge { order:2; }
+      .sf-upgrade-btn { order:2; padding:.35rem .7rem; font-size:.74rem; }
       .sf-modetoggle { margin:0; order:3; width:100%; justify-content:center; }
       .sf-mode { flex:1; text-align:center; padding:.5rem .4rem; font-size:.8rem; }
+      .sf-search { padding:.5rem .7rem; gap:.4rem; }
+      #sfSearchInput { font-size:.82rem; padding:.45rem .6rem; }
+      .sf-search-add { padding:.45rem .6rem; font-size:.72rem; }
       .sf-tabs { padding:.5rem .6rem 0; gap:.15rem; overflow-x:auto; -webkit-overflow-scrolling:touch; }
       .sf-tab { padding:.55rem .7rem; font-size:.82rem; white-space:nowrap; }
       .sf-body { padding:.7rem; }
@@ -2949,6 +3017,8 @@
       <button class="sf-mode active" onclick="if(window.NTSignals)NTSignals.setMode('signals')">🔔 איתותים</button>
       <button class="sf-mode" onclick="if(window.NTSignals)NTSignals.setMode('analysis')">📊 ניתוח</button>
     </div>
+    <span class="nt-plan-badge free" id="ntPlanBadge">חינם</span>
+    <button class="sf-upgrade-btn" id="ntUpgradeBtn" onclick="if(window.NTPlan)NTPlan.openUpgrade()">⭐ שדרג</button>
     <div class="sf-userbox" id="sfUserName"></div>
   </header>
   <nav class="sf-tabs">
@@ -2957,15 +3027,53 @@
     <button class="sf-tab" data-tab="history" onclick="NTSignals.switchTab('history')">היסטוריה</button>
     <button class="sf-tab" data-tab="alerts" onclick="NTSignals.switchTab('alerts')">🔔 יומן</button>
   </nav>
+  <div class="sf-search" id="sfSearchWrap">
+    <span class="sf-search-ic">🔍</span>
+    <input id="sfSearchInput" type="text" inputmode="search" autocomplete="off"
+      placeholder="חפש מניה (לדוגמה: AAPL, טבע)…"
+      oninput="if(window.NTSignals)NTSignals.onSearch(this.value)" />
+    <button class="sf-search-add" id="sfSearchAdd" onclick="if(window.NTSignals)NTSignals.addWatchFromSearch()">+ הוסף למעקב</button>
+  </div>
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20261018c"></script>
-<script src="scanner-engine.js?v=20261018c"></script>
-<script src="main.js?v=20261018c"></script>
-<script src="drawing.js?v=20261018c"></script>
-<script src="features.js?v=20261018c"></script>
-<script src="signals.js?v=20261018c"></script>
+<!-- UPGRADE / PAYWALL MODAL -->
+<div id="ntUpgradeModal" class="nt-upgrade-modal" onclick="if(event.target===this&&window.NTPlan)NTPlan.closeUpgrade()">
+  <div class="nt-upgrade-card">
+    <button class="nt-upgrade-x" onclick="if(window.NTPlan)NTPlan.closeUpgrade()">✕</button>
+    <div class="nt-upgrade-crown">⭐</div>
+    <h2 class="nt-upgrade-title">שדרג ל‑NexTrade פרימיום</h2>
+    <p class="nt-upgrade-sub" id="ntUpgradeSub">קבל את כל האיתותים בזמן אמת, בלי הגבלות.</p>
+    <ul class="nt-upgrade-list">
+      <li>✓ כל האיתותים בזמן אמת — בלי הגבלה יומית</li>
+      <li>✓ התראות Push ברגע שנוצר איתות</li>
+      <li>✓ מעקב ומועדפים ללא הגבלה</li>
+      <li>✓ יומן התראות מלא + סיכום ביצועים</li>
+      <li>✓ התראת דוחות (earnings) לפני פרסום</li>
+    </ul>
+    <div class="nt-plan-options">
+      <button class="nt-plan-opt" onclick="if(window.NTPlan)NTPlan.startCheckout('yearly')">
+        <div class="nt-plan-opt-name">שנתי</div>
+        <div class="nt-plan-opt-price">₪490<span>/שנה</span></div>
+        <div class="nt-plan-opt-tag">חודשיים חינם</div>
+      </button>
+      <button class="nt-plan-opt primary" onclick="if(window.NTPlan)NTPlan.startCheckout('monthly')">
+        <div class="nt-plan-opt-name">חודשי</div>
+        <div class="nt-plan-opt-price">₪69<span>/חודש</span></div>
+        <div class="nt-plan-opt-tag">הכי גמיש</div>
+      </button>
+    </div>
+    <div class="nt-upgrade-foot">ביטול בכל עת · תשלום מאובטח</div>
+  </div>
+</div>
+
+<script src="scanner-symbols.js?v=20261018d"></script>
+<script src="scanner-engine.js?v=20261018d"></script>
+<script src="plan.js?v=20261018d"></script>
+<script src="main.js?v=20261018d"></script>
+<script src="drawing.js?v=20261018d"></script>
+<script src="features.js?v=20261018d"></script>
+<script src="signals.js?v=20261018d"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">

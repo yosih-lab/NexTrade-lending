@@ -25,6 +25,14 @@
   var activeTab = 'signals';
   var refreshTimer = null;
   var favFilter = false; // when true, show only favorite symbols in the signals tab
+  var searchQuery = ''; // in-feed search text (filters cards; also drives "add to watch")
+
+  // ---------- plan helpers (thin wrappers over window.NTPlan) ----------
+  function isPremium() { try { return !window.NTPlan || window.NTPlan.isPremium(); } catch (e) { return true; } }
+  function favCap()    { try { return window.NTPlan ? window.NTPlan.favLimit() : Infinity; } catch (e) { return Infinity; } }
+  function sigCap()    { try { return window.NTPlan ? window.NTPlan.signalLimit() : Infinity; } catch (e) { return Infinity; } }
+  function canUse(f)   { try { return !window.NTPlan || window.NTPlan.canUse(f); } catch (e) { return true; } }
+  function openUpgrade(ctx) { try { if (window.NTPlan) window.NTPlan.openUpgrade(ctx); } catch (e) {} }
 
   // ---------- favorites (alert watch) ----------
   function loadFavs() {
@@ -35,7 +43,14 @@
   function toggleFav(sym) {
     var f = loadFavs();
     var i = f.indexOf(sym);
-    if (i === -1) { f.push(sym); } else { f.splice(i, 1); }
+    if (i === -1) {
+      // Free users are capped on how many symbols they can watch.
+      if (f.length >= favCap()) {
+        openUpgrade('במסלול החינם אפשר לעקוב אחרי עד ' + favCap() + ' מניות. שדרג למעקב ללא הגבלה.');
+        return;
+      }
+      f.push(sym);
+    } else { f.splice(i, 1); }
     saveFavs(f);
     render();
   }
@@ -200,9 +215,9 @@
       distTxt = '<span class="sig-dist ' + (near ? 'near' : '') + '">' +
         (stt.dist >= 0 ? '+' : '') + stt.dist.toFixed(1) + '% מהכניסה</span>';
     }
-    // earnings warning (exit 1 day before)
+    // earnings warning (exit 1 day before) — premium feature
     var earnTxt = '';
-    if (earn) {
+    if (earn && canUse('earnings')) {
       earnTxt = '<div class="sig-earn ' + (earn.exitToday ? 'warn' : '') + '">📅 דוח בעוד ' + earn.days + ' ימים' +
         (earn.exitToday ? ' — מומלץ לצאת יום לפני!' : '') + '</div>';
     }
@@ -273,6 +288,16 @@
     var closed = loadTrades().filter(function (t) { return t.status === 'closed'; })
                              .sort(function (a, b) { return (a.closeTs || 0) - (b.closeTs || 0); });
     if (!closed.length) return '';
+    // Advanced performance summary is a premium feature.
+    if (!canUse('perf')) {
+      return '<div class="sf-upsell">' +
+        '<div class="sf-upsell-txt">' +
+          '<div class="sf-upsell-title">📊 סיכום ביצועים</div>' +
+          '<div class="sf-upsell-sub">אחוז הצלחה, ממוצע R ורצף נצחונות — זמין בפרימיום.</div>' +
+        '</div>' +
+        '<button class="sf-upsell-btn" onclick="NTSignals.openUpgrade()">⭐ שדרג</button>' +
+      '</div>';
+    }
     var wins = 0, rSum = 0, rCount = 0, streak = 0, bestStreak = 0, cur = 0;
     closed.forEach(function (t) {
       var win = (t.pnl || 0) >= 0;
@@ -314,17 +339,47 @@
 
     var list = uniq;
     if (favFilter) list = uniq.filter(function (s) { return isFav(s.sym); });
+    // in-feed text search (symbol or name)
+    if (searchQuery) {
+      var q = searchQuery.toLowerCase();
+      list = list.filter(function (s) {
+        var a = (s.sym || '').toLowerCase();
+        var b = (s.name || '').toLowerCase();
+        return a.indexOf(q) !== -1 || b.indexOf(q) !== -1;
+      });
+    }
 
     var perf = perfSummary();
-    var hero = favFilter ? '' : heroCard(uniq);
+    var hero = (favFilter || searchQuery) ? '' : heroCard(uniq);
 
     if (!list.length) {
-      var emptyMsg = favFilter
-        ? 'אין איתותים במניות המועדפות שלך כרגע.<br>סמן מניות בכוכב כדי לקבל עליהן התראות.'
-        : 'אין איתותים פעילים כרגע.<br>הסורק רץ ברקע ומעדכן אוטומטית — איתותים חדשים יופיעו כאן.';
+      var emptyMsg;
+      if (searchQuery) {
+        emptyMsg = 'אין איתות פעיל על "' + searchQuery + '".<br>הוסף אותה למעקב כדי לקבל התראה כשייווצר איתות.';
+      } else if (favFilter) {
+        emptyMsg = 'אין איתותים במניות המועדפות שלך כרגע.<br>סמן מניות בכוכב כדי לקבל עליהן התראות.';
+      } else {
+        emptyMsg = 'אין איתותים פעילים כרגע.<br>הסורק רץ ברקע ומעדכן אוטומטית — איתותים חדשים יופיעו כאן.';
+      }
       return perf + filterBar + '<div class="sf-empty">' + emptyMsg + '</div>';
     }
-    return perf + hero + filterBar + '<div class="sf-grid">' + list.map(signalCard).join('') + '</div>';
+
+    // Free-tier cap: show only the first N signals, tease the rest.
+    var upsell = '';
+    var cap = sigCap();
+    if (cap !== Infinity && list.length > cap) {
+      var hidden = list.length - cap;
+      list = list.slice(0, cap);
+      upsell = '<div class="sf-upsell">' +
+        '<div class="sf-upsell-txt">' +
+          '<div class="sf-upsell-title">🔒 יש עוד ' + hidden + ' איתותים חדשים</div>' +
+          '<div class="sf-upsell-sub">במסלול החינם מוצגים ' + cap + ' איתותים. שדרג כדי לראות את כולם בזמן אמת.</div>' +
+        '</div>' +
+        '<button class="sf-upsell-btn" onclick="NTSignals.openUpgrade()">⭐ שדרג</button>' +
+      '</div>';
+    }
+
+    return perf + hero + filterBar + '<div class="sf-grid">' + list.map(signalCard).join('') + '</div>' + upsell;
   }
 
   function tradePnl(t, live) {
@@ -410,6 +465,15 @@
 
   // Alerts log (bell): chronological list of every signal the scanner fired.
   function renderAlertsLog() {
+    // Full alerts log is a premium feature.
+    if (!canUse('alertsLog')) {
+      return '<div class="sf-locked">' +
+        '<div class="sf-locked-ic">🔔</div>' +
+        '<div class="sf-locked-title">יומן התראות מלא</div>' +
+        '<div class="sf-locked-sub">עקוב אחרי כל איתות שהסורק שלח, בתיעוד כרונולוגי מלא.<br>הפיצ׳ר זמין במסלול פרימיום.</div>' +
+        '<button class="sf-locked-btn" onclick="NTSignals.openUpgrade()">⭐ שדרג לפרימיום</button>' +
+      '</div>';
+    }
     var raw;
     try { raw = JSON.parse(localStorage.getItem(ALERTS_KEY) || '[]'); } catch (e) { raw = []; }
     if (!raw.length) {
@@ -452,6 +516,59 @@
     activeTab = tab;
     var tabs = document.querySelectorAll('#signalFeed .sf-tab');
     tabs.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === tab); });
+    // the in-feed search belongs to the signals tab only
+    var searchWrap = document.getElementById('sfSearchWrap');
+    if (searchWrap) searchWrap.style.display = (tab === 'signals') ? 'flex' : 'none';
+    render();
+  }
+
+  // ---------- in-feed search + watch ----------
+  function onSearch(val) {
+    searchQuery = (val || '').trim();
+    if (activeTab !== 'signals') return;
+    render();
+  }
+
+  // Validate a typed query against the scanner's known symbols.
+  function resolveSymbol(q) {
+    q = (q || '').trim().toUpperCase();
+    if (!q) return null;
+    var all = (typeof window.ALL_SCANNER_SYMBOLS !== 'undefined') ? window.ALL_SCANNER_SYMBOLS : (typeof ALL_SCANNER_SYMBOLS !== 'undefined' ? ALL_SCANNER_SYMBOLS : []);
+    if (!all || !all.length) return q; // can't validate — accept as-is
+    // exact match on symbol or its .TA-stripped form
+    for (var i = 0; i < all.length; i++) {
+      var s = all[i].toUpperCase();
+      if (s === q || s.replace('.TA', '') === q) return all[i];
+    }
+    // TASE symbols are stored with .TA — try appending it
+    for (var j = 0; j < all.length; j++) {
+      if (all[j].toUpperCase() === q + '.TA') return all[j];
+    }
+    return null;
+  }
+
+  // Add the symbol in the search box to the user's watch list (favorites).
+  function addWatchFromSearch() {
+    var input = document.getElementById('sfSearchInput');
+    var q = input ? input.value : searchQuery;
+    var sym = resolveSymbol(q);
+    if (!sym) {
+      try { if (typeof window.ntToast === 'function') window.ntToast('לא נמצאה מניה בשם "' + (q || '') + '"'); else alert('מניה לא נמצאה'); } catch (e) {}
+      return;
+    }
+    if (isFav(sym)) {
+      try { if (typeof window.ntToast === 'function') window.ntToast((sym || '').replace('.TA', '') + ' כבר במעקב ✓'); } catch (e) {}
+      return;
+    }
+    var f = loadFavs();
+    if (f.length >= favCap()) {
+      openUpgrade('במסלול החינם אפשר לעקוב אחרי עד ' + favCap() + ' מניות. שדרג למעקב ללא הגבלה.');
+      return;
+    }
+    f.push(sym); saveFavs(f);
+    if (input) input.value = '';
+    searchQuery = '';
+    try { if (typeof window.ntToast === 'function') window.ntToast('✓ ' + (sym || '').replace('.TA', '') + ' נוספה למעקב — נודיע כשייווצר איתות'); } catch (e) {}
     render();
   }
 
@@ -508,7 +625,12 @@
   // "Set alert" — mark the symbol as a favorite (so it's watched) and confirm.
   function setAlert(sym) {
     if (!isFav(sym)) {
-      var f = loadFavs(); f.push(sym); saveFavs(f);
+      var f = loadFavs();
+      if (f.length >= favCap()) {
+        openUpgrade('במסלול החינם אפשר לעקוב אחרי עד ' + favCap() + ' מניות. שדרג למעקב ללא הגבלה.');
+        return;
+      }
+      f.push(sym); saveFavs(f);
     }
     try { if (typeof window.ntToast === 'function') window.ntToast('התראה נקבעה על ' + (sym || '').replace('.TA', '') + ' 🔔'); } catch (e) {}
     render();
@@ -561,6 +683,8 @@
     show: show, hide: hide, setMode: setMode,
     switchTab: switchTab, addTrade: addTrade, closeTrade: closeTrade,
     analyze: analyze, render: render,
-    toggleFav: toggleFav, setFavFilter: setFavFilter, setAlert: setAlert
+    toggleFav: toggleFav, setFavFilter: setFavFilter, setAlert: setAlert,
+    onSearch: onSearch, addWatchFromSearch: addWatchFromSearch,
+    openUpgrade: function (ctx) { openUpgrade(ctx); }
   };
 })();

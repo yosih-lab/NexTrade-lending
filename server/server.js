@@ -17,6 +17,35 @@ const JWT_SECRET = process.env.JWT_SECRET || 'nexttrade_jwt_secret_change_me';
 const MAX_USERS  = 100;
 const USERS_FILE = path.join(__dirname, 'users.json');
 
+// ── BILLING (Stripe) ─────────────────────────────────────────────
+// Set these env vars on Render to enable paid subscriptions:
+//   STRIPE_SECRET_KEY        sk_live_... (or sk_test_...)
+//   STRIPE_WEBHOOK_SECRET    whsec_...   (from the Stripe webhook endpoint)
+//   STRIPE_PRICE_MONTHLY     price_...   (recurring monthly price id)
+//   STRIPE_PRICE_YEARLY      price_...   (recurring yearly price id)
+//   BILLING_SUCCESS_URL      e.g. https://getnexttrade.com/?upgraded=1 (optional)
+//   BILLING_CANCEL_URL       e.g. https://getnexttrade.com/            (optional)
+const STRIPE_SECRET_KEY     = process.env.STRIPE_SECRET_KEY;
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
+const STRIPE_PRICE_MONTHLY  = process.env.STRIPE_PRICE_MONTHLY;
+const STRIPE_PRICE_YEARLY   = process.env.STRIPE_PRICE_YEARLY;
+const BILLING_SUCCESS_URL   = process.env.BILLING_SUCCESS_URL || (ALLOWED[0] + '/?upgraded=1');
+const BILLING_CANCEL_URL    = process.env.BILLING_CANCEL_URL  || ALLOWED[0];
+
+let _stripe = null;
+function getStripe() {
+  if (_stripe) return _stripe;
+  if (!STRIPE_SECRET_KEY) return null;
+  try {
+    const Stripe = require('stripe');
+    _stripe = Stripe(STRIPE_SECRET_KEY);
+    return _stripe;
+  } catch (e) {
+    console.error('[NexTrade] Stripe package not installed — run `npm i stripe`:', e.message);
+    return null;
+  }
+}
+
 // ── EMAIL (provider-agnostic SMTP) ───────────────────────────────
 // Set these env vars on Render to enable sending:
 //   SMTP_HOST, SMTP_PORT (465 or 587), SMTP_USER, SMTP_PASS
@@ -148,6 +177,57 @@ function buildSignalsEmail(data) {
   return { subject: subject, html: html, text: text };
 }
 
+// ── STRIPE WEBHOOK (must be BEFORE express.json — needs the raw body) ─────────
+// Stripe calls this after a successful payment. We verify the signature, then
+// flip the user to premium with the subscription's period end.
+app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const stripe = getStripe();
+  if (!stripe || !STRIPE_WEBHOOK_SECRET) return res.status(503).json({ error: 'billing-not-configured' });
+  let event;
+  try {
+    const sig = req.headers['stripe-signature'];
+    event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
+  } catch (e) {
+    console.error('[NexTrade] Stripe webhook signature error:', e.message);
+    return res.status(400).send('Webhook Error: ' + e.message);
+  }
+  try {
+    if (event.type === 'checkout.session.completed') {
+      const s = event.data.object;
+      const userId = s.client_reference_id || (s.metadata && s.metadata.userId);
+      let premiumUntil = null;
+      if (s.subscription) {
+        const sub = await stripe.subscriptions.retrieve(s.subscription);
+        if (sub && sub.current_period_end) premiumUntil = new Date(sub.current_period_end * 1000).toISOString();
+      }
+      if (userId) {
+        await updateUserPlan(userId, { plan: 'premium', premiumUntil, stripeCustomer: s.customer || undefined });
+        console.log('[NexTrade] ✓ Premium activated for user', userId, 'until', premiumUntil);
+      }
+    } else if (event.type === 'customer.subscription.deleted' || event.type === 'customer.subscription.updated') {
+      const sub = event.data.object;
+      const premiumUntil = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
+      const active = sub.status === 'active' || sub.status === 'trialing';
+      // find the user by stripe customer id
+      let user = null;
+      if (supabase) {
+        const { data } = await supabase.from('users').select('*').eq('stripe_customer', sub.customer).maybeSingle();
+        user = data ? rowToUser(data) : null;
+      } else {
+        user = loadUsersMem().find(u => u.stripeCustomer === sub.customer) || null;
+      }
+      if (user) {
+        await updateUserPlan(user.id, { plan: active ? 'premium' : 'free', premiumUntil: active ? premiumUntil : null });
+        console.log('[NexTrade] Subscription', sub.status, 'for user', user.id);
+      }
+    }
+    res.json({ received: true });
+  } catch (e) {
+    console.error('[NexTrade] Stripe webhook handler error:', e.message);
+    res.status(500).json({ error: 'webhook-failed' });
+  }
+});
+
 // ── BODY PARSER ──────────────────────────────────────────────────
 app.use(express.json());
 
@@ -199,7 +279,16 @@ function saveUsersMem(users) {
 }
 
 function rowToUser(row) {
-  return { id: row.id, username: row.username, email: row.email, hash: row.hash, role: row.role, createdAt: row.created_at, mode: row.mode || null, emailAlerts: row.email_alerts !== false };
+  return { id: row.id, username: row.username, email: row.email, hash: row.hash, role: row.role, createdAt: row.created_at, mode: row.mode || null, emailAlerts: row.email_alerts !== false, plan: row.plan || 'free', premiumUntil: row.premium_until || null, trialUsed: !!row.trial_used, stripeCustomer: row.stripe_customer || null };
+}
+
+// Resolve the authoritative plan for a user: admins are always premium; otherwise
+// premium is active only while premium_until is in the future.
+function resolvePlan(user) {
+  if (!user) return { plan: 'free', premiumUntil: null, isPremium: false };
+  if (user.role === 'admin') return { plan: 'premium', premiumUntil: null, isPremium: true };
+  var active = user.plan === 'premium' && (!user.premiumUntil || Date.now() < new Date(user.premiumUntil).getTime());
+  return { plan: active ? 'premium' : 'free', premiumUntil: user.premiumUntil || null, isPremium: active, trialUsed: user.trialUsed };
 }
 
 // Get all users (id/username/email/role/createdAt/hash)
@@ -292,6 +381,52 @@ async function updateUserPrefs(id, { mode, emailAlerts }) {
 async function getSignalSubscribers() {
   const all = await getAllUsers();
   return all.filter(u => u.email && u.emailAlerts !== false && u.mode !== 'analysis');
+}
+
+// Look up a single user by id (for plan/billing checks).
+async function getUserById(id) {
+  if (supabase) {
+    const { data, error } = await supabase.from('users').select('*').eq('id', id).maybeSingle();
+    if (error) { console.error('[NexTrade] getUserById error:', error.message); return null; }
+    return data ? rowToUser(data) : null;
+  }
+  return loadUsersMem().find(u => String(u.id) === String(id)) || null;
+}
+
+// Update the plan/subscription fields for a user.
+async function updateUserPlan(id, { plan, premiumUntil, trialUsed, stripeCustomer }) {
+  const patch = {};
+  if (plan === 'free' || plan === 'premium') patch.plan = plan;
+  if (premiumUntil !== undefined) patch.premium_until = premiumUntil;
+  if (typeof trialUsed === 'boolean') patch.trial_used = trialUsed;
+  if (stripeCustomer !== undefined) patch.stripe_customer = stripeCustomer;
+  if (!Object.keys(patch).length) return null;
+  if (supabase) {
+    const { data, error } = await supabase.from('users').update(patch).eq('id', id).select().maybeSingle();
+    if (error) throw error;
+    return data ? rowToUser(data) : null;
+  }
+  const users = loadUsersMem();
+  const user = users.find(u => String(u.id) === String(id));
+  if (!user) return null;
+  if (patch.plan != null) user.plan = patch.plan;
+  if (patch.premium_until !== undefined) user.premiumUntil = patch.premium_until;
+  if (patch.trial_used != null) user.trialUsed = patch.trial_used;
+  if (patch.stripe_customer !== undefined) user.stripeCustomer = patch.stripe_customer;
+  saveUsersMem(users);
+  return user;
+}
+
+// Grant the one-time 7-day premium trial (used at registration).
+const TRIAL_DAYS = parseInt(process.env.TRIAL_DAYS || '7', 10);
+async function startTrialForUser(id) {
+  const until = new Date(Date.now() + TRIAL_DAYS * 86400000).toISOString();
+  try {
+    return await updateUserPlan(id, { plan: 'premium', premiumUntil: until, trialUsed: true });
+  } catch (e) {
+    console.error('[NexTrade] startTrialForUser error:', e.message);
+    return null;
+  }
 }
 
 async function deleteUserById(id) {
@@ -424,6 +559,8 @@ app.post('/api/register', async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     const role = total === 0 ? 'admin' : 'user'; // first user = admin
     const newUser = await createUser({ username, email, hash, role });
+    // Grant every new user a one-time 7-day premium trial.
+    if (role !== 'admin') { await startTrialForUser(newUser.id); }
     console.log('[NexTrade] ✓ Registered:', username, 'id:', newUser.id, 'role:', role, '| Total:', total + 1);
     res.json({ ok: true, message: role === 'admin' ? 'נרשמת כמנהל מערכת' : 'נרשמת בהצלחה' });
   } catch(e) {
@@ -450,7 +587,8 @@ app.post('/api/login', async (req, res) => {
     }
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
     console.log('[NexTrade] ✓ Login success:', user.username, 'role:', user.role);
-    res.json({ token, username: user.username, role: user.role });
+    const planInfo = resolvePlan(user);
+    res.json({ token, username: user.username, role: user.role, plan: planInfo.plan, premiumUntil: planInfo.premiumUntil, trialUsed: !!user.trialUsed });
   } catch(e) {
     console.error('[NexTrade] ✗ Login error:', e.message);
     res.status(500).json({ error: 'שגיאת שרת בעת ההתחברות' });
@@ -473,6 +611,46 @@ app.patch('/api/me/prefs', requireAuth, async (req, res) => {
   } catch (e) {
     console.error('[NexTrade] PATCH /api/me/prefs error:', e.message);
     res.status(500).json({ error: 'שגיאה בשמירת ההעדפות' });
+  }
+});
+
+// ── BILLING ROUTES ────────────────────────────────────────────────
+// Authoritative plan status for the logged-in user (client mirrors this).
+app.get('/api/billing/status', requireAuth, async (req, res) => {
+  try {
+    const user = await getUserById(req.user.id);
+    const info = resolvePlan(user);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ plan: info.plan, premiumUntil: info.premiumUntil, isPremium: info.isPremium, trialUsed: !!(user && user.trialUsed) });
+  } catch (e) {
+    console.error('[NexTrade] GET /api/billing/status error:', e.message);
+    res.status(500).json({ error: 'שגיאה בבדיקת המנוי' });
+  }
+});
+
+// Create a hosted Stripe Checkout session and return its URL.
+app.post('/api/billing/checkout', requireAuth, async (req, res) => {
+  const stripe = getStripe();
+  if (!stripe) return res.status(503).json({ error: 'מערכת התשלומים עדיין לא מחוברת' });
+  const cycle = (req.body && req.body.cycle) === 'yearly' ? 'yearly' : 'monthly';
+  const price = cycle === 'yearly' ? STRIPE_PRICE_YEARLY : STRIPE_PRICE_MONTHLY;
+  if (!price) return res.status(503).json({ error: 'מחיר לא הוגדר בשרת' });
+  try {
+    const user = await getUserById(req.user.id);
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      line_items: [{ price: price, quantity: 1 }],
+      client_reference_id: String(req.user.id),
+      metadata: { userId: String(req.user.id) },
+      customer_email: (user && user.email) || undefined,
+      success_url: BILLING_SUCCESS_URL,
+      cancel_url: BILLING_CANCEL_URL,
+      allow_promotion_codes: true
+    });
+    res.json({ url: session.url });
+  } catch (e) {
+    console.error('[NexTrade] POST /api/billing/checkout error:', e.message);
+    res.status(500).json({ error: 'שגיאה ביצירת עמוד התשלום' });
   }
 });
 

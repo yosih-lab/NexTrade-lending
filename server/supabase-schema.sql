@@ -15,6 +15,16 @@ create table if not exists public.users (
 alter table public.users add column if not exists mode text;
 alter table public.users add column if not exists email_alerts boolean not null default true;
 
+-- Monetization / plan columns (Freemium: free | premium, with a 7-day trial).
+--   plan          : 'free' | 'premium'
+--   premium_until : when premium access expires (trial end or paid-period end)
+--   trial_used    : whether the one-time 7-day trial was already granted
+--   stripe_customer : Stripe customer id, for managing the subscription
+alter table public.users add column if not exists plan text not null default 'free';
+alter table public.users add column if not exists premium_until timestamptz;
+alter table public.users add column if not exists trial_used boolean not null default false;
+alter table public.users add column if not exists stripe_customer text;
+
 -- Server uses the Service Role key (bypasses RLS), so RLS can stay enabled with no public policies.
 alter table public.users enable row level security;
 
