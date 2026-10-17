@@ -2306,7 +2306,7 @@
     }
     .sf-tab:hover { color:var(--text); }
     .sf-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
-    .sf-body { flex:1; overflow-y:auto; padding:1rem; }
+    .sf-body { flex:1; overflow-y:auto; overflow-x:hidden; padding:1rem; }
     .sf-grid {
       display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:1rem;
       max-width:1100px; margin:0 auto;
@@ -2317,11 +2317,13 @@
       background:var(--surface); border:1px solid var(--border); border-radius:14px;
       padding:1rem 1.1rem; display:flex; flex-direction:column; gap:.8rem;
       box-shadow:0 4px 18px rgba(0,0,0,.3);
+      box-sizing:border-box; max-width:100%; min-width:0; overflow:hidden;
     }
     .sig-card.long  { border-right:4px solid var(--green); }
     .sig-card.short { border-right:4px solid var(--red); }
-    .sig-head { display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
-    .sig-sym { font-size:1.15rem; font-weight:900; color:#fff; }
+    .sig-head { display:flex; align-items:center; justify-content:space-between; gap:.5rem; flex-wrap:wrap; min-width:0; }
+    .sig-head > div:first-child { min-width:0; flex:1; }
+    .sig-sym { font-size:1.15rem; font-weight:900; color:#fff; word-break:break-word; }
     .sig-name { font-size:.72rem; color:var(--text-muted); font-weight:600; }
     .sig-dir { font-size:.78rem; font-weight:800; padding:.25rem .7rem; border-radius:20px; white-space:nowrap; }
     .sig-dir.long  { background:rgba(38,166,154,.16); color:var(--green); }
@@ -2333,7 +2335,7 @@
     .sig-lvl.entry .sig-lvl-val { color:#fff; }
     .sig-lvl.stop  .sig-lvl-val { color:var(--red); }
     .sig-lvl.tp    .sig-lvl-val { color:var(--green); }
-    .sig-meta { display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
+    .sig-meta { display:flex; align-items:center; justify-content:space-between; gap:.4rem .5rem; flex-wrap:wrap; }
     .sig-rr { font-size:.76rem; font-weight:800; color:var(--gold); }
     .sig-status { font-size:.72rem; font-weight:700; padding:.22rem .6rem; border-radius:20px; }
     .sig-status.waiting { background:rgba(245,166,35,.14); color:var(--gold); }
@@ -2345,8 +2347,8 @@
     .sig-dist { font-size:.72rem; font-weight:700; color:var(--text-muted); }
     .sig-dist.near { color:#ffd27a; }
     /* setup chip on the symbol line */
-    .sig-setup { font-size:.62rem; font-weight:700; color:var(--accent); background:rgba(41,98,255,.12);
-      padding:.1rem .4rem; border-radius:6px; vertical-align:middle; }
+    .sig-setup { display:inline-block; font-size:.62rem; font-weight:700; color:var(--accent); background:rgba(41,98,255,.12);
+      padding:.1rem .4rem; border-radius:6px; vertical-align:middle; white-space:nowrap; margin-top:.15rem; }
     /* why / explanation line */
     .sig-why { font-size:.74rem; color:var(--text-muted); line-height:1.4; background:var(--surface2);
       border:1px dashed var(--border); border-radius:8px; padding:.4rem .55rem; }
@@ -2448,6 +2450,9 @@
       /* Signal card tuned for touch */
       .sig-card { padding:.9rem 1rem; gap:.7rem; border-radius:12px; }
       .sig-sym { font-size:1.25rem; }
+      .sig-head { align-items:flex-start; }
+      .sig-setup { display:block; width:fit-content; }
+      .sig-meta { justify-content:flex-start; }
       .sig-lvl { padding:.55rem .3rem; }
       .sig-lvl-val { font-size:1.1rem; }
       .sig-btn { padding:.7rem; font-size:.88rem; }
@@ -2955,12 +2960,12 @@
   <div class="sf-body" id="sfBody"></div>
 </div>
 
-<script src="scanner-symbols.js?v=20261018b"></script>
-<script src="scanner-engine.js?v=20261018b"></script>
-<script src="main.js?v=20261018b"></script>
-<script src="drawing.js?v=20261018b"></script>
-<script src="features.js?v=20261018b"></script>
-<script src="signals.js?v=20261018b"></script>
+<script src="scanner-symbols.js?v=20261018c"></script>
+<script src="scanner-engine.js?v=20261018c"></script>
+<script src="main.js?v=20261018c"></script>
+<script src="drawing.js?v=20261018c"></script>
+<script src="features.js?v=20261018c"></script>
+<script src="signals.js?v=20261018c"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
