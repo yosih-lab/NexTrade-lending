@@ -11,6 +11,73 @@ function getUsers()     { return JSON.parse(localStorage.getItem(USERS_KEY)   ||
 function getSession()   { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); }
 function saveSession(s) { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
 
+// ============================================
+//   PER-USER STORAGE SCOPING
+//   Watchlist + colored lists are stored PER logged-in user so a new user on
+//   the same device never inherits the previous user's list. Keys are suffixed
+//   with a stable identifier (server username, else session email/name).
+// ============================================
+function _userScope() {
+  try {
+    var su = JSON.parse(localStorage.getItem('nt_user') || 'null');
+    if (su && su.username) return 'u:' + String(su.username).toLowerCase();
+  } catch (e) {}
+  try {
+    var s = getSession();
+    if (s && (s.email || s.name)) return 'u:' + String(s.email || s.name).toLowerCase();
+  } catch (e) {}
+  return 'guest';
+}
+function _wlKey()       { return 'ml_watchlist::' + _userScope(); }
+function _wlColorsKey() { return 'nt_wl_colors::' + _userScope(); }
+function _wlNamesKey()  { return 'nt_wl_colornames::' + _userScope(); }
+
+// A fresh user starts with their own editable copy of this default list.
+var DEFAULT_WATCHLIST = ['TEVA.TA', 'ELBIT.TA', 'BEZQ.TA', 'POLI.TA', 'LUMI.TA', 'AZRG.TA'];
+
+// Read the watchlist for the CURRENT user. One-time migration: if this user has
+// no per-user list yet but a legacy global 'ml_watchlist' exists AND this is the
+// very first scoped read on this device, adopt it once (keeps the original owner's
+// list) — brand-new users still get their own default copy.
+function _readUserWatchlist() {
+  try {
+    var raw = localStorage.getItem(_wlKey());
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  // No per-user list yet: migrate the legacy global list once (first user only).
+  try {
+    if (!localStorage.getItem('nt_wl_migrated')) {
+      var legacy = localStorage.getItem('ml_watchlist');
+      localStorage.setItem('nt_wl_migrated', '1');
+      if (legacy) {
+        var arr = JSON.parse(legacy);
+        try { localStorage.setItem(_wlKey(), legacy); } catch (e2) {}
+        return arr;
+      }
+    }
+  } catch (e) {}
+  return DEFAULT_WATCHLIST.slice();
+}
+function _readUserColors() {
+  try { return JSON.parse(localStorage.getItem(_wlColorsKey()) || '{}') || {}; } catch (e) { return {}; }
+}
+function _readUserColorNames() {
+  try { return JSON.parse(localStorage.getItem(_wlNamesKey()) || '{}') || {}; } catch (e) { return {}; }
+}
+
+// Re-load all per-user scoped data into the in-memory globals and re-render.
+// Called after a login so switching users on the same device shows the right list.
+function loadUserScopedData() {
+  try {
+    watchlist = _readUserWatchlist();
+    wlColorMap = _readUserColors();
+    wlColorNames = _readUserColorNames();
+    if (typeof renderWatchlist === 'function') renderWatchlist();
+    if (typeof renderColorBar === 'function') renderColorBar();
+  } catch (e) {}
+}
+window.loadUserScopedData = loadUserScopedData;
+
 function switchTab(tab) {
   var tLogin  = document.getElementById('tabLogin');
   var tSignup = document.getElementById('tabSignup');
@@ -199,9 +266,17 @@ function loginSuccess(user) {
   // Mark the body for signal-oriented users so the mobile alerts bell shows (bottom-left).
   // Analysis users (chose "נתח בעצמי" in onboarding) get only the watchlists.
   try {
-    var umode = localStorage.getItem('nt_user_mode');
-    document.body.classList.toggle('mode-signals', umode !== 'analysis');
+    // Use the stable onboarding CHOICE (nt_user_plan), falling back to the
+    // current view mode for users onboarded before the plan key existed.
+    var uplan = localStorage.getItem('nt_user_plan') || localStorage.getItem('nt_user_mode');
+    var isAnalysis = uplan === 'analysis';
+    document.body.classList.toggle('mode-signals', !isAnalysis);
+    document.body.classList.toggle('mode-analysis', isAnalysis);
   } catch (e) {}
+
+  // Load THIS user's own watchlist + colored lists (prevents a new user from
+  // inheriting the previous user's list on the same device).
+  loadUserScopedData();
 
   console.log('[NexTrade] About to call init()...');
   // defer init so the browser finishes layout before the chart measures width.
@@ -218,6 +293,14 @@ function handleLogout() {
   localStorage.removeItem(SESSION_KEY);
   localStorage.removeItem('nt_token');
   localStorage.removeItem('nt_user');
+  // Reset in-memory user data so the next user doesn't see this user's lists.
+  try {
+    watchlist = DEFAULT_WATCHLIST.slice();
+    wlColorMap = {};
+    wlColorNames = {};
+    if (typeof renderWatchlist === 'function') renderWatchlist();
+    if (typeof renderColorBar === 'function') renderColorBar();
+  } catch (e) {}
   document.getElementById('appContainer').style.display = 'none';
   document.getElementById('authOverlay').style.display  = 'flex';
   document.getElementById('loginEmail').value    = '';
@@ -273,15 +356,15 @@ function wlColorHex(key) {
   return '';
 }
 var wlColorMap = {};
-try { wlColorMap = JSON.parse(localStorage.getItem('nt_wl_colors') || '{}') || {}; } catch (e) { wlColorMap = {}; }
+try { wlColorMap = _readUserColors(); } catch (e) { wlColorMap = {}; }
 var wlColorFilter = ''; // '' = show all; otherwise a color key
 var _wlPickerSym = null; // symbol currently being colored
 
 // Custom names for the colored watchlists (key -> user-chosen name).
 var wlColorNames = {};
-try { wlColorNames = JSON.parse(localStorage.getItem('nt_wl_colornames') || '{}') || {}; } catch (e) { wlColorNames = {}; }
+try { wlColorNames = _readUserColorNames(); } catch (e) { wlColorNames = {}; }
 function saveWlColorNames() {
-  try { localStorage.setItem('nt_wl_colornames', JSON.stringify(wlColorNames)); } catch (e) {}
+  try { localStorage.setItem(_wlNamesKey(), JSON.stringify(wlColorNames)); } catch (e) {}
 }
 function wlColorLabel(key) {
   if (wlColorNames[key]) return wlColorNames[key];
@@ -290,7 +373,7 @@ function wlColorLabel(key) {
 }
 
 function saveWlColors() {
-  try { localStorage.setItem('nt_wl_colors', JSON.stringify(wlColorMap)); } catch (e) {}
+  try { localStorage.setItem(_wlColorsKey(), JSON.stringify(wlColorMap)); } catch (e) {}
 }
 
 // Persistent bottom-bar "more" menu
@@ -970,7 +1053,7 @@ async function fetchStockLogoAsync(sym) {
   } catch(e) { logoCache[clean] = ''; }
 }
 var candleCache     = {};   // candleCache[symbol][tf] = []
-var watchlist       = JSON.parse(localStorage.getItem('ml_watchlist') || '["TEVA.TA","ELBIT.TA","BEZQ.TA","POLI.TA","LUMI.TA","AZRG.TA"]');
+var watchlist       = _readUserWatchlist();
 var portfolio       = JSON.parse(localStorage.getItem('ml_portfolio') || '[]');
 var alerts          = JSON.parse(localStorage.getItem('ml_alerts')    || '[]');
 var lastBars        = [];   // last loaded bars for MA computation
@@ -985,7 +1068,7 @@ var _wlSyncTimer = null;
 
 // Save locally (instant/offline) and push to the server (debounced).
 function saveWatchlist() {
-  try { localStorage.setItem('ml_watchlist', JSON.stringify(watchlist)); } catch (e) {}
+  try { localStorage.setItem(_wlKey(), JSON.stringify(watchlist)); } catch (e) {}
   pushWatchlistToServer();
 }
 
@@ -1023,7 +1106,7 @@ async function syncWatchlistFromServer() {
     }
     // Adopt the server list (handles deletions made on another device)
     watchlist = serverList;
-    try { localStorage.setItem('ml_watchlist', JSON.stringify(watchlist)); } catch (e) {}
+    try { localStorage.setItem(_wlKey(), JSON.stringify(watchlist)); } catch (e) {}
     if (typeof renderWatchlist === 'function') renderWatchlist();
   } catch (e) {}
 }

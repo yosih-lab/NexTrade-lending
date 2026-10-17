@@ -381,6 +381,8 @@ function completeOnboarding() {
   // Derive the preferred usage mode: 'signals' (signal feed) or 'analysis' (full charts)
   var mode = (answers.usageMode && answers.usageMode.indexOf('נתח בעצמי') !== -1) ? 'analysis' : 'signals';
   localStorage.setItem('nt_user_mode', mode);
+  // Stable onboarding CHOICE (does not change when the user toggles views).
+  localStorage.setItem('nt_user_plan', mode);
 
   // Persist the mode to the server so the backend knows who to email weekly signals to.
   try {

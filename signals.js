@@ -10,8 +10,15 @@
   'use strict';
 
   var TRADES_KEY = 'nt_trades';          // open + closed trades
-  var MODE_KEY   = 'nt_user_mode';       // 'signals' | 'analysis'
+  var MODE_KEY   = 'nt_user_mode';       // 'signals' | 'analysis' (current view)
+  var PLAN_KEY   = 'nt_user_plan';       // 'signals' | 'analysis' (stable onboarding choice)
   var ALERTS_KEY = 'ib_alerts2';         // scanner signals (written by main.js)
+
+  // Signals-only users are LOCKED to the feed (no switching to analysis).
+  function isSignalsLocked() {
+    var plan = localStorage.getItem(PLAN_KEY) || localStorage.getItem(MODE_KEY);
+    return plan === 'signals';
+  }
 
   var activeTab = 'signals';
   var refreshTimer = null;
@@ -292,14 +299,18 @@
 
   // Open the full chart (analysis) for a symbol from a signal card
   function analyze(sym) {
+    // Signals-only users are locked to the feed — don't leave it.
+    if (isSignalsLocked()) { try { if (typeof window.ntToast === 'function') window.ntToast('מצב איתותים בלבד'); } catch (e) {} return; }
     setMode('analysis');
     try { if (typeof window.selectSymbol === 'function') window.selectSymbol(sym); } catch (e) {}
   }
 
   function show() { setMode('signals'); }
-  function hide() { setMode('analysis'); }
+  function hide() { if (isSignalsLocked()) return; setMode('analysis'); }
 
   function setMode(mode) {
+    // Prevent signals-only users from switching into analysis.
+    if (mode === 'analysis' && isSignalsLocked()) mode = 'signals';
     localStorage.setItem(MODE_KEY, mode);
     var feed = document.getElementById('signalFeed');
     if (!feed) return;
@@ -327,7 +338,12 @@
 
   // Called after the app is logged-in and ready
   function onAppReady() {
-    var mode = localStorage.getItem(MODE_KEY) || 'signals'; // default to signals feed
+    var plan = localStorage.getItem(PLAN_KEY);
+    // Analysis users never see the feed; signals users are shown it.
+    if (plan === 'analysis') { setMode('analysis'); return; }
+    if (plan === 'signals')  { setMode('signals');  return; }
+    // No explicit plan (legacy): fall back to last view, default to signals.
+    var mode = localStorage.getItem(MODE_KEY) || 'signals';
     setMode(mode);
   }
 
