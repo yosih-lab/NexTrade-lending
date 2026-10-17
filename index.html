@@ -2267,13 +2267,17 @@
     .topbar-modebtn:hover { background:rgba(41,98,255,.28); }
     /* ===== USER MODE SEPARATION =====
        Analysis users (chose "נתח בעצמי"): regular site, NO bell/alerts, NO signal feed.
-       Signals-only users: locked to the signal feed (no switch to analysis). */
+       Signals-only users: locked to the signal feed (no switch to analysis).
+       Admins: FULL access — regular site by default + a button to open the feed. */
     body.mode-analysis #ib-alerts,
     body.mode-analysis #toSignalsBtn,
     body.mode-analysis #bellAlertsPopup,
     body.mode-analysis #bellAlertDetails,
     body.mode-analysis #signalFeed { display:none !important; }
     body.mode-signals .sf-modetoggle { display:none !important; }
+    /* Admin override: keep the "go to signals" button visible so admins can jump
+       into the feed even while viewing the regular analysis site. */
+    body.mode-admin #toSignalsBtn { display:inline-block !important; }
     #signalFeed {
       position:fixed; inset:0; z-index:5000; background:var(--bg);
       display:flex; flex-direction:column; direction:rtl; overflow:hidden;
@@ -3106,13 +3110,13 @@
   </div>
 </div>
 
-<script src="scanner-symbols.js?v=20261018f"></script>
-<script src="scanner-engine.js?v=20261018f"></script>
-<script src="plan.js?v=20261018f"></script>
-<script src="main.js?v=20261018f"></script>
-<script src="drawing.js?v=20261018f"></script>
-<script src="features.js?v=20261018f"></script>
-<script src="signals.js?v=20261018f"></script>
+<script src="scanner-symbols.js?v=20261018g"></script>
+<script src="scanner-engine.js?v=20261018g"></script>
+<script src="plan.js?v=20261018g"></script>
+<script src="main.js?v=20261018g"></script>
+<script src="drawing.js?v=20261018g"></script>
+<script src="features.js?v=20261018g"></script>
+<script src="signals.js?v=20261018g"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">

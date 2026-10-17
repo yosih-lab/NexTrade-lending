@@ -272,12 +272,16 @@ function loginSuccess(user) {
   // Mark the body for signal-oriented users so the mobile alerts bell shows (bottom-left).
   // Analysis users (chose "נתח בעצמי" in onboarding) get only the watchlists.
   try {
+    // Admins get FULL access: they see the regular (analysis) site by default,
+    // plus a button to open the signal feed — they are never locked to signals.
+    var isAdminUser = user.role === 'admin';
     // Use the stable onboarding CHOICE (nt_user_plan), falling back to the
     // current view mode for users onboarded before the plan key existed.
     var uplan = localStorage.getItem('nt_user_plan') || localStorage.getItem('nt_user_mode');
-    var isAnalysis = uplan === 'analysis';
+    var isAnalysis = isAdminUser ? true : (uplan === 'analysis');
     document.body.classList.toggle('mode-signals', !isAnalysis);
     document.body.classList.toggle('mode-analysis', isAnalysis);
+    document.body.classList.toggle('mode-admin', isAdminUser);
   } catch (e) {}
 
   // Load THIS user's own watchlist + colored lists (prevents a new user from

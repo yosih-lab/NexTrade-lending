@@ -22,8 +22,16 @@
   var _serverInfo = null;
   var _lastSync = 0;
 
+  // The logged-in user's role (admins get full access to both modes).
+  function userRole() {
+    try { return (JSON.parse(localStorage.getItem('nt_user') || '{}') || {}).role || null; } catch (e) { return null; }
+  }
+  function isAdmin() { return userRole() === 'admin'; }
+
   // Signals-only users are LOCKED to the feed (no switching to analysis).
+  // Admins are NEVER locked — they can move freely between the feed and the site.
   function isSignalsLocked() {
+    if (isAdmin()) return false;
     var plan = localStorage.getItem(PLAN_KEY) || localStorage.getItem(MODE_KEY);
     return plan === 'signals';
   }
@@ -776,6 +784,19 @@
     localStorage.setItem(MODE_KEY, mode);
     var feed = document.getElementById('signalFeed');
     if (!feed) return;
+    // Admins move freely: keep the body mode classes in sync so the mode-analysis
+    // CSS (which hides the feed with !important) never blocks opening it, while the
+    // in-feed mode toggle stays visible so they can switch back to the site.
+    if (isAdmin()) {
+      if (mode === 'signals') {
+        document.body.classList.remove('mode-analysis');
+        document.body.classList.remove('mode-signals');
+      } else {
+        document.body.classList.add('mode-analysis');
+        document.body.classList.remove('mode-signals');
+      }
+      document.body.classList.add('mode-admin');
+    }
     // update toggle buttons
     var btns = document.querySelectorAll('#signalFeed .sf-mode');
     btns.forEach(function (b, idx) { b.classList.toggle('active', (idx === 0) === (mode === 'signals')); });
@@ -802,6 +823,8 @@
   // Called after the app is logged-in and ready
   function onAppReady() {
     syncServerSignals(true); // fetch the server feed as soon as we're logged in
+    // Admins default to the regular (analysis) site — they are not signal-locked.
+    if (isAdmin()) { setMode('analysis'); return; }
     var plan = localStorage.getItem(PLAN_KEY);
     // Analysis users never see the feed; signals users are shown it.
     if (plan === 'analysis') { setMode('analysis'); return; }
