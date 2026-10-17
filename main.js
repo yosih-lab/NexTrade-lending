@@ -312,6 +312,11 @@ function handleLogout() {
   } catch (e) {}
   document.getElementById('appContainer').style.display = 'none';
   document.getElementById('authOverlay').style.display  = 'flex';
+  // Hide the fixed Signal Feed overlay (it sits above everything) on logout.
+  var feed = document.getElementById('signalFeed');
+  if (feed) feed.style.display = 'none';
+  var sfMenu = document.getElementById('sfUserMenu');
+  if (sfMenu) sfMenu.classList.remove('open');
   document.getElementById('loginEmail').value    = '';
   document.getElementById('loginPassword').value = '';
   document.getElementById('loginError').classList.remove('show');

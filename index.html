@@ -2279,11 +2279,30 @@
       display:flex; flex-direction:column; direction:rtl; overflow:hidden;
     }
     .sf-top {
-      display:flex; align-items:center; gap:1rem; padding:.7rem 1.1rem;
+      display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.7rem 1.1rem;
       background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0;
+      position:relative;
     }
-    .sf-logo { font-size:1.25rem; font-weight:900; color:#fff; }
-    .sf-logo span { color:var(--accent); }
+    /* brand logo centered with its standard colors */
+    .sf-logo { font-size:1.35rem; font-weight:900;
+      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); white-space:nowrap; }
+    .sf-logo .lg-nex { color:var(--gold); }
+    .sf-logo .lg-trade { color:#2962ff; }
+    /* RIGHT (RTL start): green user avatar + logout dropdown */
+    .sf-user { position:relative; flex-shrink:0; }
+    .sf-avatar { width:34px; height:34px; border-radius:50%; background:#7bd88f; color:#0a2a14;
+      border:none; font-size:1rem; font-weight:900; cursor:pointer; display:flex; align-items:center;
+      justify-content:center; font-family:Heebo,sans-serif; box-shadow:0 2px 8px rgba(123,216,143,.4); }
+    .sf-avatar:hover { filter:brightness(1.05); }
+    .sf-usermenu { position:absolute; top:calc(100% + 8px); right:0; min-width:190px; background:var(--surface2);
+      border:1px solid var(--border); border-radius:12px; padding:.6rem; box-shadow:0 12px 34px rgba(0,0,0,.45);
+      display:none; z-index:60; }
+    .sf-usermenu.open { display:block; }
+    .sf-usermenu-name { font-size:.9rem; font-weight:900; color:#fff; padding:.2rem .3rem; }
+    .sf-usermenu-plan { font-size:.72rem; color:var(--text-muted); padding:0 .3rem .5rem; border-bottom:1px solid var(--border); margin-bottom:.5rem; }
+    .sf-usermenu-logout { width:100%; background:transparent; border:none; color:var(--red); font-size:.86rem;
+      font-weight:800; text-align:right; padding:.5rem .3rem; border-radius:8px; cursor:pointer; font-family:Heebo,sans-serif; }
+    .sf-usermenu-logout:hover { background:rgba(239,83,80,.1); }
     .sf-modetoggle {
       display:flex; background:var(--surface2); border:1px solid var(--border);
       border-radius:10px; padding:3px; gap:2px; margin:0 auto;
@@ -2295,6 +2314,14 @@
     }
     .sf-mode.active { background:var(--accent); color:#fff; }
     .sf-userbox { font-size:.82rem; color:var(--text-muted); font-weight:600; }
+    /* LEFT (RTL end): trial / upgrade banner */
+    .sf-trial { flex-shrink:0; display:flex; align-items:center; gap:.4rem; border:none; cursor:pointer;
+      background:linear-gradient(135deg,#f5a623,#f7c76b); color:#1a1205; border-radius:999px;
+      padding:.45rem .9rem; font-size:.8rem; font-weight:900; font-family:Heebo,sans-serif;
+      box-shadow:0 2px 10px rgba(245,166,35,.35); white-space:nowrap; }
+    .sf-trial:hover { filter:brightness(1.05); }
+    .sf-trial.premium { background:linear-gradient(135deg,#2962ff,#5b8bff); color:#fff; box-shadow:0 2px 10px rgba(41,98,255,.35); }
+    .sf-trial-ic { font-size:.95rem; }
     /* plan badge + upgrade button */
     .nt-plan-badge { font-size:.7rem; font-weight:900; padding:.22rem .6rem; border-radius:999px; white-space:nowrap; }
     .nt-plan-badge.free { background:var(--surface2); color:var(--text-muted); border:1px solid var(--border); }
@@ -2501,12 +2528,12 @@
       /* Compact the topbar "Signals" button to an icon so it doesn't crowd the bar */
       .topbar-modebtn { font-size:0; padding:.32rem .5rem; margin-left:.25rem; }
       .topbar-modebtn::before { content:'🔔'; font-size:.95rem; }
-      .sf-top { flex-wrap:wrap; gap:.5rem .6rem; padding:.6rem .9rem; }
+      .sf-top { gap:.5rem; padding:.6rem .8rem; }
       .sf-logo { font-size:1.1rem; }
-      .sf-userbox { font-size:.74rem; order:2; margin-right:auto; }
-      .nt-plan-badge { order:2; }
-      .sf-upgrade-btn { order:2; padding:.35rem .7rem; font-size:.74rem; }
-      .sf-modetoggle { margin:0; order:3; width:100%; justify-content:center; }
+      .sf-avatar { width:30px; height:30px; font-size:.9rem; }
+      .sf-trial { padding:.35rem .6rem; font-size:.7rem; gap:.25rem; }
+      .sf-trial-ic { font-size:.8rem; }
+      .sf-modetoggle { display:none; }
       .sf-mode { flex:1; text-align:center; padding:.5rem .4rem; font-size:.8rem; }
       .sf-search { padding:.5rem .7rem; gap:.4rem; }
       #sfSearchInput { font-size:.82rem; padding:.45rem .6rem; }
@@ -3012,14 +3039,26 @@
 <!-- SIGNAL FEED (Mode A — clean signals board for signal-only users) -->
 <div id="signalFeed" style="display:none">
   <header class="sf-top">
-    <div class="sf-logo">Nex<span>Trade</span></div>
+    <!-- RIGHT (RTL start): green user avatar → logout menu -->
+    <div class="sf-user" id="sfUserWrap">
+      <button class="sf-avatar" id="sfAvatar" onclick="NTSignals.toggleUserMenu(event)" title="החשבון שלי">?</button>
+      <div class="sf-usermenu" id="sfUserMenu">
+        <div class="sf-usermenu-name" id="sfUserMenuName"></div>
+        <div class="sf-usermenu-plan" id="sfUserMenuPlan"></div>
+        <button class="sf-usermenu-logout" onclick="handleLogout()">🚪 התנתקות</button>
+      </div>
+    </div>
+    <!-- CENTER: brand logo in its standard colors -->
+    <div class="sf-logo"><span class="lg-nex">Nex</span><span class="lg-trade">Trade</span></div>
     <div class="sf-modetoggle">
       <button class="sf-mode active" onclick="if(window.NTSignals)NTSignals.setMode('signals')">🔔 איתותים</button>
       <button class="sf-mode" onclick="if(window.NTSignals)NTSignals.setMode('analysis')">📊 ניתוח</button>
     </div>
-    <span class="nt-plan-badge free" id="ntPlanBadge">חינם</span>
-    <button class="sf-upgrade-btn" id="ntUpgradeBtn" onclick="if(window.NTPlan)NTPlan.openUpgrade()">⭐ שדרג</button>
-    <div class="sf-userbox" id="sfUserName"></div>
+    <!-- LEFT (RTL end): trial / upgrade banner -->
+    <button class="sf-trial" id="sfTrialBanner" onclick="if(window.NTPlan)NTPlan.openUpgrade()">
+      <span class="sf-trial-ic">🎁</span>
+      <span class="sf-trial-txt" id="sfTrialTxt">7 ימי ניסיון חינם</span>
+    </button>
   </header>
   <nav class="sf-tabs">
     <button class="sf-tab active" data-tab="signals" onclick="NTSignals.switchTab('signals')">איתותים</button>
@@ -3067,13 +3106,13 @@
   </div>
 </div>
 
-<script src="scanner-symbols.js?v=20261018e"></script>
-<script src="scanner-engine.js?v=20261018e"></script>
-<script src="plan.js?v=20261018e"></script>
-<script src="main.js?v=20261018e"></script>
-<script src="drawing.js?v=20261018e"></script>
-<script src="features.js?v=20261018e"></script>
-<script src="signals.js?v=20261018e"></script>
+<script src="scanner-symbols.js?v=20261018f"></script>
+<script src="scanner-engine.js?v=20261018f"></script>
+<script src="plan.js?v=20261018f"></script>
+<script src="main.js?v=20261018f"></script>
+<script src="drawing.js?v=20261018f"></script>
+<script src="features.js?v=20261018f"></script>
+<script src="signals.js?v=20261018f"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">

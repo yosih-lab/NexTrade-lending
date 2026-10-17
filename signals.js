@@ -575,10 +575,70 @@
     else if (activeTab === 'trades') body.innerHTML = renderTrades();
     else if (activeTab === 'history') body.innerHTML = renderHistory();
     else if (activeTab === 'alerts') body.innerHTML = renderAlertsLog();
-    var nameEl = document.getElementById('sfUserName');
-    if (nameEl) {
-      var u = document.getElementById('userNameDisplay');
-      nameEl.textContent = u && u.textContent ? ('שלום, ' + u.textContent) : '';
+    renderHeaderChrome();
+  }
+
+  // Keep the header avatar, user menu, and trial banner in sync with the user/plan.
+  function renderHeaderChrome() {
+    var u = document.getElementById('userNameDisplay');
+    var name = (u && u.textContent) ? u.textContent.trim() : 'משתמש';
+    var av = document.getElementById('sfAvatar');
+    if (av) av.textContent = (name.charAt(0) || '?').toUpperCase();
+    var mn = document.getElementById('sfUserMenuName');
+    if (mn) mn.textContent = name;
+
+    var premium = false, trialActive = false, days = 0;
+    try {
+      premium = window.NTPlan ? window.NTPlan.isPremium() : false;
+      trialActive = window.NTPlan ? window.NTPlan.isTrialActive() : false;
+      days = window.NTPlan ? window.NTPlan.daysLeft() : 0;
+    } catch (e) {}
+
+    var mp = document.getElementById('sfUserMenuPlan');
+    if (mp) {
+      mp.textContent = premium
+        ? (trialActive ? ('ניסיון פרימיום · נותרו ' + days + ' ימים') : 'מנוי פרימיום פעיל')
+        : 'מסלול חינם';
+    }
+
+    // Left banner: trial countdown → premium badge → upgrade CTA.
+    var tb = document.getElementById('sfTrialBanner');
+    var tt = document.getElementById('sfTrialTxt');
+    var ic = tb ? tb.querySelector('.sf-trial-ic') : null;
+    if (tb && tt) {
+      if (premium && !trialActive) {
+        tb.classList.add('premium');
+        tt.textContent = 'פרימיום פעיל';
+        if (ic) ic.textContent = '⭐';
+      } else if (trialActive) {
+        tb.classList.remove('premium');
+        tt.textContent = 'נותרו ' + days + ' ימי ניסיון';
+        if (ic) ic.textContent = '🎁';
+      } else {
+        tb.classList.remove('premium');
+        tt.textContent = '⭐ שדרג לפרימיום';
+        if (ic) ic.textContent = '';
+      }
+    }
+  }
+
+  // Toggle the account dropdown (logout). Closes on outside click.
+  function toggleUserMenu(ev) {
+    if (ev) ev.stopPropagation();
+    var menu = document.getElementById('sfUserMenu');
+    if (!menu) return;
+    var willOpen = !menu.classList.contains('open');
+    menu.classList.toggle('open', willOpen);
+    if (willOpen) {
+      setTimeout(function () {
+        document.addEventListener('click', function closer(e) {
+          var wrap = document.getElementById('sfUserWrap');
+          if (wrap && !wrap.contains(e.target)) {
+            menu.classList.remove('open');
+            document.removeEventListener('click', closer);
+          }
+        });
+      }, 0);
     }
   }
 
@@ -759,6 +819,7 @@
     toggleFav: toggleFav, setFavFilter: setFavFilter, setAlert: setAlert,
     onSearch: onSearch, addWatchFromSearch: addWatchFromSearch,
     syncServerSignals: syncServerSignals,
+    toggleUserMenu: toggleUserMenu,
     openUpgrade: function (ctx) { openUpgrade(ctx); }
   };
 })();
