@@ -154,6 +154,7 @@ function handleLogin(e) {
     if (result.ok) {
       localStorage.setItem('nt_token', result.data.token);
       localStorage.setItem('nt_user', JSON.stringify({ username: result.data.username, role: result.data.role }));
+      ntApplyServerMode(result.data.username, result.data.mode);
       // Apply the authoritative plan from the server (overrides local trial state).
       try {
         if (window.NTPlan && result.data.plan) {
@@ -180,6 +181,36 @@ function handleLogin(e) {
 }
 
 var LOGIN_ENTRY_DELAY_MS = 3000;
+
+// The usage mode ('signals' | 'analysis') belongs to the ACCOUNT, not the device. The server is
+// authoritative; local keys are tagged with their owner so another user's choice on the same
+// phone/browser is never inherited. Returns true if the effective mode changed.
+function ntApplyServerMode(username, mode) {
+  var before = localStorage.getItem('nt_user_plan');
+  try {
+    if (mode === 'signals' || mode === 'analysis') {
+      localStorage.setItem('nt_user_plan', mode);
+      localStorage.setItem('nt_user_mode', mode);
+    } else if (localStorage.getItem('nt_mode_owner') !== username) {
+      // server has no mode for this user and the local keys belong to someone else
+      localStorage.removeItem('nt_user_plan');
+      localStorage.removeItem('nt_user_mode');
+    }
+    localStorage.setItem('nt_mode_owner', username || '');
+  } catch (e) {}
+  return before !== localStorage.getItem('nt_user_plan');
+}
+// Body classes that decide which surface (feed vs regular site) a user can reach.
+function ntRefreshModeUI(role) {
+  try {
+    var isAdminUser = role === 'admin';
+    var uplan = localStorage.getItem('nt_user_plan') || localStorage.getItem('nt_user_mode');
+    var isAnalysis = isAdminUser ? true : (uplan === 'analysis');
+    document.body.classList.toggle('mode-signals', !isAnalysis);
+    document.body.classList.toggle('mode-analysis', isAnalysis);
+    document.body.classList.toggle('mode-admin', isAdminUser);
+  } catch (e) {}
+}
 
 function handleSignup(e) {
   e.preventDefault();
@@ -290,13 +321,7 @@ function loginSuccess(user) {
     // Admins get FULL access: they see the regular (analysis) site by default,
     // plus a button to open the signal feed — they are never locked to signals.
     var isAdminUser = user.role === 'admin';
-    // Use the stable onboarding CHOICE (nt_user_plan), falling back to the
-    // current view mode for users onboarded before the plan key existed.
-    var uplan = localStorage.getItem('nt_user_plan') || localStorage.getItem('nt_user_mode');
-    var isAnalysis = isAdminUser ? true : (uplan === 'analysis');
-    document.body.classList.toggle('mode-signals', !isAnalysis);
-    document.body.classList.toggle('mode-analysis', isAnalysis);
-    document.body.classList.toggle('mode-admin', isAdminUser);
+    ntRefreshModeUI(user.role);
   } catch (e) {}
 
   // Load THIS user's own watchlist + colored lists (prevents a new user from
@@ -307,20 +332,28 @@ function loginSuccess(user) {
   try { if (window.NTPlan) window.NTPlan.onLogin({ role: user.role }); } catch (e) {}
 
   console.log('[NexTrade] About to call init()...');
+  // Pick the right surface (signal feed vs regular site) on EVERY login — including a second
+  // login in the same page session (logout → login as another user), which used to skip this
+  // and leave a signals user on the regular site.
+  setTimeout(function() { if (window.NTSignals) window.NTSignals.onAppReady(); }, 200);
   // defer init so the browser finishes layout before the chart measures width.
   // Use setTimeout (fires even when tab is not focused) instead of requestAnimationFrame,
   // which is paused for background tabs and would leave the chart un-initialized.
   if (window.__ntInitDone) return;
   window.__ntInitDone = true;
   setTimeout(function() { init(); }, 60);
-  // Show the Signal Feed (Mode A) if that's the user's preferred mode
-  setTimeout(function() { if (window.NTSignals) window.NTSignals.onAppReady(); }, 200);
 }
 
 function handleLogout() {
   localStorage.removeItem(SESSION_KEY);
   localStorage.removeItem('nt_token');
   localStorage.removeItem('nt_user');
+  // The usage mode belongs to the account — never leave it behind for the next user.
+  localStorage.removeItem('nt_user_plan');
+  localStorage.removeItem('nt_user_mode');
+  localStorage.removeItem('nt_mode_owner');
+  localStorage.removeItem('nt_server_signals');
+  document.body.classList.remove('mode-signals', 'mode-analysis', 'mode-admin');
   // Reset in-memory user data so the next user doesn't see this user's lists.
   try {
     watchlist = DEFAULT_WATCHLIST.slice();
@@ -927,6 +960,19 @@ document.addEventListener('click', function(e) {
   if (serverToken && serverUser && serverUser.username) {
     console.log('[NexTrade] Found server token for:', serverUser.username);
     loginSuccess({ name: serverUser.username, email: '', role: serverUser.role });
+    // Re-sync the account's usage mode from the server (e.g. changed on another device,
+    // or this device holds a previous user's leftovers).
+    try {
+      fetch(API_BASE + '/api/me', { headers: { 'Authorization': 'Bearer ' + serverToken }, cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(me) {
+          if (!me) return;
+          if (ntApplyServerMode(me.username || serverUser.username, me.mode)) {
+            ntRefreshModeUI(serverUser.role);
+            if (window.NTSignals) window.NTSignals.onAppReady();
+          }
+        }).catch(function() {});
+    } catch (e) {}
     return;
   }
   // Fallback to old localStorage session

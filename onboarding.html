@@ -383,6 +383,7 @@ function completeOnboarding() {
   localStorage.setItem('nt_user_mode', mode);
   // Stable onboarding CHOICE (does not change when the user toggles views).
   localStorage.setItem('nt_user_plan', mode);
+  try { localStorage.setItem('nt_mode_owner', (JSON.parse(localStorage.getItem('nt_user') || '{}') || {}).username || ''); } catch (e) {}
 
   // Persist the mode to the server so the backend knows who to email weekly signals to.
   try {

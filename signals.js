@@ -1403,6 +1403,19 @@
     setMode(mode);
   }
 
+  // Safety net: a signals-only user must never remain on the regular site (e.g. after the
+  // mobile browser restores the page, or something hides the feed).
+  function enforceLock() {
+    try {
+      if (!authToken() || !isSignalsLocked()) return;
+      var feed = document.getElementById('signalFeed');
+      if (feed && feed.style.display === 'none') setMode('signals');
+    } catch (e) {}
+  }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) enforceLock(); });
+  window.addEventListener('pageshow', enforceLock);
+  window.addEventListener('focus', enforceLock);
+
   window.NTSignals = {
     onAppReady: onAppReady,
     show: show, hide: hide, setMode: setMode,

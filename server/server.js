@@ -634,7 +634,7 @@ app.post('/api/login', async (req, res) => {
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
     console.log('[NexTrade] ✓ Login success:', user.username, 'role:', user.role);
     const planInfo = resolvePlan(user);
-    res.json({ token, username: user.username, role: user.role, plan: planInfo.plan, tier: planInfo.tier, limits: limitsFor(planInfo.tier), premiumUntil: planInfo.premiumUntil, trialUsed: !!user.trialUsed });
+    res.json({ token, username: user.username, role: user.role, mode: user.mode || null, plan: planInfo.plan, tier: planInfo.tier, limits: limitsFor(planInfo.tier), premiumUntil: planInfo.premiumUntil, trialUsed: !!user.trialUsed });
   } catch(e) {
     console.error('[NexTrade] ✗ Login error:', e.message);
     res.status(500).json({ error: 'שגיאת שרת בעת ההתחברות' });
@@ -642,9 +642,11 @@ app.post('/api/login', async (req, res) => {
 });
 
 // Me
-app.get('/api/me', requireAuth, (req, res) => {
+app.get('/api/me', requireAuth, async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
-  res.json({ username: req.user.username, role: req.user.role });
+  let mode = null;
+  try { const u = await getUserById(req.user.id); mode = (u && u.mode) || null; } catch (e) {}
+  res.json({ username: req.user.username, role: req.user.role, mode: mode });
 });
 
 // Save onboarding preferences (usage mode + email opt-in) for the logged-in user.
