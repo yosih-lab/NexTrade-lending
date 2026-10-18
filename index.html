@@ -2347,6 +2347,26 @@
     .ai-hero-title { font-size:1.25rem; font-weight:900; color:#fff; }
     .ai-hero-sub { font-size:.82rem; color:var(--text-muted); line-height:1.55; margin:.35rem 0 .8rem; }
     .ai-input-row { display:flex; gap:.5rem; }
+    .ai-input-wrap { position:relative; flex:1; min-width:0; }
+    .ai-input-wrap #aiInput { width:100%; box-sizing:border-box; }
+    .ai-sug { display:none; position:absolute; top:calc(100% + 5px); right:0; left:0; z-index:60; background:var(--surface);
+      border:1px solid var(--accent); border-radius:12px; box-shadow:0 14px 34px rgba(0,0,0,.6); overflow:hidden auto; max-height:330px; }
+    .ai-sug.open { display:block; }
+    .ai-sug-item { display:flex; align-items:center; gap:.7rem; padding:.6rem .85rem; cursor:pointer; border-bottom:1px solid var(--border); }
+    .ai-sug-item:last-child { border-bottom:none; }
+    .ai-sug-item:hover, .ai-sug-item.active { background:rgba(41,98,255,.2); }
+    .ai-sug-item.raw { color:var(--accent); font-weight:800; font-size:.88rem; }
+    .ai-sug-sym { font-weight:900; color:#fff; min-width:58px; direction:ltr; text-align:right; font-size:.92rem; }
+    .ai-sug-name { flex:1; min-width:0; color:var(--text-muted); font-size:.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .ai-sug-ex { font-size:.62rem; font-weight:800; color:var(--text-muted); border:1px solid var(--border); border-radius:6px; padding:.1rem .4rem; }
+    .aim-next { margin:1rem 0 .4rem; padding:.9rem; border-radius:14px; text-align:center;
+      background:linear-gradient(135deg,rgba(41,98,255,.18),rgba(41,98,255,.04)); border:1px solid rgba(41,98,255,.45); }
+    .aim-next-btn { width:100%; padding:.8rem; font-size:1rem; font-weight:900; background:var(--accent); color:#fff; border:none; border-radius:10px; cursor:pointer; font-family:Heebo,sans-serif; }
+    .aim-next-btn:hover { background:#1a4fd6; }
+    .aim-next-sub { margin-top:.5rem; font-size:.8rem; color:var(--text-muted); font-weight:700; }
+    .aim-next-sub b { color:var(--gold); font-size:.95rem; }
+    .aim-next-t { margin:.7rem 0 .45rem; font-size:.8rem; font-weight:800; color:var(--text); }
+    .aim-next-chips { justify-content:center; }
     #aiInput { flex:1; min-width:0; background:var(--surface2); border:1px solid var(--border); border-radius:10px;
       padding:.65rem .8rem; color:var(--text); font-size:.95rem; font-family:Heebo,sans-serif; direction:rtl; }
     #aiInput:focus { outline:none; border-color:var(--accent); }
@@ -3373,7 +3393,7 @@
 <script src="main.js?v=20261019b"></script>
 <script src="drawing.js?v=20261019b"></script>
 <script src="features.js?v=20261018j"></script>
-<script src="signals.js?v=20261019c"></script>
+<script src="signals.js?v=20261019d"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">

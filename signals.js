@@ -1116,8 +1116,11 @@
         '<div class="ai-hero-title">🤖 ניתוח AI למניות</div>' +
         '<div class="ai-hero-sub">הקלד סימול או שם מניה וקבל ניתוח מלא לפי שיטת הסורק: מגמה, SMA30, תמיכה והתנגדות, פריצות, דוחות וזמן משוער לאיתות.</div>' +
         '<div class="ai-input-row">' +
-          '<input id="aiInput" type="text" inputmode="search" autocomplete="off" maxlength="40" placeholder="לדוגמה: AAPL, TSLA, טבע, אפל…" ' +
-            'onkeydown="if(event.key===\'Enter\')NTSignals.analyzeFromInput()" />' +
+          '<div class="ai-input-wrap">' +
+            '<input id="aiInput" type="text" inputmode="search" enterkeyhint="search" autocomplete="off" maxlength="40" placeholder="לדוגמה: AAPL, TSLA, טבע, אפל…" ' +
+              'oninput="NTSignals.aiSuggest(this.value)" onfocus="NTSignals.aiSuggest(this.value)" onblur="NTSignals.aiSugHideLater()" onkeydown="NTSignals.aiKey(event)" />' +
+            '<div class="ai-sug" id="aiSug" onmousedown="event.preventDefault()"></div>' +
+          '</div>' +
           '<button class="ai-go" onclick="NTSignals.analyzeFromInput()">🔍 נתח</button>' +
         '</div>' +
         '<div class="ai-quota-row">' +
@@ -1134,7 +1137,172 @@
 
   function analyzeFromInput() {
     var el = document.getElementById('aiInput');
+    aiSugHide();
     analyzeSymbol(el ? el.value : '');
+  }
+
+  // ---------- AI search suggestions (autocomplete) ----------
+  // [symbol, English name, Hebrew name] — shown even when the full universe isn't cached yet.
+  var AI_POP = [
+    ['AAPL', 'Apple', 'אפל'], ['MSFT', 'Microsoft', 'מיקרוסופט'], ['NVDA', 'NVIDIA', 'אנבידיה'], ['TSLA', 'Tesla', 'טסלה'],
+    ['AMZN', 'Amazon', 'אמזון'], ['GOOGL', 'Alphabet Google', 'גוגל אלפבית'], ['META', 'Meta Facebook', 'מטא פייסבוק'],
+    ['NFLX', 'Netflix', 'נטפליקס'], ['AMD', 'Advanced Micro Devices', 'אמד'], ['INTC', 'Intel', 'אינטל'],
+    ['AVGO', 'Broadcom', 'ברודקום'], ['ORCL', 'Oracle', 'אורקל'], ['CRM', 'Salesforce', 'סיילספורס'], ['ADBE', 'Adobe', 'אדובי'],
+    ['PYPL', 'PayPal', 'פייפאל'], ['UBER', 'Uber', 'אובר'], ['DIS', 'Disney', 'דיסני'], ['NKE', 'Nike', 'נייקי'],
+    ['KO', 'Coca-Cola', 'קוקה קולה'], ['PEP', 'PepsiCo', 'פפסי'], ['MCD', "McDonald's", 'מקדונלדס'], ['SBUX', 'Starbucks', 'סטארבקס'],
+    ['WMT', 'Walmart', 'וולמארט'], ['COST', 'Costco', 'קוסטקו'], ['JPM', 'JPMorgan', 'ג׳יי פי מורגן'], ['BAC', 'Bank of America', 'בנק אוף אמריקה'],
+    ['V', 'Visa', 'ויזה'], ['MA', 'Mastercard', 'מאסטרקארד'], ['BA', 'Boeing', 'בואינג'], ['XOM', 'Exxon Mobil', 'אקסון'],
+    ['PFE', 'Pfizer', 'פייזר'], ['JNJ', 'Johnson & Johnson', 'ג׳ונסון'], ['PLTR', 'Palantir', 'פלנטיר'], ['COIN', 'Coinbase', 'קוינבייס'],
+    ['SHOP', 'Shopify', 'שופיפיי'], ['SNOW', 'Snowflake', 'סנופלייק'], ['MU', 'Micron', 'מיקרון'], ['QCOM', 'Qualcomm', 'קוואלקום'],
+    ['SMCI', 'Super Micro Computer', 'סופר מיקרו'], ['MSTR', 'MicroStrategy', 'מיקרוסטרטגי'],
+    ['CHKP', 'Check Point', 'צ׳ק פוינט'], ['MNDY', 'Monday.com', 'מאנדיי'], ['GLBE', 'Global-E', 'גלובל אי'], ['WIX', 'Wix', 'וויקס'],
+    ['CYBR', 'CyberArk', 'סייברארק'],
+    ['TEVA.TA', 'Teva', 'טבע'], ['ESLT.TA', 'Elbit Systems', 'אלביט'], ['LUMI.TA', 'Bank Leumi', 'לאומי'], ['POLI.TA', 'Bank Hapoalim', 'פועלים'],
+    ['DSCT.TA', 'Discount Bank', 'דיסקונט'], ['BEZQ.TA', 'Bezeq', 'בזק'], ['ICL.TA', 'ICL', 'כיל'], ['NICE.TA', 'NICE', 'נייס']
+  ];
+  var _sugList = [], _sugIdx = -1, _sugTimer = null;
+
+  function aiSugFind(q) {
+    var ql = q.toLowerCase(), qu = q.toUpperCase();
+    var out = [], seen = {};
+    function add(score, sym, short, name, ex) {
+      var k = sym.toUpperCase();
+      if (seen[k]) { if (score < seen[k].score) seen[k].score = score; return; }
+      var o = { score: score, sym: sym, short: short, name: name, ex: ex };
+      seen[k] = o; out.push(o);
+    }
+    AI_POP.forEach(function (p) {
+      var short = p[0].replace('.TA', ''), su = short.toUpperCase(), en = p[1].toLowerCase(), he = p[2];
+      var score = -1;
+      if (su === qu) score = 0;
+      else if (su.indexOf(qu) === 0) score = 1;
+      else if (en.indexOf(ql) === 0 || he.indexOf(q) === 0) score = 2;
+      else if (en.indexOf(ql) !== -1 || he.indexOf(q) !== -1) score = 3;
+      if (score < 0) return;
+      var isTA = p[0].slice(-3) === '.TA';
+      add(score, p[0], short, isTA ? p[2] : (p[1] + ' · ' + p[2]), isTA ? 'TASE' : 'US');
+    });
+    if (typeof TASE_UNIVERSE !== 'undefined' && TASE_UNIVERSE && TASE_UNIVERSE.length) {
+      for (var i = 0; i < TASE_UNIVERSE.length; i++) {
+        var it = TASE_UNIVERSE[i], su2 = String(it.short || '').toUpperCase(), nm = String(it.name || ''), nl = nm.toLowerCase();
+        var sc = -1;
+        if (su2 === qu) sc = 0;
+        else if (su2.indexOf(qu) === 0) sc = 1;
+        else if (nl.indexOf(ql) === 0) sc = 2;
+        else if (nl.indexOf(ql) !== -1) sc = 3;
+        if (sc >= 0) add(sc, it.sym, it.short, nm, 'TASE');
+      }
+    }
+    if (typeof US_SYMBOLS !== 'undefined' && US_SYMBOLS && /^[A-Za-z.\-]+$/.test(q)) {
+      for (var j = 0; j < US_SYMBOLS.length; j++) {
+        var s = String(US_SYMBOLS[j]);
+        if (s.toUpperCase().indexOf(qu) === 0) {
+          add(s.toUpperCase() === qu ? 0 : 1.5, s, s, (typeof NAMES !== 'undefined' && NAMES[s]) || '', 'US');
+        }
+      }
+    }
+    out.sort(function (a, b) { return a.score - b.score || a.short.length - b.short.length; });
+    return out.slice(0, 7);
+  }
+
+  function aiSugHide() {
+    clearTimeout(_sugTimer);
+    var box = document.getElementById('aiSug');
+    if (box) { box.classList.remove('open'); box.innerHTML = ''; }
+    _sugList = []; _sugIdx = -1;
+  }
+  function aiSugHideLater() { clearTimeout(_sugTimer); _sugTimer = setTimeout(aiSugHide, 250); }
+
+  function aiSuggest(v) {
+    var box = document.getElementById('aiSug');
+    if (!box) return;
+    clearTimeout(_sugTimer);
+    var q = String(v == null ? '' : v).trim();
+    if (!q) { aiSugHide(); return; }
+    // make sure the cached TASE universe is available for the search (no network needed)
+    try { if ((typeof TASE_UNIVERSE === 'undefined' || !TASE_UNIVERSE.length) && typeof buildUniverseFromCache === 'function') buildUniverseFromCache(); } catch (e) {}
+    _sugList = aiSugFind(q); _sugIdx = -1;
+    var rows = _sugList.map(function (o, i) {
+      return '<div class="ai-sug-item" data-i="' + i + '" onclick="NTSignals.aiPick(' + i + ')">' +
+        '<span class="ai-sug-sym">' + esc(o.short) + '</span>' +
+        '<span class="ai-sug-name">' + esc(o.name) + '</span>' +
+        '<span class="ai-sug-ex">' + esc(o.ex) + '</span>' +
+      '</div>';
+    }).join('');
+    if (!_sugList.length) {
+      rows = '<div class="ai-sug-item raw" onclick="NTSignals.analyzeFromInput()">🔍 נתח "' + esc(q.toUpperCase()) + '" כפי שהוקלד</div>';
+    }
+    box.innerHTML = rows;
+    box.classList.add('open');
+  }
+
+  function aiSugMark() {
+    var items = document.querySelectorAll('#aiSug .ai-sug-item');
+    items.forEach(function (el, i) { el.classList.toggle('active', i === _sugIdx); });
+    if (items[_sugIdx] && items[_sugIdx].scrollIntoView) { try { items[_sugIdx].scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+  }
+
+  function aiKey(e) {
+    if (e.key === 'ArrowDown' && _sugList.length) {
+      e.preventDefault(); _sugIdx = Math.min(_sugIdx + 1, _sugList.length - 1); aiSugMark();
+    } else if (e.key === 'ArrowUp' && _sugList.length) {
+      e.preventDefault(); _sugIdx = Math.max(_sugIdx - 1, 0); aiSugMark();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (_sugIdx >= 0 && _sugList[_sugIdx]) aiPick(_sugIdx); else analyzeFromInput();
+    } else if (e.key === 'Escape') {
+      aiSugHide();
+    }
+  }
+
+  function aiPick(i) {
+    var o = _sugList[i];
+    if (!o) return;
+    var el = document.getElementById('aiInput');
+    if (el) el.value = o.short;
+    aiSugHide();
+    analyzeSymbol(o.sym);
+  }
+
+  // "Search the next stock" trigger: closes the popup and jumps back to a focused, empty search box.
+  function aiNext() {
+    closeAiModal();
+    if (activeTab !== 'ai') switchTab('ai');
+    setTimeout(function () {
+      var el = document.getElementById('aiInput');
+      if (!el) return;
+      el.value = '';
+      try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+      el.focus();
+    }, 60);
+  }
+
+  function aiNextHtml(q, curSym) {
+    var rem = null;
+    if (q && q.limit != null) rem = q.remaining != null ? q.remaining : Math.max(0, q.limit - (q.used || 0));
+    if (rem === 0) {
+      return '<div class="aim-next">' +
+        '<div class="aim-next-t">🎟️ ניצלת את כל הניתוחים להיום</div>' +
+        '<button class="sig-btn aim-up-btn" onclick="NTSignals.closeAiModal();NTSignals.openUpgrade(\'ניצלת את מכסת ניתוחי ה-AI היומית. שדרג להמשך.\')">⭐ שדרג להמשך ניתוחים</button>' +
+      '</div>';
+    }
+    var done = ((_aiQuota && _aiQuota.symbols) || []).map(function (s) { return String(s).toUpperCase(); });
+    var cur = String(curSym || '').toUpperCase();
+    var pool = AI_POP.filter(function (p) {
+      var u = p[0].toUpperCase();
+      return u !== cur && u.replace('.TA', '') !== cur.replace('.TA', '') && done.indexOf(u) === -1;
+    });
+    for (var i = pool.length - 1; i > 0; i--) {   // shuffle
+      var j = Math.floor(Math.random() * (i + 1)); var t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+    }
+    var chips = pool.slice(0, 4).map(function (p) {
+      return '<button class="ai-chip" data-sym="' + esc(p[0]) + '" onclick="NTSignals.analyzeSymbol(this.getAttribute(\'data-sym\'))">' + esc(p[0].replace('.TA', '')) + '</button>';
+    }).join('');
+    return '<div class="aim-next">' +
+      '<button class="sig-btn aim-next-btn" onclick="NTSignals.aiNext()">🔍 חפש את המניה הבאה</button>' +
+      '<div class="aim-next-sub">' + (rem != null ? 'נותרו <b>' + rem + '</b> ניתוחים להיום' : 'ניתוחים ללא הגבלה') + '</div>' +
+      (chips ? '<div class="aim-next-t">🔥 מה עוד כדאי לבדוק?</div><div class="ai-chips aim-next-chips">' + chips + '</div>' : '') +
+    '</div>';
   }
 
   function aiModalEl() { return document.getElementById('aiModal'); }
@@ -1196,7 +1364,8 @@
           updateAiQuotaUI();
           return;
         }
-        setAiModal(aiMsgHtml('⚠️', d.error || 'שגיאה בניתוח', d.code === 'not_found' || d.code === 'bad_symbol' || d.code === 'no_data' ? 'הניתוח לא נספר במכסה שלך.' : ''));
+        setAiModal(aiMsgHtml('⚠️', d.error || 'שגיאה בניתוח', d.code === 'not_found' || d.code === 'bad_symbol' || d.code === 'no_data' ? 'הניתוח לא נספר במכסה שלך.' : '',
+          '<button class="sig-btn aim-next-btn" onclick="NTSignals.aiNext()">🔍 נסה מניה אחרת</button>'));
       })
       .catch(function () {
         _aiBusy = false;
@@ -1324,6 +1493,7 @@
         aiRow('⏱️', 'זמן משוער לאיתות כניסה', etaTxt) +
       '</div>' +
       (reasons ? '<div class="aim-why"><div class="aim-why-title">💡 למה?</div><ul>' + reasons + '</ul></div>' : '') +
+      aiNextHtml(q, symRaw) +
       '<div class="aim-foot">' +
         '<button class="sig-btn ' + (isFavNow ? 'ghost' : '') + '" data-sym="' + esc(symRaw) + '" onclick="NTSignals.setAlert(this.getAttribute(\'data-sym\'));NTSignals.closeAiModal()">' + (isFavNow ? '★ במעקב' : '☆ הוסף למעקב') + '</button>' +
         '<button class="sig-btn ghost" onclick="NTSignals.closeAiModal()">סגור</button>' +
@@ -1549,6 +1719,7 @@
     show: show, hide: hide, setMode: setMode,
     switchTab: switchTab, addTrade: addTrade, closeTrade: closeTrade,
     riskCalc: riskCalc, toggleDisc: toggleDisc,
+    aiSuggest: aiSuggest, aiKey: aiKey, aiPick: aiPick, aiNext: aiNext, aiSugHideLater: aiSugHideLater,
     analyze: analyze, render: render,
     toggleFav: toggleFav, setFavFilter: setFavFilter, setAlert: setAlert,
     setFilter: setFilter, setSort: setSort, setMarket: setMarket, setView: setView,
