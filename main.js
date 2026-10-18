@@ -1915,12 +1915,16 @@ function initPriceAxisScroll() {
         if (!range) return;
         var span = range.to - range.from;
         if (!(span > 0)) return;
-        // Fraction of the plot width (excludes the ~94px price-scale strip on the right)
+        // Fraction of the plot width (excludes the price-scale strip on the right)
         // where the cursor sits, used to keep that same point fixed while zooming.
-        var plotWidth = Math.max(1, rect.width - 94);
+        var plotWidth = Math.max(1, (ts.width && ts.width()) || (rect.width - 94));
         var mouseX = e.clientX - rect.left;
         var frac = Math.max(0, Math.min(1, mouseX / plotWidth));
         var anchor = range.from + frac * span;
+        if (ts.coordinateToLogical) {
+          var exactAnchor = ts.coordinateToLogical(Math.max(0, Math.min(plotWidth, mouseX)));
+          if (exactAnchor !== null && isFinite(exactAnchor)) anchor = exactAnchor;
+        }
         // Exact reciprocal factors → zooming in then out returns to the identical range (no drift).
         var ZOOM_STEP = 1.15;
         var factor = e.deltaY > 0 ? ZOOM_STEP : (1 / ZOOM_STEP); // scroll down = contract(zoom out), scroll up = expand(zoom in)
@@ -1930,15 +1934,9 @@ function initPriceAxisScroll() {
         newSpan = Math.max(MIN_SPAN, Math.min(MAX_SPAN, newSpan));
         var newFrom = anchor - frac * newSpan;
         var newTo = newFrom + newSpan;
-        // Freeze the vertical (price) auto-scale for the duration of the zoom gesture so the
-        // chart never visually "runs away"/"sinks" up or down while expanding or contracting —
-        // it only re-fits the price axis once the user stops scrolling.
-        chartInstance.applyOptions({ rightPriceScale: { autoScale: false } });
+        // The price scale is left exactly as it is (no auto-scale toggling) so nothing
+        // "snaps" back after the zoom gesture ends.
         ts.setVisibleLogicalRange({ from: newFrom, to: newTo });
-        clearTimeout(_zoomAutoScaleTimer);
-        _zoomAutoScaleTimer = setTimeout(function() {
-          if (chartInstance) chartInstance.applyOptions({ rightPriceScale: { autoScale: true } });
-        }, 350);
       } catch (zoomErr) {
         console.warn('[Chart] ctrl+wheel zoom failed:', zoomErr);
       }
@@ -1957,20 +1955,49 @@ function initPriceAxisScroll() {
       return;
     }
 
-    // Normal scroll — slow horizontal pan (reduced speed)
-    var ts2 = chartInstance.timeScale();
-    var range2 = ts2.getVisibleLogicalRange();
-    if (!range2) return;
-    var span2 = range2.to - range2.from;
-    var shift = (e.deltaY * 0.038) / rect.width * span2;
-    ts2.setVisibleLogicalRange({ from: range2.from + shift, to: range2.to + shift });
+    // Normal scroll — slow horizontal pan. Handles trackpad horizontal swipes (deltaX) too,
+    // and applies the accumulated movement once per frame (no per-event jitter).
+    var unit = e.deltaMode === 1 ? 16 : (e.deltaMode === 2 ? rect.height : 1);
+    var dx = e.deltaX * unit, dy = e.deltaY * unit;
+    _wheelPanAcc += (Math.abs(dx) > Math.abs(dy) ? dx : dy);
+    if (!_wheelPanRaf) {
+      _wheelPanRaf = requestAnimationFrame(function() {
+        _wheelPanRaf = 0;
+        var acc = _wheelPanAcc; _wheelPanAcc = 0;
+        if (!chartInstance || !acc) return;
+        var ts2 = chartInstance.timeScale();
+        var range2 = ts2.getVisibleLogicalRange();
+        if (!range2) return;
+        var spacing = (ts2.options && ts2.options().barSpacing) || 0;
+        var shift = spacing > 0 ? (acc * 0.038) / spacing
+          : (acc * 0.038) / Math.max(1, rect.width) * (range2.to - range2.from);
+        ts2.setVisibleLogicalRange({ from: range2.from + shift, to: range2.to + shift });
+      });
+    }
   }, { passive: false, capture: true });
+}
+var _wheelPanAcc = 0, _wheelPanRaf = 0;
+// True while the user is pressing/dragging on the chart (background refresh waits).
+var _chartInteracting = false;
+function initChartInteractionFlag() {
+  var el = document.getElementById('chart');
+  if (!el) return;
+  var on = function() { _chartInteracting = true; };
+  var off = function() { setTimeout(function() { _chartInteracting = false; }, 400); };
+  el.addEventListener('mousedown', on, true);
+  el.addEventListener('touchstart', on, { passive: true, capture: true });
+  window.addEventListener('mouseup', off);
+  window.addEventListener('touchend', off);
+  window.addEventListener('touchcancel', off);
 }
 
 // ============================================
 //   VERTICAL PAN — drag chart canvas up/down
 // ============================================
 function initChartVerticalPan() {
+  // Disabled: the chart library already pans in BOTH directions 1:1 with the pointer.
+  // The old custom margin-based pan ran in parallel with it and caused double movement/jumps.
+  return;
   var chartEl = document.getElementById('chart');
   if (!chartEl) return;
   var dragging = false;
@@ -2798,12 +2825,27 @@ async function loadChart(symbol, tf, preserveZoom) {
     };
   });
 
+  // Background refresh: remember the exact visible window so the view never shifts.
+  var keepRange = null;
+  if (preserveZoom) {
+    try { keepRange = chartInstance.timeScale().getVisibleLogicalRange(); } catch (e) {}
+  } else {
+    // New symbol / timeframe: go back to auto price scaling (a manual vertical drag disables it)
+    try {
+      _priceMarginTop = 0.1; _priceMarginBottom = 0.1;
+      chartInstance.applyOptions({ rightPriceScale: { autoScale: true, scaleMargins: { top: 0.1, bottom: 0.1 } } });
+    } catch (e) {}
+  }
+
   // Set all series data
   var lineData = bars.map(function(b) { return { time: b.time, value: b.close }; });
   lineSeries.setData(lineData);
   candleSeries.setData(bars);
   barSeries.setData(bars);
   volumeSeries.setData(volData);
+  if (keepRange) {
+    try { chartInstance.timeScale().setVisibleLogicalRange(keepRange); } catch (e) {}
+  }
 
   // Update / re-render active MAs with new data
   clearMASeries();
@@ -2824,8 +2866,12 @@ async function loadChart(symbol, tf, preserveZoom) {
   // guarantees the full history is shown clearly, matching TradingView-style overview.
   if (!preserveZoom) {
     chartInstance.timeScale().fitContent();
+    var fitSym = currentSymbol, fitTf = currentTF;
     setTimeout(function() {
-      if (chartInstance) chartInstance.timeScale().fitContent();
+      // only re-fit if the user hasn't started interacting and the chart is still the same one
+      if (chartInstance && !_chartInteracting && fitSym === currentSymbol && fitTf === currentTF) {
+        chartInstance.timeScale().fitContent();
+      }
     }, 200);
   }
 
@@ -3829,7 +3875,7 @@ async function init() {
     console.log('[NexTrade] init() starting...');
     initChart();
     initPriceAxisScroll();
-    initChartVerticalPan();
+    initChartInteractionFlag();
     initChartContextMenu();
     initAlertLineUpdater();
     initSidebarResize();
@@ -3884,6 +3930,7 @@ async function init() {
     setInterval(refreshPrices, 60000);
     // Refresh chart data every 60s (price updates) WITHOUT resetting zoom
     setInterval(function() {
+      if (_chartInteracting) return; // never touch the data while the user is dragging
       delete candleCache[currentSymbol + '_' + currentTF];
       delete candleCache['yf_' + currentSymbol + '_' + currentTF];
       loadChart(currentSymbol, currentTF, true); // true = preserve zoom

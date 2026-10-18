@@ -278,6 +278,13 @@
       window.chartInstance.subscribeCrosshairMove(function () { /* noop, draw loop handles */ });
     }
 
+    // Redraw AFTER the chart has painted its own frame (listeners on the wrap run after the
+    // chart's own handlers, so this rAF is queued after the chart's rAF) - keeps drawings
+    // glued to the candles with no one-frame lag while dragging in any direction.
+    ['mousemove', 'touchmove', 'wheel'].forEach(function (evName) {
+      wrap.addEventListener(evName, drawAfterChart, { passive: true });
+    });
+
     // keep canvas sized to the chart
     try {
       var ro = new ResizeObserver(function () { resize(); });
@@ -302,7 +309,27 @@
 
   var drawPending = false;
   function scheduleDraw() { drawPending = true; }
+  var postPending = false;
+  function drawAfterChart() {
+    if (postPending) return;
+    postPending = true;
+    requestAnimationFrame(function () { postPending = false; draw(); });
+  }
+  // Geometry signature: changes whenever the price scale (vertical pan/zoom/auto-scale)
+  // or time scale moves, which the logical-range subscription alone does not report.
+  var lastSig = '';
+  function geomSig() {
+    try {
+      var s = window.candleSeries, t = ts();
+      if (!s || !t) return '';
+      var r = t.getVisibleLogicalRange();
+      return (r ? r.from + '|' + r.to : '') + '|' + s.priceToCoordinate(1) + '|' + s.priceToCoordinate(1000) +
+        '|' + (canvas ? canvas.width + 'x' + canvas.height : '');
+    } catch (e) { return ''; }
+  }
   function rafLoop() {
+    var sig = geomSig();
+    if (sig !== lastSig) { lastSig = sig; drawPending = true; }
     if (drawPending) { drawPending = false; draw(); }
     requestAnimationFrame(rafLoop);
   }
