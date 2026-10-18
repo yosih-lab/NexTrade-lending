@@ -948,6 +948,9 @@
     var body = document.getElementById('sfBody');
     if (!body) return;
     renderDiscBar();
+    // The risk tab already shows the full disclaimer in its red box - hide the bottom bar there.
+    var discEl = document.getElementById('sfDisc');
+    if (discEl) discEl.style.display = (activeTab === 'risk') ? 'none' : '';
     if (activeTab === 'signals') {
       // While typing in the search box, only refresh the list (keeps focus/caret).
       var tfEl = document.getElementById('sigTextFilter');
