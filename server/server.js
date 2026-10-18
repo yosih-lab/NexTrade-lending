@@ -22,13 +22,16 @@ const USERS_FILE = path.join(__dirname, 'users.json');
 //   STRIPE_SECRET_KEY        sk_live_... (or sk_test_...)
 //   STRIPE_WEBHOOK_SECRET    whsec_...   (from the Stripe webhook endpoint)
 //   STRIPE_PRICE_MONTHLY     price_...   (recurring monthly price id)
-//   STRIPE_PRICE_YEARLY      price_...   (recurring yearly price id)
+//   STRIPE_PRICE_YEARLY      price_...   (recurring yearly price id)  -> PREMIUM tier
+//   STRIPE_PRICE_GOLD_MONTHLY / STRIPE_PRICE_GOLD_YEARLY               -> GOLD tier
 //   BILLING_SUCCESS_URL      e.g. https://getnexttrade.com/?upgraded=1 (optional)
 //   BILLING_CANCEL_URL       e.g. https://getnexttrade.com/            (optional)
 const STRIPE_SECRET_KEY     = process.env.STRIPE_SECRET_KEY;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 const STRIPE_PRICE_MONTHLY  = process.env.STRIPE_PRICE_MONTHLY;
 const STRIPE_PRICE_YEARLY   = process.env.STRIPE_PRICE_YEARLY;
+const STRIPE_PRICE_GOLD_MONTHLY = process.env.STRIPE_PRICE_GOLD_MONTHLY;
+const STRIPE_PRICE_GOLD_YEARLY  = process.env.STRIPE_PRICE_GOLD_YEARLY;
 const BILLING_SUCCESS_URL   = process.env.BILLING_SUCCESS_URL || (ALLOWED[0] + '/?upgraded=1');
 const BILLING_CANCEL_URL    = process.env.BILLING_CANCEL_URL  || ALLOWED[0];
 
@@ -195,14 +198,15 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
     if (event.type === 'checkout.session.completed') {
       const s = event.data.object;
       const userId = s.client_reference_id || (s.metadata && s.metadata.userId);
+      const boughtTier = (s.metadata && s.metadata.tier) === 'gold' ? 'gold' : 'premium';
       let premiumUntil = null;
       if (s.subscription) {
         const sub = await stripe.subscriptions.retrieve(s.subscription);
         if (sub && sub.current_period_end) premiumUntil = new Date(sub.current_period_end * 1000).toISOString();
       }
       if (userId) {
-        await updateUserPlan(userId, { plan: 'premium', premiumUntil, stripeCustomer: s.customer || undefined });
-        console.log('[NexTrade] ✓ Premium activated for user', userId, 'until', premiumUntil);
+        await updateUserPlan(userId, { plan: boughtTier, premiumUntil, stripeCustomer: s.customer || undefined });
+        console.log('[NexTrade] ✓', boughtTier, 'activated for user', userId, 'until', premiumUntil);
       }
     } else if (event.type === 'customer.subscription.deleted' || event.type === 'customer.subscription.updated') {
       const sub = event.data.object;
@@ -217,7 +221,10 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
         user = loadUsersMem().find(u => u.stripeCustomer === sub.customer) || null;
       }
       if (user) {
-        await updateUserPlan(user.id, { plan: active ? 'premium' : 'free', premiumUntil: active ? premiumUntil : null });
+        const keepTier = (sub.metadata && sub.metadata.tier === 'gold') ? 'gold'
+          : (sub.metadata && sub.metadata.tier === 'premium') ? 'premium'
+          : (user.plan === 'gold' ? 'gold' : 'premium');
+        await updateUserPlan(user.id, { plan: active ? keepTier : 'free', premiumUntil: active ? premiumUntil : null });
         console.log('[NexTrade] Subscription', sub.status, 'for user', user.id);
       }
     }
@@ -282,13 +289,33 @@ function rowToUser(row) {
   return { id: row.id, username: row.username, email: row.email, hash: row.hash, role: row.role, createdAt: row.created_at, mode: row.mode || null, emailAlerts: row.email_alerts !== false, plan: row.plan || 'free', premiumUntil: row.premium_until || null, trialUsed: !!row.trial_used, stripeCustomer: row.stripe_customer || null };
 }
 
+// ── PLAN TIERS ───────────────────────────────────────────────────
+// Three levels. DB value 'free' = Basic (kept for backward compatibility).
+//   free (Basic) : 3 AI analyses/day, 3 favorites, 3 delayed signals
+//   gold         : 15 AI analyses/day, 15 favorites, 15 real-time signals
+//   premium      : everything unlimited
+// Every number is overridable via env so pricing/limits can be tuned without a deploy.
+function envInt(name, dflt) { const v = parseInt(process.env[name] || '', 10); return isNaN(v) ? dflt : v; }
+const TIERS = {
+  free:    { analysesPerDay: envInt('FREE_ANALYSES_PER_DAY', 3),  favMax: envInt('FREE_FAV_MAX', 3),  signalMax: envInt('FREE_SIGNAL_MAX', 3),  realtime: false },
+  gold:    { analysesPerDay: envInt('GOLD_ANALYSES_PER_DAY', 15), favMax: envInt('GOLD_FAV_MAX', 15), signalMax: envInt('GOLD_SIGNAL_MAX', 15), realtime: true },
+  premium: { analysesPerDay: Infinity, favMax: Infinity, signalMax: Infinity, realtime: true }
+};
+function limitsFor(tier) {
+  const t = TIERS[tier] || TIERS.free;
+  const j = (x) => (x === Infinity ? null : x); // null = unlimited (JSON-safe)
+  return { analysesPerDay: j(t.analysesPerDay), favMax: j(t.favMax), signalMax: j(t.signalMax), realtime: t.realtime };
+}
+
 // Resolve the authoritative plan for a user: admins are always premium; otherwise
-// premium is active only while premium_until is in the future.
+// a paid tier (gold|premium) is active only while premium_until is in the future.
 function resolvePlan(user) {
-  if (!user) return { plan: 'free', premiumUntil: null, isPremium: false };
-  if (user.role === 'admin') return { plan: 'premium', premiumUntil: null, isPremium: true };
-  var active = user.plan === 'premium' && (!user.premiumUntil || Date.now() < new Date(user.premiumUntil).getTime());
-  return { plan: active ? 'premium' : 'free', premiumUntil: user.premiumUntil || null, isPremium: active, trialUsed: user.trialUsed };
+  if (!user) return { plan: 'free', tier: 'free', premiumUntil: null, isPremium: false, isPaid: false };
+  if (user.role === 'admin') return { plan: 'premium', tier: 'premium', premiumUntil: null, isPremium: true, isPaid: true };
+  const paidTier = (user.plan === 'gold' || user.plan === 'premium') ? user.plan : null;
+  const active = !!paidTier && (!user.premiumUntil || Date.now() < new Date(user.premiumUntil).getTime());
+  const tier = active ? paidTier : 'free';
+  return { plan: tier, tier: tier, premiumUntil: user.premiumUntil || null, isPremium: tier === 'premium', isPaid: active, trialUsed: user.trialUsed };
 }
 
 // Get all users (id/username/email/role/createdAt/hash)
@@ -396,7 +423,7 @@ async function getUserById(id) {
 // Update the plan/subscription fields for a user.
 async function updateUserPlan(id, { plan, premiumUntil, trialUsed, stripeCustomer }) {
   const patch = {};
-  if (plan === 'free' || plan === 'premium') patch.plan = plan;
+  if (plan === 'free' || plan === 'gold' || plan === 'premium') patch.plan = plan;
   if (premiumUntil !== undefined) patch.premium_until = premiumUntil;
   if (typeof trialUsed === 'boolean') patch.trial_used = trialUsed;
   if (stripeCustomer !== undefined) patch.stripe_customer = stripeCustomer;
@@ -597,7 +624,7 @@ app.post('/api/login', async (req, res) => {
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
     console.log('[NexTrade] ✓ Login success:', user.username, 'role:', user.role);
     const planInfo = resolvePlan(user);
-    res.json({ token, username: user.username, role: user.role, plan: planInfo.plan, premiumUntil: planInfo.premiumUntil, trialUsed: !!user.trialUsed });
+    res.json({ token, username: user.username, role: user.role, plan: planInfo.plan, tier: planInfo.tier, limits: limitsFor(planInfo.tier), premiumUntil: planInfo.premiumUntil, trialUsed: !!user.trialUsed });
   } catch(e) {
     console.error('[NexTrade] ✗ Login error:', e.message);
     res.status(500).json({ error: 'שגיאת שרת בעת ההתחברות' });
@@ -630,7 +657,7 @@ app.get('/api/billing/status', requireAuth, async (req, res) => {
     const user = await getUserById(req.user.id);
     const info = resolvePlan(user);
     res.setHeader('Cache-Control', 'no-store');
-    res.json({ plan: info.plan, premiumUntil: info.premiumUntil, isPremium: info.isPremium, trialUsed: !!(user && user.trialUsed) });
+    res.json({ plan: info.plan, tier: info.tier, limits: limitsFor(info.tier), premiumUntil: info.premiumUntil, isPremium: info.isPremium, trialUsed: !!(user && user.trialUsed) });
   } catch (e) {
     console.error('[NexTrade] GET /api/billing/status error:', e.message);
     res.status(500).json({ error: 'שגיאה בבדיקת המנוי' });
@@ -642,7 +669,10 @@ app.post('/api/billing/checkout', requireAuth, async (req, res) => {
   const stripe = getStripe();
   if (!stripe) return res.status(503).json({ error: 'מערכת התשלומים עדיין לא מחוברת' });
   const cycle = (req.body && req.body.cycle) === 'yearly' ? 'yearly' : 'monthly';
-  const price = cycle === 'yearly' ? STRIPE_PRICE_YEARLY : STRIPE_PRICE_MONTHLY;
+  const tier = (req.body && req.body.tier) === 'gold' ? 'gold' : 'premium';
+  const price = tier === 'gold'
+    ? (cycle === 'yearly' ? STRIPE_PRICE_GOLD_YEARLY : STRIPE_PRICE_GOLD_MONTHLY)
+    : (cycle === 'yearly' ? STRIPE_PRICE_YEARLY : STRIPE_PRICE_MONTHLY);
   if (!price) return res.status(503).json({ error: 'מחיר לא הוגדר בשרת' });
   try {
     const user = await getUserById(req.user.id);
@@ -650,7 +680,8 @@ app.post('/api/billing/checkout', requireAuth, async (req, res) => {
       mode: 'subscription',
       line_items: [{ price: price, quantity: 1 }],
       client_reference_id: String(req.user.id),
-      metadata: { userId: String(req.user.id) },
+      metadata: { userId: String(req.user.id), tier: tier },
+      subscription_data: { metadata: { userId: String(req.user.id), tier: tier } },
       customer_email: (user && user.email) || undefined,
       success_url: BILLING_SUCCESS_URL,
       cancel_url: BILLING_CANCEL_URL,
@@ -673,10 +704,12 @@ app.get('/api/signals', requireAuth, async (req, res) => {
     const info = resolvePlan(user);
     // Kick a refresh if the store is stale (wakes a sleeping free-tier instance).
     if (NTScanner && Date.now() - _lastSigScan > SIG_CYCLE_MS) { scanSignalsChunk().catch(() => {}); }
-    const payload = signalsForPlan(info.isPremium);
+    const payload = signalsForPlan(info.tier);
     res.setHeader('Cache-Control', 'no-store');
     res.json({
       plan: info.plan,
+      tier: info.tier,
+      limits: limitsFor(info.tier),
       isPremium: info.isPremium,
       total: payload.total,       // how many exist overall (for the upsell count)
       shown: payload.signals.length,
@@ -1048,22 +1081,244 @@ async function loadSignalsFromDB() {
   } catch (e) { console.error('[Signals] load exception:', e.message); }
 }
 
-// Return signals a user is ENTITLED to, by plan:
+// Return signals a user is ENTITLED to, by tier:
 //   premium → everything, real-time.
+//   gold    → real-time, capped to GOLD_SIGNAL_MAX.
 //   free    → only signals older than FREE_DELAY (default 24h) AND capped to FREE_MAX,
 //             so tampering with the client cannot unlock fresh/extra signals.
 const FREE_DELAY_MS = parseInt(process.env.FREE_SIGNAL_DELAY_MS || String(24 * 3600 * 1000), 10);
-const FREE_MAX      = parseInt(process.env.FREE_SIGNAL_MAX || '3', 10);
-function signalsForPlan(isPremium) {
+function signalsForPlan(tier) {
   pruneSignals();
-  if (isPremium) return { signals: _sigStore, total: _sigStore.length, delayedMs: 0, capped: false };
+  const total = _sigStore.length;
+  if (tier === 'premium') return { signals: _sigStore, total: total, delayedMs: 0, capped: false };
+  if (tier === 'gold') {
+    const max = TIERS.gold.signalMax;
+    return { signals: _sigStore.slice(0, max), total: total, delayedMs: 0, capped: total > max };
+  }
   const cutoff = Date.now() - FREE_DELAY_MS;
   const eligible = _sigStore.filter(s => s.ts <= cutoff);
-  const total = _sigStore.length;
-  return { signals: eligible.slice(0, FREE_MAX), total: total, delayedMs: FREE_DELAY_MS, capped: eligible.length > FREE_MAX || total > eligible.length };
+  const max = TIERS.free.signalMax;
+  return { signals: eligible.slice(0, max), total: total, delayedMs: FREE_DELAY_MS, capped: eligible.length > max || total > eligible.length };
 }
 
 // ── ROUTES ────────────────────────────────────────────────────────
+
+// ── AI STOCK ANALYSIS (on-demand, quota-gated by tier) ────────────────────────
+// POST /api/analyze { symbol } → full technical profile of one symbol using the SAME
+// SMA30 / S-R / 5-candle engine as the scanner (NTScanner.describe). Daily quota is
+// enforced HERE (Basic 3/day, Gold 15/day, Premium unlimited). Re-analysing a symbol
+// already analysed today is free. Failed lookups never consume quota.
+const NAME_ALIASES = {
+  'אפל': 'AAPL', 'apple': 'AAPL', 'גוגל': 'GOOGL', 'google': 'GOOGL', 'אלפבית': 'GOOGL',
+  'מיקרוסופט': 'MSFT', 'microsoft': 'MSFT', 'אמזון': 'AMZN', 'amazon': 'AMZN',
+  'טסלה': 'TSLA', 'tesla': 'TSLA', 'אנבידיה': 'NVDA', 'nvidia': 'NVDA',
+  'מטא': 'META', 'פייסבוק': 'META', 'נטפליקס': 'NFLX', 'netflix': 'NFLX',
+  'אינטל': 'INTC', 'intel': 'INTC', 'אמד': 'AMD',
+  'טבע': 'TEVA.TA', 'נייס': 'NICE.TA', 'אלביט': 'ESLT.TA', 'לאומי': 'LUMI.TA', 'פועלים': 'POLI.TA',
+  'דיסקונט': 'DSCT.TA', 'בזק': 'BEZQ.TA', 'כיל': 'ICL.TA',
+  'זהב': 'GC=F', 'gold': 'GC=F', 'כסף': 'SI=F', 'silver': 'SI=F', 'נפט': 'CL=F', 'oil': 'CL=F',
+  'ביטקוין': 'BTC-USD', 'bitcoin': 'BTC-USD'
+};
+
+let _symIndex = null;
+function symIndex() {
+  if (_symIndex) return _symIndex;
+  _symIndex = new Map();
+  const all = (SYMS && SYMS.ALL_SCANNER_SYMBOLS) || [];
+  for (const s of all) {
+    const u = String(s).toUpperCase();
+    if (!_symIndex.has(u)) _symIndex.set(u, s);
+    const bare = u.replace(/\.TA$/, '');
+    if (!_symIndex.has(bare)) _symIndex.set(bare, s);   // TASE listed first → wins ties, like the client
+  }
+  return _symIndex;
+}
+
+// Map what the user typed (ticker or a well-known name) to a Yahoo symbol.
+function resolveAnalysisSymbol(q) {
+  q = String(q == null ? '' : q).trim();
+  if (!q || q.length > 40) return null;
+  const alias = NAME_ALIASES[q.toLowerCase()];
+  if (alias) return alias;
+  const u = q.toUpperCase();
+  const hit = symIndex().get(u);
+  if (hit) return hit;
+  // Any other plausible ticker — Yahoo decides if it exists. Strictly charset-limited
+  // (it is URL-encoded into a fixed Yahoo host path, never used as a host or file path).
+  if (/^[A-Z0-9.\-^=]{1,15}$/.test(u)) return u;
+  return null;
+}
+
+// ---- per-user, per-day usage (symbols analysed today) ----
+const _usageMem = new Map();      // 'userId|day' -> string[]
+let _usageTableOk = true;         // flips off if the Supabase table is missing
+function usageDay() {
+  try { return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' }); }
+  catch (e) { return new Date().toISOString().slice(0, 10); }
+}
+async function getUsage(userId, day) {
+  if (supabase && _usageTableOk) {
+    const { data, error } = await supabase.from('analysis_usage').select('syms').eq('user_id', userId).eq('day', day).maybeSingle();
+    if (!error) return Array.isArray(data && data.syms) ? data.syms : [];
+    console.error('[Analyze] usage read error:', error.message, '— using in-memory quota (run supabase-schema.sql to persist)');
+    _usageTableOk = false;
+  }
+  return (_usageMem.get(userId + '|' + day) || []).slice();
+}
+async function setUsage(userId, day, syms) {
+  _usageMem.set(userId + '|' + day, syms.slice());
+  if (_usageMem.size > 5000) {
+    for (const k of Array.from(_usageMem.keys())) { if (k.split('|')[1] !== day) _usageMem.delete(k); }
+  }
+  if (supabase && _usageTableOk) {
+    const { error } = await supabase.from('analysis_usage')
+      .upsert({ user_id: userId, day: day, syms: syms, updated_at: new Date().toISOString() }, { onConflict: 'user_id,day' });
+    if (error) { console.error('[Analyze] usage write error:', error.message); _usageTableOk = false; }
+  }
+}
+function quotaFor(tier, usedCount) {
+  const limit = (TIERS[tier] || TIERS.free).analysesPerDay;
+  const unlimited = limit === Infinity;
+  return { tier: tier, used: usedCount, limit: unlimited ? null : limit, remaining: unlimited ? null : Math.max(0, limit - usedCount) };
+}
+
+// ---- tiny HTTPS helper + Yahoo crumb auth (needed for the earnings calendar) ----
+const YH_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36';
+function httpsGetRaw(host, pathStr, headers, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const r = https.request({ host: host, path: pathStr, method: 'GET', headers: headers || {} }, resp => {
+      let body = '';
+      resp.on('data', d => { body += d; if (body.length > 2e6) r.destroy(new Error('too-large')); });
+      resp.on('end', () => resolve({ status: resp.statusCode, headers: resp.headers, body: body }));
+    });
+    r.on('error', reject);
+    r.setTimeout(timeoutMs || 8000, function () { r.destroy(); reject(new Error('timeout')); });
+    r.end();
+  });
+}
+let _yh = { cookie: '', crumb: '', ts: 0 };
+async function yahooAuth(force) {
+  if (!force && _yh.crumb && Date.now() - _yh.ts < 6 * 3600 * 1000) return _yh;
+  const r1 = await httpsGetRaw('fc.yahoo.com', '/', { 'User-Agent': YH_UA }, 6000);
+  const cookie = (r1.headers['set-cookie'] || []).map(c => c.split(';')[0]).join('; ');
+  const r2 = await httpsGetRaw('query1.finance.yahoo.com', '/v1/test/getcrumb', { 'User-Agent': YH_UA, 'Cookie': cookie }, 6000);
+  const crumb = (r2.body || '').trim();
+  if (r2.status !== 200 || !crumb || crumb.length > 64 || /[<\s]/.test(crumb)) throw new Error('no-crumb');
+  _yh = { cookie: cookie, crumb: crumb, ts: Date.now() };
+  return _yh;
+}
+
+// Next earnings date (YYYY-MM-DD) or null. Best-effort: Yahoo may refuse; never throws.
+const _earnCache = new Map();   // sym -> { ts, ttl, val }
+async function fetchEarningsDate(sym) {
+  if (sym.indexOf('=') !== -1 || sym.charAt(0) === '^' || sym.indexOf('-USD') !== -1) return null; // no earnings for commodities/indices/crypto
+  const c = _earnCache.get(sym);
+  if (c && Date.now() - c.ts < c.ttl) return c.val;
+  let val = null, ok = false;
+  try {
+    let auth = await yahooAuth(false);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const p = '/v10/finance/quoteSummary/' + encodeURIComponent(sym) + '?modules=calendarEvents&crumb=' + encodeURIComponent(auth.crumb);
+      const r = await httpsGetRaw('query2.finance.yahoo.com', p, { 'User-Agent': YH_UA, 'Cookie': auth.cookie, 'Accept': 'application/json' }, 7000);
+      if (r.status === 401 || r.status === 403) { auth = await yahooAuth(true); continue; }
+      if (r.status === 200) {
+        ok = true;
+        const j = JSON.parse(r.body);
+        const res = j.quoteSummary && j.quoteSummary.result && j.quoteSummary.result[0];
+        const arr = res && res.calendarEvents && res.calendarEvents.earnings && res.calendarEvents.earnings.earningsDate;
+        if (arr && arr.length && arr[0].raw) val = new Date(arr[0].raw * 1000).toISOString().slice(0, 10);
+      }
+      break;
+    }
+  } catch (e) { /* best-effort */ }
+  _earnCache.set(sym, { ts: Date.now(), ttl: ok ? 12 * 3600 * 1000 : 20 * 60 * 1000, val: val });
+  return val;
+}
+
+const _analysisCache = new Map();  // sym -> { ts, data }  (shared across users; 10 min)
+const ANALYSIS_TTL = 10 * 60 * 1000;
+const CURR_SYMBOL = { ILS: '₪', ILA: '₪', USD: '$', EUR: '€', GBP: '£' };
+
+async function buildAnalysis(sym) {
+  const cached = _analysisCache.get(sym);
+  if (cached && Date.now() - cached.ts < ANALYSIS_TTL) return cached.data;
+  const json = await fetchYahoo(sym, '1wk', '5y');
+  const r = json && json.chart && json.chart.result && json.chart.result[0];
+  if (!r) return null;                                   // unknown symbol
+  const bars = barsFromYahoo(json);
+  if (!bars || bars.length < NTScanner.config.minBars) return { insufficient: true };
+  const meta = r.meta || {};
+  const name = meta.longName || meta.shortName || sym.replace('.TA', '');
+  const curr = sym.endsWith('.TA') ? '₪' : (CURR_SYMBOL[meta.currency] || meta.currency || '');
+  const d = NTScanner.describe(bars, { symbol: sym, name: name, curr: curr });
+  if (!d || !d.ok) return { insufficient: true };
+  d.symbol = sym; d.name = name; d.curr = curr;
+  d.lastBar = bars[bars.length - 1].time;
+  d.asOf = Date.now();
+  const edate = await fetchEarningsDate(sym);
+  let days = null;
+  if (edate) {
+    const t = new Date(); t.setHours(0, 0, 0, 0);
+    days = Math.round((new Date(edate + 'T00:00:00') - t) / 86400000);
+  }
+  d.earnings = { date: edate, days: days, available: !!edate };
+  _analysisCache.set(sym, { ts: Date.now(), data: d });
+  if (_analysisCache.size > 300) { _analysisCache.delete(_analysisCache.keys().next().value); }
+  return d;
+}
+
+const _analyzeBusy = new Set();   // one in-flight analysis per user (prevents quota races)
+
+// How many analyses the user has left today.
+app.get('/api/analyze/quota', requireAuth, async (req, res) => {
+  try {
+    const user = await getUserById(req.user.id);
+    const info = resolvePlan(user);
+    const used = await getUsage(req.user.id, usageDay());
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ quota: quotaFor(info.tier, used.length), symbols: used });
+  } catch (e) {
+    console.error('[Analyze] quota error:', e.message);
+    res.status(500).json({ error: 'שגיאה בבדיקת המכסה' });
+  }
+});
+
+app.post('/api/analyze', requireAuth, async (req, res) => {
+  if (!NTScanner || typeof NTScanner.describe !== 'function') {
+    return res.status(503).json({ error: 'מנוע הניתוח לא זמין כרגע', code: 'engine_unavailable' });
+  }
+  const sym = resolveAnalysisSymbol(req.body && req.body.symbol);
+  if (!sym) return res.status(400).json({ error: 'לא זוהתה מניה. הקלד סימול (לדוגמה AAPL) או שם מוכר.', code: 'bad_symbol' });
+  const uid = req.user.id;
+  if (_analyzeBusy.has(uid)) return res.status(429).json({ error: 'ניתוח קודם עדיין רץ — נסה שוב בעוד רגע', code: 'busy' });
+  _analyzeBusy.add(uid);
+  try {
+    const user = await getUserById(uid);
+    const info = resolvePlan(user);
+    const limit = (TIERS[info.tier] || TIERS.free).analysesPerDay;
+    const day = usageDay();
+    const used = await getUsage(uid, day);
+    const already = used.indexOf(sym) !== -1;
+    if (!already && used.length >= limit) {
+      return res.status(429).json({
+        error: 'ניצלת את מכסת הניתוחים היומית (' + limit + ')',
+        code: 'quota', quota: quotaFor(info.tier, used.length)
+      });
+    }
+    const analysis = await buildAnalysis(sym);
+    if (!analysis) return res.status(404).json({ error: 'המניה "' + sym.replace('.TA', '') + '" לא נמצאה', code: 'not_found' });
+    if (analysis.insufficient) return res.status(422).json({ error: 'אין מספיק היסטוריה שבועית למניה זו לניתוח', code: 'no_data' });
+    let usedAfter = used;
+    if (!already) { usedAfter = used.concat(sym); await setUsage(uid, day, usedAfter); }
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ ok: true, analysis: analysis, quota: quotaFor(info.tier, usedAfter.length), charged: !already });
+  } catch (e) {
+    console.error('[Analyze] error:', e.message);
+    res.status(502).json({ error: 'שגיאה בשליפת נתוני המניה — נסה שוב', code: 'upstream' });
+  } finally {
+    _analyzeBusy.delete(uid);
+  }
+});
 
 // Health check
 app.get('/', async (req, res) => {

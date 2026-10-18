@@ -1,38 +1,49 @@
 // ============================================================
 //  NexTrade — Plan / Monetization layer (window.NTPlan)
-//  Freemium model:
-//    - free     : limited signals, limited favorites, no advanced tools
-//    - premium  : everything, real-time, unlimited
-//    - trial    : every new user gets 7 days of premium automatically
+//  Three tiers:
+//    - free ("Basic") : 3 AI analyses/day, 3 favorites, 3 delayed signals
+//    - gold            : 15 AI analyses/day, 15 favorites, 15 real-time signals
+//    - premium         : everything unlimited
+//    - trial           : every new user gets 7 days of premium automatically
 //  NOTE: client-side gating is UX only. Real enforcement of WHO receives
-//  which signals must live on the server (see server/server.js billing).
+//  which signals / how many analyses lives on the server (server/server.js).
+//  The server's limits (sent in /api/signals, /api/login, /api/billing/status)
+//  override the defaults below so both sides always agree.
 // ============================================================
 (function () {
   'use strict';
 
   var STATE_KEY = 'nt_plan_state';
 
-  // Tunable limits for the free tier.
+  // Default per-tier limits (null = unlimited). Overridden by the server's `limits`.
+  var TIER_LIMITS = {
+    free:    { analysesPerDay: 3,    favMax: 3,    signalMax: 3 },
+    gold:    { analysesPerDay: 15,   favMax: 15,   signalMax: 15 },
+    premium: { analysesPerDay: null, favMax: null, signalMax: null }
+  };
+  var TIER_RANK = { free: 0, gold: 1, premium: 2 };
+  var TIER_NAME = { free: 'בסיסי', gold: 'גולד', premium: 'פרימיום' };
+
   var LIMITS = {
-    FREE_SIGNAL_MAX: 3,   // visible signal cards for free users
-    FREE_FAV_MAX:    3,    // favorites / watched symbols for free users
+    FREE_SIGNAL_MAX: 3,   // kept for backward compatibility
+    FREE_FAV_MAX:    3,
     TRIAL_DAYS:      7     // auto trial length on first use
   };
 
-  // Features that require premium. Used by canUse(feature).
-  var PREMIUM_FEATURES = {
-    unlimitedSignals: true,
-    unlimitedFavs:    true,
-    alertsLog:        true,
-    perf:             true,
-    earnings:         true,
-    realtimePush:     true
+  // Minimum tier required per feature. Used by canUse(feature).
+  var FEATURE_TIER = {
+    unlimitedSignals: 'premium',
+    unlimitedFavs:    'premium',
+    alertsLog:        'gold',
+    perf:             'gold',
+    earnings:         'premium',
+    realtimePush:     'premium'
   };
 
   function nowMs() { return Date.now(); }
 
   function defaultState() {
-    return { plan: 'free', premiumUntil: null, trialUsed: false, admin: false };
+    return { plan: 'free', premiumUntil: null, trialUsed: false, admin: false, limits: null };
   }
 
   function loadState() {
@@ -40,10 +51,11 @@
       var s = JSON.parse(localStorage.getItem(STATE_KEY) || 'null');
       if (!s || typeof s !== 'object') return defaultState();
       return {
-        plan: s.plan === 'premium' ? 'premium' : 'free',
+        plan: (s.plan === 'premium' || s.plan === 'gold') ? s.plan : 'free',
         premiumUntil: s.premiumUntil || null,
         trialUsed: !!s.trialUsed,
-        admin: !!s.admin
+        admin: !!s.admin,
+        limits: (s.limits && typeof s.limits === 'object') ? s.limits : null
       };
     } catch (e) { return defaultState(); }
   }
@@ -52,14 +64,22 @@
     try { localStorage.setItem(STATE_KEY, JSON.stringify(s)); } catch (e) {}
   }
 
-  // Is premium currently ACTIVE? (admin = always; otherwise plan premium and not expired)
-  function isPremium() {
+  // The ACTIVE tier: admin = premium; a paid tier counts only until it expires.
+  function tier() {
     var s = loadState();
-    if (s.admin) return true;
-    if (s.plan !== 'premium') return false;
-    if (!s.premiumUntil) return true; // lifetime / unset expiry
-    return nowMs() < new Date(s.premiumUntil).getTime();
+    if (s.admin) return 'premium';
+    if (s.plan !== 'gold' && s.plan !== 'premium') return 'free';
+    if (!s.premiumUntil) return s.plan; // lifetime / unset expiry
+    return nowMs() < new Date(s.premiumUntil).getTime() ? s.plan : 'free';
   }
+  function tierName() { return TIER_NAME[tier()]; }
+  function atLeast(t) { return TIER_RANK[tier()] >= TIER_RANK[t]; }
+
+  // Top tier (premium) active? (admin = always)
+  function isPremium() { return tier() === 'premium'; }
+  function isGold() { return tier() === 'gold'; }
+  // Any paid tier active (gold or premium, incl. trial)
+  function isPaid() { return tier() !== 'free'; }
 
   function isTrialActive() {
     var s = loadState();
@@ -67,24 +87,35 @@
     return s.trialUsed && nowMs() < new Date(s.premiumUntil).getTime();
   }
 
-  // Whole days left on the current premium window (0 if none / expired).
+  // Whole days left on the current paid window (0 if none / expired).
   function daysLeft() {
     var s = loadState();
     if (s.admin) return Infinity;
-    if (s.plan !== 'premium' || !s.premiumUntil) return 0;
+    if ((s.plan !== 'premium' && s.plan !== 'gold') || !s.premiumUntil) return 0;
     var ms = new Date(s.premiumUntil).getTime() - nowMs();
     return ms <= 0 ? 0 : Math.ceil(ms / 86400000);
   }
 
-  function planName() { return isPremium() ? 'premium' : 'free'; }
+  function planName() { return tier(); }
 
   function canUse(feature) {
-    if (!PREMIUM_FEATURES[feature]) return true; // not gated
-    return isPremium();
+    var need = FEATURE_TIER[feature];
+    if (!need) return true; // not gated
+    return atLeast(need);
   }
 
-  function signalLimit() { return isPremium() ? Infinity : LIMITS.FREE_SIGNAL_MAX; }
-  function favLimit()    { return isPremium() ? Infinity : LIMITS.FREE_FAV_MAX; }
+  // Limit for the current tier. null/Infinity => unlimited. Server limits win.
+  function limitFor(key) {
+    var t = tier();
+    var s = loadState();
+    var v;
+    if (s.limits && s.limits.tier === t && s.limits[key] !== undefined) v = s.limits[key];
+    else v = TIER_LIMITS[t][key];
+    return v == null ? Infinity : v;
+  }
+  function signalLimit()   { return limitFor('signalMax'); }
+  function favLimit()      { return limitFor('favMax'); }
+  function analysisLimit() { return limitFor('analysesPerDay'); }
 
   // Give admins full access without consuming a trial.
   function grantAdmin() {
@@ -93,14 +124,22 @@
     saveState(s);
   }
 
-  // Apply an authoritative plan coming from the server (/api/me).
-  // shape: { plan:'free'|'premium', premiumUntil: ISO|null, trialUsed?:bool }
+  // Apply an authoritative plan coming from the server.
+  // shape: { plan:'free'|'gold'|'premium', tier?, limits?, premiumUntil: ISO|null, trialUsed?:bool }
   function applyServerPlan(info) {
     if (!info) return;
     var s = loadState();
-    if (info.plan === 'premium' || info.plan === 'free') s.plan = info.plan;
+    if (info.plan === 'premium' || info.plan === 'gold' || info.plan === 'free') s.plan = info.plan;
     if (info.premiumUntil !== undefined) s.premiumUntil = info.premiumUntil || null;
     if (typeof info.trialUsed === 'boolean') s.trialUsed = info.trialUsed;
+    if (info.limits && typeof info.limits === 'object') {
+      s.limits = {
+        tier: info.tier || info.plan || 'free',
+        analysesPerDay: info.limits.analysesPerDay,
+        favMax: info.limits.favMax,
+        signalMax: info.limits.signalMax
+      };
+    }
     saveState(s);
     refreshUI();
   }
@@ -108,7 +147,7 @@
   // Start the automatic 7-day trial once, on first use.
   function maybeStartTrial() {
     var s = loadState();
-    if (s.admin || s.trialUsed || s.plan === 'premium') return false;
+    if (s.admin || s.trialUsed || s.plan !== 'free') return false;
     var until = new Date(nowMs() + LIMITS.TRIAL_DAYS * 86400000).toISOString();
     s.plan = 'premium';
     s.premiumUntil = until;
@@ -139,7 +178,7 @@
 
   // Kick off a hosted-checkout flow. Requires the server billing endpoint to be
   // configured with a Stripe/Paddle key. Degrades gracefully when offline/unset.
-  function startCheckout(cycle) {
+  function startCheckout(cycle, tierId) {
     var token = null;
     try { token = localStorage.getItem('nt_token'); } catch (e) {}
     var base = (typeof window.API_BASE === 'string' && window.API_BASE) ||
@@ -151,7 +190,7 @@
         'Content-Type': 'application/json',
         'Authorization': token ? ('Bearer ' + token) : ''
       },
-      body: JSON.stringify({ cycle: cycle || 'monthly' })
+      body: JSON.stringify({ cycle: cycle || 'monthly', tier: tierId === 'gold' ? 'gold' : 'premium' })
     }).then(function (r) { return r.json(); })
       .then(function (d) {
         if (d && d.url) { window.location.href = d.url; return; }
@@ -172,12 +211,12 @@
   function refreshUI() {
     var badge = document.getElementById('ntPlanBadge');
     if (badge) {
-      if (isPremium()) {
+      if (isPaid()) {
         var d = daysLeft();
-        badge.textContent = isTrialActive() ? ('⭐ ניסיון · ' + d + ' ימים') : '⭐ פרימיום';
+        badge.textContent = isTrialActive() ? ('⭐ ניסוי · ' + d + ' ימים') : (isGold() ? '🥇 גולד' : '⭐ פרימיום');
         badge.className = 'nt-plan-badge premium';
       } else {
-        badge.textContent = 'חינם';
+        badge.textContent = 'בסיסי';
         badge.className = 'nt-plan-badge free';
       }
     }
@@ -197,13 +236,20 @@
 
   window.NTPlan = {
     LIMITS: LIMITS,
+    TIER_NAME: TIER_NAME,
+    tier: tier,
+    tierName: tierName,
+    atLeast: atLeast,
     isPremium: isPremium,
+    isGold: isGold,
+    isPaid: isPaid,
     isTrialActive: isTrialActive,
     daysLeft: daysLeft,
     planName: planName,
     canUse: canUse,
     signalLimit: signalLimit,
     favLimit: favLimit,
+    analysisLimit: analysisLimit,
     grantAdmin: grantAdmin,
     applyServerPlan: applyServerPlan,
     maybeStartTrial: maybeStartTrial,

@@ -152,7 +152,7 @@ function handleLogin(e) {
       // Apply the authoritative plan from the server (overrides local trial state).
       try {
         if (window.NTPlan && result.data.plan) {
-          window.NTPlan.applyServerPlan({ plan: result.data.plan, premiumUntil: result.data.premiumUntil, trialUsed: result.data.trialUsed });
+          window.NTPlan.applyServerPlan({ plan: result.data.plan, tier: result.data.tier, limits: result.data.limits, premiumUntil: result.data.premiumUntil, trialUsed: result.data.trialUsed });
         }
       } catch (e2) {}
       loginSuccess({ name: result.data.username, email: email, role: result.data.role });

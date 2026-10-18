@@ -493,10 +493,180 @@
 
   function fmt(x) { return (Math.round(x * 100) / 100).toString(); }
 
+  // ============================================================================
+  //   DESCRIBE: full technical profile of one symbol (powers the "AI analysis"
+  //   popup). Reuses analyze() + the same swings/levels so it never disagrees
+  //   with the scanner. Pure: no network, no DOM.
+  // ============================================================================
+  var SETUP_HE = {
+    pullback: 'Pullback לתמיכה', breakout_retest: 'פריצה + ריטסט',
+    breakdown_retest: 'שבירה + ריטסט', range_breakout: 'פריצת Range',
+    sma30_reclaim: 'החזרת SMA30', sma30_rejection: 'דחייה מ-SMA30'
+  };
+  var TREND_HE = { up: 'מגמת עלייה', down: 'מגמת ירידה', range: 'דישדוש (Range)' };
+
+  // Nearest level on one side of price; strong (>=3 touches) levels are preferred.
+  function pickLevel(levels, bars, price, below) {
+    var side = levels.filter(function (l) { return below ? l.price <= price : l.price >= price; });
+    if (!side.length) return null;
+    var strong = side.filter(function (l) { return l.touches >= CFG.touchSignificant; });
+    var pool = strong.length ? strong : side;
+    var best = pool[0];
+    pool.forEach(function (l) { if (Math.abs(l.price - price) < Math.abs(best.price - price)) best = l; });
+    var lastBar = bars[best.lastIdx];
+    return {
+      price: best.price, touches: best.touches,
+      strong: best.touches >= CFG.touchSignificant, veryStrong: best.touches >= CFG.touchStrong,
+      lastTouch: lastBar ? lastBar.time : null,
+      distPct: (best.price - price) / price * 100
+    };
+  }
+
+  // How long (in weekly bars) the current Dow trend has been in force.
+  function trendDuration(bars, swings, trend) {
+    var n = bars.length, weeks = 1, capped = true;
+    for (var end = n - 2; end >= CFG.minBars; end--) {
+      var limit = end - 1 - CFG.swingWing;
+      var sub = swings.filter(function (s) { return s.idx <= limit; });
+      if (classifyTrend(sub) !== trend) { capped = false; break; }
+      weeks++;
+    }
+    return { weeks: weeks, capped: capped, since: bars[n - weeks] ? bars[n - weeks].time : null };
+  }
+
+  // Rough lead-time estimate until a real entry signal. A heuristic, NOT a forecast:
+  // travel time to the trigger level at ~0.4-1.0 ATR per week + confirmation weeks.
+  function estimateEta(a, price, trigger) {
+    if (a.status === 'entry' && a.entry != null) {
+      return { kind: 'now', minWeeks: 0, maxWeeks: 0, text: 'הסיגנל פעיל כעת' };
+    }
+    if (a.status === 'reject') {
+      return { kind: 'unlikely', minWeeks: null, maxWeeks: null, text: 'אין סיגנל צפוי כרגע — המבנה לא תקין לכניסה' };
+    }
+    var atrPct = (a.atr && price) ? a.atr / price : 0.04;
+    var dist = trigger != null ? Math.abs(price - trigger) / price : 0;
+    var travel = Math.max(0, dist - CFG.atStop);
+    var wMin = Math.ceil(travel / Math.max(atrPct, 0.005));
+    var wMax = Math.ceil(travel / Math.max(atrPct * 0.4, 0.004));
+    var cMin = 0, cMax = 1, basis = '';
+    if (a.setup === 'sma30_reclaim') { cMin = 3; cMax = 8; basis = 'נדרשת החזרת SMA30 ובניית מבנה 2 שיאים + 2 שפלים עולים'; }
+    else if (a.setup === 'breakout_retest' || a.setup === 'breakdown_retest') { cMin = 0; cMax = 3; basis = 'ממתינים לריטסט של הרמה שנפרצה'; }
+    else if (a.setup === 'pullback' || a.setup === 'sma30_rejection') { cMin = 0; cMax = 2; basis = 'ממתינים להגעה לרמה ולנר היפוך מאשר'; }
+    else if (a.trend === 'range') { cMin = CFG.holdCandles; cMax = CFG.holdCandles + 3; basis = 'דישדוש: נדרשת פריצה + ' + CFG.holdCandles + ' נרות מעל/מתחת + ריטסט'; }
+    var lo = wMin + cMin, hi = wMax + cMax;
+    if (hi < lo) hi = lo;
+    if (lo > 26) {
+      return { kind: 'far', minWeeks: lo, maxWeeks: hi, text: 'רחוק — לא צפוי איתות בחצי השנה הקרובה', basis: basis };
+    }
+    if (hi > 26) hi = 26;
+    var text = hi <= 1 ? 'בשבוע הקרוב'
+      : (lo === hi ? ('כ-' + lo + ' שבועות') : ('כ-' + Math.max(lo, 1) + ' עד ' + hi + ' שבועות'));
+    return { kind: 'estimate', minWeeks: lo, maxWeeks: hi, text: text, basis: basis };
+  }
+
+  function describe(bars, meta) {
+    meta = meta || {};
+    var a = analyze(bars, meta);
+    var out = { ok: false, symbol: a.symbol, name: a.name, curr: meta.curr || a.curr || '' };
+    if (!bars || bars.length < CFG.minBars || a.sma30 == null) { out.error = 'insufficient_data'; return out; }
+
+    var n = bars.length;
+    var price = a.price;
+    var swingBars = bars.slice(0, n - 1);
+    var swings = findSwings(swingBars);
+    var levels = buildLevels(swingBars, swings);
+    var trend = a.trend || 'range';
+
+    // --- trend + duration ---
+    var td = trendDuration(bars, swings, trend);
+
+    // --- SMA30 position / slope ---
+    var smaPrev = sma(bars, CFG.smaPeriod, n - 1 - CFG.slopeLookback);
+    var slopePct = smaPrev ? (a.sma30 - smaPrev) / smaPrev * 100 : 0;
+    var above = price >= a.sma30;
+    var sideWeeks = 0;
+    for (var i = n - 1; i >= CFG.smaPeriod - 1; i--) {
+      var m = sma(bars, CFG.smaPeriod, i);
+      if ((bars[i].close >= m) === above) sideWeeks++; else break;
+    }
+
+    // --- last strong support (below) / resistance (above) ---
+    var support = pickLevel(levels, bars, price, true);
+    var resistance = pickLevel(levels, bars, price, false);
+
+    // --- did price break a resistance / support recently? ---
+    var broke = null;
+    function consider(type, lvl, side) {
+      var bo = breakoutRetest(bars, lvl.price, side);
+      var cand = null;
+      if (bo.breakoutIdx >= 0) {
+        cand = { type: type, level: lvl.price, weeksAgo: (n - 1) - bo.breakoutIdx, held: bo.heldCount + 1,
+                 confirmed: bo.held, quality: bo.qualityBreakout, retesting: bo.retesting };
+      } else if (bars[n - 2] && (side === 'above' ? (bars[n - 2].close <= lvl.price && price > lvl.price)
+                                                   : (bars[n - 2].close >= lvl.price && price < lvl.price))) {
+        cand = { type: type, level: lvl.price, weeksAgo: 0, held: 1, confirmed: false, quality: false, retesting: false };
+      }
+      if (cand && (!broke || cand.weeksAgo < broke.weeksAgo)) broke = cand;
+    }
+    if (support) consider('resistance', support, 'above');   // level now under price = flipped resistance
+    if (resistance) consider('support', resistance, 'below'); // level now over price = flipped support
+    var nearRes = resistance && Math.abs(resistance.distPct) <= CFG.nearLevel * 100;
+    var nearSup = support && Math.abs(support.distPct) <= CFG.nearLevel * 100;
+
+    // --- entry readiness ---
+    var canEnter = a.status === 'entry' && a.entry != null;
+    var trigger = a.entry != null ? a.entry
+      : ((a.setup === 'sma30_reclaim' || a.setup === 'sma30_rejection') ? a.sma30
+      : (a.level != null ? a.level : null));
+    if (trigger == null && trend === 'range') {
+      var cands = [];
+      if (resistance) cands.push(resistance.price);
+      if (support) cands.push(support.price);
+      cands.forEach(function (p) { if (trigger == null || Math.abs(p - price) < Math.abs(trigger - price)) trigger = p; });
+    }
+    var eta = estimateEta(a, price, trigger);
+
+    var dirTxt = a.direction === 'short' ? 'שורט' : (a.direction === 'long' ? 'לונג' : '');
+    var verdict;
+    if (canEnter) {
+      verdict = { key: 'enter', text: dirTxt + ' — ניתנת לכניסה כעת (' + (SETUP_HE[a.setup] || a.setup || '') + ')' };
+    } else if (a.status === 'watch') {
+      verdict = { key: 'wait', text: 'במעקב' + (dirTxt ? ' (' + dirTxt + ')' : '') + ' — עדיין לא ניתנת לכניסה, ממתינים לאישור' };
+    } else {
+      verdict = { key: 'avoid', text: 'לא ניתנת לכניסה כרגע' };
+    }
+
+    out.ok = true;
+    out.price = price;
+    out.trend = { type: trend, text: TREND_HE[trend] || trend, weeks: td.weeks, capped: td.capped, since: td.since };
+    out.sma = {
+      value: a.sma30, position: above ? 'above' : 'below',
+      distPct: (price - a.sma30) / a.sma30 * 100,
+      slope: slopePct > 0.3 ? 'rising' : (slopePct < -0.3 ? 'falling' : 'flat'),
+      slopePct: slopePct, sideWeeks: sideWeeks
+    };
+    out.support = support;
+    out.resistance = resistance;
+    out.nearSupport = !!nearSup;
+    out.nearResistance = !!nearRes;
+    out.broke = broke;
+    out.entry = {
+      canEnter: canEnter, status: a.status, direction: a.direction,
+      setup: a.setup, setupText: SETUP_HE[a.setup] || a.setup || null,
+      entry: a.entry, stop: a.stop, target: a.target, rr: a.rr, alertLevel: a.alertLevel
+    };
+    out.eta = eta;
+    out.verdict = verdict;
+    out.reasons = a.reasons || [];
+    out.disq = a.disq || [];
+    return out;
+  }
+
   // Public API — works in the browser (window.NTScanner) and in Node (module.exports),
   // so the exact same method runs client-side and on the server.
   var NTScanner = {
     analyze: analyze,
+    describe: describe,
     config: CFG,
     // low-level helpers exposed for testing / tuning
     _sma: sma, _atr: atr, _volAvg: volAvg,

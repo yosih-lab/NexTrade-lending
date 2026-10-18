@@ -39,7 +39,6 @@
   var activeTab = 'signals';
   var refreshTimer = null;
   var favFilter = false; // when true, show only favorite symbols in the signals tab
-  var searchQuery = ''; // in-feed search text (filters cards; also drives "add to watch")
 
   // ---------- plan helpers (thin wrappers over window.NTPlan) ----------
   function isPremium() { try { return !window.NTPlan || window.NTPlan.isPremium(); } catch (e) { return true; } }
@@ -47,6 +46,12 @@
   function sigCap()    { try { return window.NTPlan ? window.NTPlan.signalLimit() : Infinity; } catch (e) { return Infinity; } }
   function canUse(f)   { try { return !window.NTPlan || window.NTPlan.canUse(f); } catch (e) { return true; } }
   function openUpgrade(ctx) { try { if (window.NTPlan) window.NTPlan.openUpgrade(ctx); } catch (e) {} }
+  function tierId()    { try { return window.NTPlan ? window.NTPlan.tier() : 'free'; } catch (e) { return 'free'; } }
+  function tierLabel() { try { return window.NTPlan ? window.NTPlan.tierName() : ''; } catch (e) { return ''; } }
+  function favLimitMsg() {
+    var cap = favCap();
+    return 'במסלול שלך (' + tierLabel() + ') אפשר לעקוב אחרי עד ' + cap + ' מניות. שדרג למעקב אחרי יותר.';
+  }
 
   // ---------- favorites (alert watch) ----------
   function loadFavs() {
@@ -60,7 +65,7 @@
     if (i === -1) {
       // Free users are capped on how many symbols they can watch.
       if (f.length >= favCap()) {
-        openUpgrade('במסלול החינם אפשר לעקוב אחרי עד ' + favCap() + ' מניות. שדרג למעקב ללא הגבלה.');
+        openUpgrade(favLimitMsg());
         return;
       }
       f.push(sym);
@@ -137,11 +142,15 @@
         try {
           localStorage.setItem(SERVER_KEY, JSON.stringify({
             ts: Date.now(), data: d.signals, total: d.total,
-            isPremium: d.isPremium, delayedMs: d.delayedMs, lastScan: d.lastScan
+            isPremium: d.isPremium, tier: d.tier, delayedMs: d.delayedMs, lastScan: d.lastScan
           }));
         } catch (e) {}
-        // keep the plan badge/UI honest with the server's authoritative answer
-        try { if (window.NTPlan) window.NTPlan.applyServerPlan({ plan: d.isPremium ? 'premium' : 'free' }); } catch (e) {}
+        // keep the plan badge/UI + limits honest with the server's authoritative answer
+        try {
+          if (window.NTPlan) window.NTPlan.applyServerPlan({
+            plan: d.plan || (d.isPremium ? 'premium' : 'free'), tier: d.tier, limits: d.limits
+          });
+        } catch (e) {}
         render();
       })
       .catch(function () {});
@@ -154,7 +163,7 @@
     var sc = loadServerCache();
     if (sc && Array.isArray(sc.data)) {
       raw = sc.data;
-      _serverInfo = { total: sc.total, isPremium: sc.isPremium, delayedMs: sc.delayedMs, lastScan: sc.lastScan };
+      _serverInfo = { total: sc.total, isPremium: sc.isPremium, tier: sc.tier || (sc.isPremium ? 'premium' : 'free'), delayedMs: sc.delayedMs, lastScan: sc.lastScan };
     } else {
       _serverInfo = null;
       try { raw = JSON.parse(localStorage.getItem(ALERTS_KEY) || '[]'); } catch (e) { raw = []; }
@@ -400,24 +409,13 @@
 
     var list = uniq;
     if (favFilter) list = uniq.filter(function (s) { return isFav(s.sym); });
-    // in-feed text search (symbol or name)
-    if (searchQuery) {
-      var q = searchQuery.toLowerCase();
-      list = list.filter(function (s) {
-        var a = (s.sym || '').toLowerCase();
-        var b = (s.name || '').toLowerCase();
-        return a.indexOf(q) !== -1 || b.indexOf(q) !== -1;
-      });
-    }
 
     var perf = perfSummary();
-    var hero = (favFilter || searchQuery) ? '' : heroCard(uniq);
+    var hero = favFilter ? '' : heroCard(uniq);
 
     if (!list.length) {
       var emptyMsg;
-      if (searchQuery) {
-        emptyMsg = 'אין איתות פעיל על "' + searchQuery + '".<br>הוסף אותה למעקב כדי לקבל התראה כשייווצר איתות.';
-      } else if (favFilter) {
+      if (favFilter) {
         emptyMsg = 'אין איתותים במניות המועדפות שלך כרגע.<br>סמן מניות בכוכב כדי לקבל עליהן התראות.';
       } else {
         emptyMsg = 'אין איתותים פעילים כרגע.<br>הסורק רץ ברקע ומעדכן אוטומטית — איתותים חדשים יופיעו כאן.';
@@ -430,12 +428,15 @@
     // reported. Otherwise (local fallback) we cap client-side.
     var upsell = '';
     if (_serverInfo) {
-      if (!_serverInfo.isPremium && _serverInfo.total > list.length && !favFilter && !searchQuery) {
+      if (!_serverInfo.isPremium && _serverInfo.total > list.length && !favFilter) {
         var hiddenS = _serverInfo.total - list.length;
+        var goldTier = _serverInfo.tier === 'gold';
         upsell = '<div class="sf-upsell">' +
           '<div class="sf-upsell-txt">' +
             '<div class="sf-upsell-title">🔒 יש עוד ' + hiddenS + ' איתותים</div>' +
-            '<div class="sf-upsell-sub">במסלול החינם האיתותים מוצגים בעיכוב ובכמות מוגבלת. שדרג כדי לקבל הכל בזמן אמת.</div>' +
+            '<div class="sf-upsell-sub">' + (goldTier
+              ? 'במסלול גולד מוצגים עד ' + list.length + ' איתותים בזמן אמת. שדרג לפרימיום לקבל את הכל ללא הגבלה.'
+              : 'במסלול הבסיסי האיתותים מוצגים בעיכוב ובכמות מוגבלת. שדרג כדי לקבל את הכל בזמן אמת.') + '</div>' +
           '</div>' +
           '<button class="sf-upsell-btn" onclick="NTSignals.openUpgrade()">⭐ שדרג</button>' +
         '</div>';
@@ -448,7 +449,7 @@
         upsell = '<div class="sf-upsell">' +
           '<div class="sf-upsell-txt">' +
             '<div class="sf-upsell-title">🔒 יש עוד ' + hidden + ' איתותים חדשים</div>' +
-            '<div class="sf-upsell-sub">במסלול החינם מוצגים ' + cap + ' איתותים. שדרג כדי לראות את כולם בזמן אמת.</div>' +
+            '<div class="sf-upsell-sub">במסלול שלך (' + tierLabel() + ') מוצגים ' + cap + ' איתותים. שדרג כדי לראות את כולם בזמן אמת.</div>' +
           '</div>' +
           '<button class="sf-upsell-btn" onclick="NTSignals.openUpgrade()">⭐ שדרג</button>' +
         '</div>';
@@ -583,6 +584,11 @@
     else if (activeTab === 'trades') body.innerHTML = renderTrades();
     else if (activeTab === 'history') body.innerHTML = renderHistory();
     else if (activeTab === 'alerts') body.innerHTML = renderAlertsLog();
+    else if (activeTab === 'ai') {
+      // Never rebuild the AI panel while the user is typing; only refresh the quota line.
+      if (!document.getElementById('aiPanel')) { body.innerHTML = renderAI(); loadAiQuota(); }
+      else { loadAiQuota(); updateAiQuotaUI(); }
+    }
     renderHeaderChrome();
   }
 
@@ -595,18 +601,19 @@
     var mn = document.getElementById('sfUserMenuName');
     if (mn) mn.textContent = name;
 
-    var premium = false, trialActive = false, days = 0;
+    var premium = false, trialActive = false, days = 0, paid = false, tid = 'free';
     try {
       premium = window.NTPlan ? window.NTPlan.isPremium() : false;
+      paid = window.NTPlan ? window.NTPlan.isPaid() : false;
+      tid = window.NTPlan ? window.NTPlan.tier() : 'free';
       trialActive = window.NTPlan ? window.NTPlan.isTrialActive() : false;
       days = window.NTPlan ? window.NTPlan.daysLeft() : 0;
     } catch (e) {}
 
     var mp = document.getElementById('sfUserMenuPlan');
     if (mp) {
-      mp.textContent = premium
-        ? (trialActive ? ('ניסיון פרימיום · נותרו ' + days + ' ימים') : 'מנוי פרימיום פעיל')
-        : 'מסלול חינם';
+      mp.textContent = trialActive ? ('ניסיון פרימיום · נותרו ' + days + ' ימים')
+        : (premium ? 'מנוי פרימיום פעיל' : (paid ? 'מנוי גולד פעיל' : 'מסלול בסיסי'));
     }
 
     // Left banner: trial countdown → premium badge → upgrade CTA.
@@ -614,17 +621,21 @@
     var tt = document.getElementById('sfTrialTxt');
     var ic = tb ? tb.querySelector('.sf-trial-ic') : null;
     if (tb && tt) {
-      if (premium && !trialActive) {
-        tb.classList.add('premium');
-        tt.textContent = 'פרימיום פעיל';
-        if (ic) ic.textContent = '⭐';
-      } else if (trialActive) {
+      if (trialActive) {
         tb.classList.remove('premium');
         tt.textContent = 'נותרו ' + days + ' ימי ניסיון';
         if (ic) ic.textContent = '🎁';
+      } else if (premium) {
+        tb.classList.add('premium');
+        tt.textContent = 'פרימיום פעיל';
+        if (ic) ic.textContent = '⭐';
+      } else if (tid === 'gold') {
+        tb.classList.add('premium');
+        tt.textContent = 'גולד · שדרג לפרימיום';
+        if (ic) ic.textContent = '🥇';
       } else {
         tb.classList.remove('premium');
-        tt.textContent = '⭐ שדרג לפרימיום';
+        tt.textContent = '⭐ שדרג מסלול';
         if (ic) ic.textContent = '';
       }
     }
@@ -655,60 +666,272 @@
     activeTab = tab;
     var tabs = document.querySelectorAll('#signalFeed .sf-tab');
     tabs.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === tab); });
-    // the in-feed search belongs to the signals tab only
-    var searchWrap = document.getElementById('sfSearchWrap');
-    if (searchWrap) searchWrap.style.display = (tab === 'signals') ? 'flex' : 'none';
     render();
   }
 
-  // ---------- in-feed search + watch ----------
-  function onSearch(val) {
-    searchQuery = (val || '').trim();
-    if (activeTab !== 'signals') return;
-    render();
+  // ---------- AI stock analysis (tab + popup) ----------
+  // The user types a ticker/name; the SERVER runs the scanner's own SMA30 / support-
+  // resistance / 5-candle logic on 5y weekly data and returns a full profile, shown in a
+  // popup. The daily quota (Basic 3 / Gold 15 / Premium unlimited) is enforced server-side.
+  var _aiQuota = null;   // { quota:{tier,used,limit,remaining}, symbols:[today's analysed] }
+  var _aiBusy = false;
+  var _aiTok = null, _aiQuotaTs = 0;
+  var AI_QUICK = ['AAPL', 'TSLA', 'NVDA', 'TEVA', 'NICE'];
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function heDate(iso) {
+    var p = String(iso || '').split('-');
+    return p.length === 3 ? (parseInt(p[2], 10) + '.' + parseInt(p[1], 10) + '.' + p[0]) : esc(iso || '');
   }
 
-  // Validate a typed query against the scanner's known symbols.
-  function resolveSymbol(q) {
-    q = (q || '').trim().toUpperCase();
-    if (!q) return null;
-    var all = (typeof window.ALL_SCANNER_SYMBOLS !== 'undefined') ? window.ALL_SCANNER_SYMBOLS : (typeof ALL_SCANNER_SYMBOLS !== 'undefined' ? ALL_SCANNER_SYMBOLS : []);
-    if (!all || !all.length) return q; // can't validate — accept as-is
-    // exact match on symbol or its .TA-stripped form
-    for (var i = 0; i < all.length; i++) {
-      var s = all[i].toUpperCase();
-      if (s === q || s.replace('.TA', '') === q) return all[i];
+  function aiQuotaText() {
+    var q = _aiQuota && _aiQuota.quota;
+    if (!q) return '';
+    var tn = (window.NTPlan && window.NTPlan.TIER_NAME && window.NTPlan.TIER_NAME[q.tier]) || '';
+    if (q.limit == null) return '♾️ ניתוחים ללא הגבלה · מסלול ' + esc(tn);
+    return '🎟️ נותרו <b>' + q.remaining + '</b> מתוך ' + q.limit + ' ניתוחים היום · מסלול ' + esc(tn);
+  }
+  function updateAiQuotaUI() {
+    var el = document.getElementById('aiQuota');
+    if (el) el.innerHTML = aiQuotaText();
+    var q = _aiQuota && _aiQuota.quota;
+    var up = document.getElementById('aiUpgradeBtn');
+    if (up) up.style.display = (q && q.limit != null) ? '' : 'none';
+    var done = document.getElementById('aiDoneWrap');
+    if (done) {
+      var syms = (_aiQuota && _aiQuota.symbols) || [];
+      done.innerHTML = syms.map(function (s) {
+        return '<button class="ai-chip done" data-sym="' + esc(s) + '" onclick="NTSignals.analyzeSymbol(this.getAttribute(\'data-sym\'))">✓ ' + esc(s.replace('.TA', '')) + '</button>';
+      }).join('');
+      var sec = document.getElementById('aiDoneSec');
+      if (sec) sec.style.display = syms.length ? '' : 'none';
     }
-    // TASE symbols are stored with .TA — try appending it
-    for (var j = 0; j < all.length; j++) {
-      if (all[j].toUpperCase() === q + '.TA') return all[j];
-    }
-    return null;
+  }
+  function loadAiQuota() {
+    var token = authToken();
+    if (!token) return;
+    // a different user logged in on this device -> drop the previous user's quota view
+    if (_aiTok !== token) { _aiTok = token; _aiQuota = null; _aiQuotaTs = 0; updateAiQuotaUI(); }
+    if (Date.now() - _aiQuotaTs < 30000) return;
+    _aiQuotaTs = Date.now();
+    fetch(apiBase() + '/api/analyze/quota', { headers: { 'Authorization': 'Bearer ' + token }, cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d && d.quota) { _aiQuota = d; updateAiQuotaUI(); } })
+      .catch(function () {});
   }
 
-  // Add the symbol in the search box to the user's watch list (favorites).
-  function addWatchFromSearch() {
-    var input = document.getElementById('sfSearchInput');
-    var q = input ? input.value : searchQuery;
-    var sym = resolveSymbol(q);
-    if (!sym) {
-      try { if (typeof window.ntToast === 'function') window.ntToast('לא נמצאה מניה בשם "' + (q || '') + '"'); else alert('מניה לא נמצאה'); } catch (e) {}
+  function renderAI() {
+    var quick = AI_QUICK.map(function (s) {
+      return '<button class="ai-chip" data-sym="' + s + '" onclick="NTSignals.analyzeSymbol(this.getAttribute(\'data-sym\'))">' + s + '</button>';
+    }).join('');
+    return '<div class="ai-panel" id="aiPanel">' +
+      '<div class="ai-hero">' +
+        '<div class="ai-hero-title">🤖 ניתוח AI למניות</div>' +
+        '<div class="ai-hero-sub">הקלד סימול או שם מניה וקבל ניתוח מלא לפי שיטת הסורק: מגמה, SMA30, תמיכה והתנגדות, פריצות, דוחות וזמן משוער לאיתות.</div>' +
+        '<div class="ai-input-row">' +
+          '<input id="aiInput" type="text" inputmode="search" autocomplete="off" maxlength="40" placeholder="לדוגמה: AAPL, TSLA, טבע, אפל…" ' +
+            'onkeydown="if(event.key===\'Enter\')NTSignals.analyzeFromInput()" />' +
+          '<button class="ai-go" onclick="NTSignals.analyzeFromInput()">🔍 נתח</button>' +
+        '</div>' +
+        '<div class="ai-quota-row">' +
+          '<div class="ai-quota" id="aiQuota">' + aiQuotaText() + '</div>' +
+          '<button class="ai-upgrade" id="aiUpgradeBtn" onclick="NTSignals.openUpgrade()" style="display:none">⭐ שדרג</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ai-sec">מניות פופולריות</div>' +
+      '<div class="ai-chips">' + quick + '</div>' +
+      '<div id="aiDoneSec" style="display:none"><div class="ai-sec">נותחו היום (פתיחה חוזרת לא נספרת)</div><div class="ai-chips" id="aiDoneWrap"></div></div>' +
+      '<div class="ai-note">הניתוח מבוסס על נתוני 5 שנים בגרף שבועי. אינו מהווה ייעוץ השקעות.</div>' +
+    '</div>';
+  }
+
+  function analyzeFromInput() {
+    var el = document.getElementById('aiInput');
+    analyzeSymbol(el ? el.value : '');
+  }
+
+  function aiModalEl() { return document.getElementById('aiModal'); }
+  function openAiModal(html) {
+    var m = aiModalEl(); if (!m) return;
+    var b = document.getElementById('aiModalBody'); if (b) b.innerHTML = html;
+    m.classList.add('open');
+  }
+  function setAiModal(html) {
+    var b = document.getElementById('aiModalBody'); if (b) { b.innerHTML = html; b.scrollTop = 0; }
+  }
+  function closeAiModal() {
+    var m = aiModalEl(); if (m) m.classList.remove('open');
+  }
+
+  function aiMsgHtml(icon, title, sub, extra) {
+    return '<div class="aim-msg"><div class="aim-msg-ic">' + icon + '</div><div class="aim-msg-title">' + esc(title) + '</div>' +
+      (sub ? '<div class="aim-msg-sub">' + sub + '</div>' : '') + (extra || '') +
+      '<button class="sig-btn ghost aim-close-btn" onclick="NTSignals.closeAiModal()">סגור</button></div>';
+  }
+
+  function analyzeSymbol(q) {
+    q = String(q || '').trim();
+    if (!q || _aiBusy) return;
+    if (!authToken()) { openAiModal(aiMsgHtml('🔒', 'יש להתחבר', 'כדי להשתמש בניתוח AI יש להתחבר לחשבון.')); return; }
+    // UX shortcut: out of credits and this isn't an already-analysed symbol today.
+    var qt = _aiQuota && _aiQuota.quota;
+    var doneToday = (_aiQuota && _aiQuota.symbols) || [];
+    var qUp = q.toUpperCase();
+    var isRepeat = doneToday.some(function (s) { return s.toUpperCase() === qUp || s.toUpperCase().replace('.TA', '') === qUp; });
+    if (qt && qt.limit != null && qt.remaining === 0 && !isRepeat) {
+      openAiModal(quotaHtml(qt));
       return;
     }
-    if (isFav(sym)) {
-      try { if (typeof window.ntToast === 'function') window.ntToast((sym || '').replace('.TA', '') + ' כבר במעקב ✓'); } catch (e) {}
-      return;
+    _aiBusy = true;
+    openAiModal('<div class="aim-msg"><div class="aim-spin"></div><div class="aim-msg-title">מנתח את ' + esc(q.toUpperCase()) + '…</div>' +
+      '<div class="aim-msg-sub">סורק 5 שנות נתונים שבועיים. אם השרת התעורר הרגע זה יכול לקחת עד דקה.</div></div>');
+    fetch(apiBase() + '/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken() },
+      body: JSON.stringify({ symbol: q })
+    }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d || {} }; }, function () { return { ok: false, d: {} }; }); })
+      .then(function (res) {
+        _aiBusy = false;
+        var d = res.d;
+        if (res.ok && d.analysis) {
+          if (d.quota) {
+            var syms = ((_aiQuota && _aiQuota.symbols) || []).slice();
+            if (d.charged && syms.indexOf(d.analysis.symbol) === -1) syms.push(d.analysis.symbol);
+            _aiQuota = { quota: d.quota, symbols: syms };
+          }
+          setAiModal(resultHtml(d));
+          updateAiQuotaUI();
+          return;
+        }
+        if (d.code === 'quota') {
+          if (d.quota) _aiQuota = { quota: d.quota, symbols: (_aiQuota && _aiQuota.symbols) || [] };
+          setAiModal(quotaHtml(d.quota));
+          updateAiQuotaUI();
+          return;
+        }
+        setAiModal(aiMsgHtml('⚠️', d.error || 'שגיאה בניתוח', d.code === 'not_found' || d.code === 'bad_symbol' || d.code === 'no_data' ? 'הניתוח לא נספר במכסה שלך.' : ''));
+      })
+      .catch(function () {
+        _aiBusy = false;
+        setAiModal(aiMsgHtml('📡', 'אין חיבור לשרת', 'נסה שוב בעוד רגע. הניתוח לא נספר במכסה שלך.'));
+      });
+  }
+
+  function quotaHtml(q) {
+    var lim = q && q.limit != null ? q.limit : '';
+    var tid = (q && q.tier) || tierId();
+    var nextTxt = tid === 'free'
+      ? 'שדרג לגולד (15 ניתוחים ביום) או לפרימיום (ללא הגבלה).'
+      : 'שדרג לפרימיום לניתוחים ללא הגבלה.';
+    return aiMsgHtml('🎟️', 'ניצלת את ' + lim + ' הניתוחים היומיים', nextTxt + '<br>המכסה מתאפסת בחצות (שעון ישראל).',
+      '<button class="sig-btn aim-up-btn" onclick="NTSignals.closeAiModal();NTSignals.openUpgrade(\'ניצלת את מכסת ניתוחי ה-AI היומית. שדרג להמשך.\')">⭐ שדרג עכשיו</button>');
+  }
+
+  function aiRow(icon, label, html) {
+    return '<div class="aim-row"><div class="aim-k"><span class="aim-ic">' + icon + '</span>' + label + '</div><div class="aim-v">' + html + '</div></div>';
+  }
+
+  function resultHtml(res) {
+    var a = res.analysis, c = a.curr || '';
+    var en = a.entry || {};
+    var v = a.verdict || { key: 'avoid', text: '' };
+    var tr = a.trend || {};
+    var sm = a.sma || {};
+
+    // 1. trend + duration
+    var trIcon = tr.type === 'up' ? '📈' : (tr.type === 'down' ? '📉' : '↔️');
+    var trCls = tr.type === 'up' ? 'pos' : (tr.type === 'down' ? 'neg' : 'mid');
+    var trTxt = '<b class="' + trCls + '">' + esc(tr.text) + '</b> · ' + (tr.capped ? 'לפחות ' : '') + tr.weeks + ' שבועות' +
+      (tr.since ? ' <span class="aim-dim">(מאז ' + heDate(tr.since) + ')</span>' : '');
+
+    // 2. SMA30
+    var slope = sm.slope === 'rising' ? 'עולה' : (sm.slope === 'falling' ? 'יורד' : 'שטוח');
+    var smaTxt = '<b class="' + (sm.position === 'above' ? 'pos' : 'neg') + '">' + (sm.position === 'above' ? 'מעל' : 'מתחת') + ' SMA30</b> ' +
+      '(' + fmt(sm.value, c) + ' · ' + pct(sm.distPct || 0) + ') · השיפוע ' + slope + ' · ' + sm.sideWeeks + ' שבועות ברצף';
+
+    // 3/4. strong levels
+    function lvl(l, none) {
+      if (!l) return none;
+      return '<b>' + fmt(l.price, c) + '</b> · ' + l.touches + ' נגיעות' + (l.veryStrong ? ' (חזקה מאוד)' : (l.strong ? ' (חזקה)' : ' (חלשה)')) +
+        (l.lastTouch ? ' · נגיעה אחרונה ' + heDate(l.lastTouch) : '') + ' <span class="aim-dim">(' + pct(l.distPct) + ' מהמחיר)</span>';
     }
-    var f = loadFavs();
-    if (f.length >= favCap()) {
-      openUpgrade('במסלול החינם אפשר לעקוב אחרי עד ' + favCap() + ' מניות. שדרג למעקב ללא הגבלה.');
-      return;
+
+    // 5. broke resistance / support
+    var b = a.broke, bTxt;
+    if (b) {
+      var when = b.weeksAgo === 0 ? 'השבוע' : ('לפני ' + b.weeksAgo + ' שבועות');
+      var isRes = b.type === 'resistance';
+      bTxt = '<b class="' + (isRes ? 'pos' : 'neg') + '">' + (isRes ? 'פרצה התנגדות' : 'שברה תמיכה') + '</b> ב-' + fmt(b.level, c) + ' ' + when +
+        ' · ' + b.held + ' נרות ' + (isRes ? 'מעל' : 'מתחת') + ' הרמה' +
+        (b.confirmed ? ' — <b>אושרה (5+ נרות)</b>' : ' — עדיין לא אושרה (נדרשים 5 נרות)') +
+        (b.retesting ? ' · כעת בריטסט' : '');
+    } else if (a.nearResistance && a.resistance) {
+      bTxt = 'לא פרצה — נבחנת מתחת להתנגדות ב-' + fmt(a.resistance.price, c);
+    } else if (a.nearSupport && a.support) {
+      bTxt = 'נמצאת על התמיכה ב-' + fmt(a.support.price, c) + ' — עדיין לא נשברה';
+    } else {
+      bTxt = 'לא פרצה התנגדות ולא שברה תמיכה לאחרונה';
     }
-    f.push(sym); saveFavs(f);
-    if (input) input.value = '';
-    searchQuery = '';
-    try { if (typeof window.ntToast === 'function') window.ntToast('✓ ' + (sym || '').replace('.TA', '') + ' נוספה למעקב — נודיע כשייווצר איתות'); } catch (e) {}
-    render();
+
+    // 6. earnings
+    var e = a.earnings || {}, eTxt;
+    if (e.available) {
+      eTxt = '<b>' + heDate(e.date) + '</b>' + (e.days >= 0 ? ' · בעוד ' + e.days + ' ימים' : ' (פורסם)') +
+        ((e.days >= 0 && e.days <= 7) ? ' <b class="neg">— קרוב! מומלץ לצאת יום לפני</b>' : '');
+    } else {
+      eTxt = '<span class="aim-dim">לא זמין למניה זו</span>';
+    }
+
+    // 7. enter now?
+    var enterNow = en.canEnter
+      ? '<b class="pos">✅ כן — ניתנת לכניסה כעת</b>'
+      : (v.key === 'wait' ? '<b class="mid">⏳ עדיין לא — במעקב</b>' : '<b class="neg">⛔ לא ניתנת לכניסה כרגע</b>');
+    var levelsBlock = '';
+    if (en.entry != null) {
+      levelsBlock = '<div class="aim-levels">' +
+        '<div class="sig-lvl entry"><div class="sig-lvl-label">כניסה</div><div class="sig-lvl-val">' + fmt(en.entry, c) + '</div></div>' +
+        '<div class="sig-lvl stop"><div class="sig-lvl-label">סטופ</div><div class="sig-lvl-val">' + fmt(en.stop, c) + '</div></div>' +
+        '<div class="sig-lvl tp"><div class="sig-lvl-label">יעד</div><div class="sig-lvl-val">' + fmt(en.target, c) + '</div></div>' +
+        '</div><div class="aim-dim aim-lvl-note">' + (en.direction === 'short' ? 'שורט' : 'לונג') + ' · יחס סיכוי/סיכון 1:' + en.rr + (en.setupText ? ' · ' + esc(en.setupText) : '') + '</div>';
+    }
+
+    // 8. ETA
+    var eta = a.eta || {};
+    var etaTxt = '<b>' + esc(eta.text) + '</b>' +
+      (eta.basis ? '<div class="aim-dim">' + esc(eta.basis) + '</div>' : '') +
+      (eta.kind === 'estimate' ? '<div class="aim-dim">הערכה בלבד — תלויה בהתנהגות השוק.</div>' : '');
+
+    var reasons = (a.reasons || []).slice(0, 4).map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('');
+    var q = res.quota || {};
+    var symRaw = a.symbol || '';
+    var isFavNow = isFav(symRaw);
+
+    return '<div class="aim-head">' +
+        '<div><div class="aim-sym">' + esc(symRaw.replace('.TA', '')) + '</div><div class="aim-name">' + esc(a.name) + '</div></div>' +
+        '<div class="aim-price"><div class="aim-price-v">' + fmt(a.price, c) + '</div><div class="aim-dim">נכון ל-' + heDate(a.lastBar) + '</div></div>' +
+      '</div>' +
+      '<div class="aim-verdict ' + esc(v.key) + '">' + esc(v.text) + '</div>' +
+      '<div class="aim-rows">' +
+        aiRow(trIcon, 'מגמה ומשכה', trTxt) +
+        aiRow('〰️', 'ממוצע נע 30', smaTxt) +
+        aiRow('🟢', 'תמיכה חזקה אחרונה', lvl(a.support, 'לא זוהתה תמיכה מתחת למחיר')) +
+        aiRow('🔴', 'התנגדות חזקה אחרונה', lvl(a.resistance, 'לא זוהתה התנגדות מעל המחיר')) +
+        aiRow('💥', 'פריצה / שבירה', bTxt) +
+        aiRow('📅', 'פרסום דוחות', eTxt) +
+        aiRow('🎯', 'ניתנת לכניסה כרגע?', enterNow + levelsBlock) +
+        aiRow('⏱️', 'זמן משוער לאיתות כניסה', etaTxt) +
+      '</div>' +
+      (reasons ? '<div class="aim-why"><div class="aim-why-title">💡 למה?</div><ul>' + reasons + '</ul></div>' : '') +
+      '<div class="aim-foot">' +
+        '<button class="sig-btn ' + (isFavNow ? 'ghost' : '') + '" data-sym="' + esc(symRaw) + '" onclick="NTSignals.setAlert(this.getAttribute(\'data-sym\'));NTSignals.closeAiModal()">' + (isFavNow ? '★ במעקב' : '☆ הוסף למעקב') + '</button>' +
+        '<button class="sig-btn ghost" onclick="NTSignals.closeAiModal()">סגור</button>' +
+      '</div>' +
+      '<div class="aim-disc">' + (q.limit == null ? 'ניתוחים ללא הגבלה' : ('נוצלו ' + q.used + ' מתוך ' + q.limit + ' ניתוחים היום')) +
+        (res.charged === false ? ' · ניתוח חוזר, לא נספר' : '') + '<br>אינו מהווה ייעוץ השקעות.</div>';
   }
 
   function addTrade(sym) {
@@ -766,7 +989,7 @@
     if (!isFav(sym)) {
       var f = loadFavs();
       if (f.length >= favCap()) {
-        openUpgrade('במסלול החינם אפשר לעקוב אחרי עד ' + favCap() + ' מניות. שדרג למעקב ללא הגבלה.');
+        openUpgrade(favLimitMsg());
         return;
       }
       f.push(sym); saveFavs(f);
@@ -840,7 +1063,7 @@
     switchTab: switchTab, addTrade: addTrade, closeTrade: closeTrade,
     analyze: analyze, render: render,
     toggleFav: toggleFav, setFavFilter: setFavFilter, setAlert: setAlert,
-    onSearch: onSearch, addWatchFromSearch: addWatchFromSearch,
+    analyzeSymbol: analyzeSymbol, analyzeFromInput: analyzeFromInput, closeAiModal: closeAiModal,
     syncServerSignals: syncServerSignals,
     toggleUserMenu: toggleUserMenu,
     openUpgrade: function (ctx) { openUpgrade(ctx); }

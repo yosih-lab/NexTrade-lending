@@ -2340,18 +2340,72 @@
       border-radius:999px; padding:.4rem .9rem; font-size:.8rem; font-weight:900; cursor:pointer;
       font-family:Heebo,sans-serif; white-space:nowrap; box-shadow:0 2px 10px rgba(245,166,35,.35); }
     .sf-upgrade-btn:hover { filter:brightness(1.05); }
-    /* in-feed search */
-    .sf-search { display:flex; align-items:center; gap:.5rem; padding:.6rem 1.1rem; background:var(--surface);
-      border-bottom:1px solid var(--border); flex-shrink:0; }
-    .sf-search-ic { font-size:.9rem; opacity:.7; flex-shrink:0; }
-    #sfSearchInput { flex:1; min-width:0; background:var(--surface2); border:1px solid var(--border);
-      border-radius:10px; padding:.5rem .7rem; color:var(--text); font-size:.85rem; font-family:Heebo,sans-serif;
-      direction:rtl; }
-    #sfSearchInput:focus { outline:none; border-color:var(--accent); }
-    .sf-search-add { background:var(--surface2); border:1px solid var(--border); color:var(--text);
-      border-radius:10px; padding:.5rem .8rem; font-size:.78rem; font-weight:800; cursor:pointer;
-      font-family:Heebo,sans-serif; white-space:nowrap; flex-shrink:0; }
-    .sf-search-add:hover { border-color:var(--accent); color:var(--accent); }
+    /* ---- AI stock analysis tab + popup ---- */
+    .ai-panel { max-width:760px; margin:0 auto; }
+    .ai-hero { background:linear-gradient(135deg, rgba(41,98,255,.16), rgba(41,98,255,.03));
+      border:1px solid rgba(41,98,255,.4); border-radius:16px; padding:1.1rem 1.2rem; margin-bottom:1rem; }
+    .ai-hero-title { font-size:1.25rem; font-weight:900; color:#fff; }
+    .ai-hero-sub { font-size:.82rem; color:var(--text-muted); line-height:1.55; margin:.35rem 0 .8rem; }
+    .ai-input-row { display:flex; gap:.5rem; }
+    #aiInput { flex:1; min-width:0; background:var(--surface2); border:1px solid var(--border); border-radius:10px;
+      padding:.65rem .8rem; color:var(--text); font-size:.95rem; font-family:Heebo,sans-serif; direction:rtl; }
+    #aiInput:focus { outline:none; border-color:var(--accent); }
+    .ai-go { background:var(--accent); color:#fff; border:none; border-radius:10px; padding:.65rem 1.1rem;
+      font-size:.9rem; font-weight:900; cursor:pointer; font-family:Heebo,sans-serif; white-space:nowrap; }
+    .ai-go:hover { background:#1a4fd6; }
+    .ai-quota-row { display:flex; align-items:center; justify-content:space-between; gap:.6rem; margin-top:.7rem; flex-wrap:wrap; }
+    .ai-quota { font-size:.8rem; color:var(--text-muted); font-weight:700; }
+    .ai-quota b { color:var(--gold); font-size:.95rem; }
+    .ai-upgrade { background:linear-gradient(135deg,#f5a623,#f7c76b); color:#1a1205; border:none; border-radius:999px;
+      padding:.35rem .85rem; font-size:.76rem; font-weight:900; cursor:pointer; font-family:Heebo,sans-serif; }
+    .ai-sec { font-size:.78rem; font-weight:800; color:var(--text-muted); margin:.9rem 0 .45rem; }
+    .ai-chips { display:flex; flex-wrap:wrap; gap:.45rem; }
+    .ai-chip { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:999px;
+      padding:.38rem .85rem; font-size:.8rem; font-weight:800; cursor:pointer; font-family:Heebo,sans-serif; }
+    .ai-chip:hover { border-color:var(--accent); color:var(--accent); }
+    .ai-chip.done { color:var(--green); border-color:rgba(38,166,154,.45); }
+    .ai-note { font-size:.72rem; color:var(--text-muted); margin-top:1.2rem; text-align:center; opacity:.8; }
+    .ai-modal { position:fixed; inset:0; z-index:8000; display:none; align-items:center; justify-content:center;
+      background:rgba(0,0,0,.72); backdrop-filter:blur(4px); direction:rtl; padding:1rem; }
+    .ai-modal.open { display:flex; }
+    .ai-modal-card { position:relative; width:100%; max-width:560px; max-height:92vh; background:var(--surface);
+      border:1px solid var(--border); border-radius:18px; box-shadow:0 20px 60px rgba(0,0,0,.55); display:flex; flex-direction:column; }
+    .ai-modal-body { overflow-y:auto; -webkit-overflow-scrolling:touch; padding:1.3rem 1.2rem 1.1rem; }
+    .ai-modal-card .nt-upgrade-x { z-index:2; }
+    .aim-head { display:flex; align-items:flex-start; justify-content:space-between; gap:.8rem; padding-left:1.6rem; }
+    .aim-sym { font-size:1.5rem; font-weight:900; color:#fff; line-height:1.1; }
+    .aim-name { font-size:.78rem; color:var(--text-muted); font-weight:600; margin-top:.15rem; }
+    .aim-price { text-align:left; }
+    .aim-price-v { font-size:1.25rem; font-weight:900; color:#fff; }
+    .aim-dim { font-size:.72rem; color:var(--text-muted); font-weight:600; }
+    .aim-verdict { margin:.8rem 0; padding:.65rem .8rem; border-radius:11px; font-size:.9rem; font-weight:900; }
+    .aim-verdict.enter { background:rgba(38,166,154,.16); color:var(--green); border:1px solid rgba(38,166,154,.45); }
+    .aim-verdict.wait  { background:rgba(245,166,35,.14); color:var(--gold); border:1px solid rgba(245,166,35,.4); }
+    .aim-verdict.avoid { background:rgba(239,83,80,.13); color:var(--red); border:1px solid rgba(239,83,80,.4); }
+    .aim-rows { display:flex; flex-direction:column; gap:.5rem; }
+    .aim-row { background:var(--surface2); border-radius:10px; padding:.6rem .75rem; }
+    .aim-k { font-size:.72rem; font-weight:800; color:var(--text-muted); margin-bottom:.25rem; }
+    .aim-ic { margin-left:.35rem; }
+    .aim-v { font-size:.86rem; color:var(--text); line-height:1.55; }
+    .aim-v b.pos { color:var(--green); }
+    .aim-v b.neg { color:var(--red); }
+    .aim-v b.mid { color:var(--gold); }
+    .aim-levels { display:grid; grid-template-columns:repeat(3,1fr); gap:.4rem; margin-top:.5rem; }
+    .aim-lvl-note { margin-top:.3rem; }
+    .aim-why { margin-top:.8rem; font-size:.8rem; color:var(--text-muted); }
+    .aim-why-title { font-weight:800; color:var(--text); margin-bottom:.2rem; }
+    .aim-why ul { margin:0; padding:0 1.1rem 0 0; line-height:1.55; }
+    .aim-foot { display:flex; gap:.5rem; margin-top:1rem; }
+    .aim-disc { font-size:.68rem; color:var(--text-muted); text-align:center; margin-top:.8rem; line-height:1.5; opacity:.85; }
+    .aim-msg { text-align:center; padding:1.6rem .6rem 1rem; }
+    .aim-msg-ic { font-size:2.2rem; }
+    .aim-msg-title { font-size:1.05rem; font-weight:900; color:#fff; margin:.4rem 0 .3rem; }
+    .aim-msg-sub { font-size:.84rem; color:var(--text-muted); line-height:1.55; margin-bottom:1rem; }
+    .aim-close-btn { width:100%; margin-top:.4rem; }
+    .aim-up-btn { width:100%; margin-bottom:.4rem; background:linear-gradient(135deg,#f5a623,#f7c76b); color:#1a1205; }
+    .aim-spin { width:34px; height:34px; margin:0 auto .6rem; border:3px solid var(--border); border-top-color:var(--accent);
+      border-radius:50%; animation:aimspin .8s linear infinite; }
+    @keyframes aimspin { to { transform:rotate(360deg); } }
     .sf-tabs {
       display:flex; gap:.3rem; padding:.6rem 1.1rem 0; background:var(--surface);
       border-bottom:1px solid var(--border); flex-shrink:0;
@@ -2525,6 +2579,25 @@
     .nt-plan-opt-price span { font-size:.7rem; font-weight:700; color:var(--text-muted); }
     .nt-plan-opt-tag { font-size:.68rem; font-weight:800; color:var(--gold); }
     .nt-upgrade-foot { font-size:.72rem; color:var(--text-muted); margin-top:1rem; }
+    .nt-upgrade-card.wide { max-width:680px; }
+    .nt-tiers { display:flex; gap:.8rem; text-align:right; }
+    .nt-tier { position:relative; flex:1; min-width:0; background:var(--surface2); border:1px solid var(--border);
+      border-radius:16px; padding:1rem .9rem; display:flex; flex-direction:column; gap:.45rem; }
+    .nt-tier.gold { border-color:rgba(245,166,35,.55); }
+    .nt-tier.premium { border-color:rgba(41,98,255,.6); background:linear-gradient(160deg, rgba(41,98,255,.14), var(--surface2)); }
+    .nt-tier-ribbon { position:absolute; top:-.6rem; left:50%; transform:translateX(-50%); background:var(--accent); color:#fff;
+      font-size:.66rem; font-weight:900; padding:.15rem .7rem; border-radius:999px; white-space:nowrap; }
+    .nt-tier-badge { font-size:1rem; font-weight:900; color:#fff; }
+    .nt-tier-price { font-size:1.6rem; font-weight:900; color:#fff; }
+    .nt-tier-price span { font-size:.72rem; font-weight:700; color:var(--text-muted); }
+    .nt-tier-list { list-style:none; padding:0; margin:.2rem 0 .5rem; display:flex; flex-direction:column; gap:.35rem; flex:1; }
+    .nt-tier-list li { font-size:.8rem; color:var(--text); line-height:1.4; }
+    .nt-tier-btn { background:linear-gradient(135deg,#f5a623,#f7c76b); color:#1a1205; border:none; border-radius:10px;
+      padding:.6rem; font-size:.85rem; font-weight:900; cursor:pointer; font-family:Heebo,sans-serif; }
+    .nt-tier-btn.primary { background:var(--accent); color:#fff; }
+    .nt-tier-btn.ghost { background:transparent; color:var(--text); border:1px solid var(--border); }
+    .nt-tier-btn.ghost:hover { border-color:var(--gold); }
+    @media (max-width:640px) { .nt-tiers { flex-direction:column; } .nt-tier-list { flex:none; } }
     /* iOS safe-area insets (notch / home indicator) for the Signal Feed */
     #signalFeed { padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
     .sf-top { padding-right:calc(1.1rem + env(safe-area-inset-right)); padding-left:calc(1.1rem + env(safe-area-inset-left)); }
@@ -2546,9 +2619,10 @@
       .sf-modetoggle { display:none; }
       .sf-backbtn { padding:.35rem .6rem; font-size:.72rem; }
       .sf-mode { flex:1; text-align:center; padding:.5rem .4rem; font-size:.8rem; }
-      .sf-search { padding:.5rem .7rem; gap:.4rem; }
-      #sfSearchInput { font-size:.82rem; padding:.45rem .6rem; }
-      .sf-search-add { padding:.45rem .6rem; font-size:.72rem; }
+      .aim-head { padding-left:1.8rem; }
+      .aim-sym { font-size:1.3rem; }
+      .ai-hero { padding:.9rem .9rem; }
+      .ai-go { padding:.65rem .8rem; }
       .sf-tabs { padding:.5rem .6rem 0; gap:.15rem; overflow-x:auto; -webkit-overflow-scrolling:touch; }
       .sf-tab { padding:.55rem .7rem; font-size:.82rem; white-space:nowrap; }
       .sf-body { padding:.7rem; }
@@ -3072,57 +3146,68 @@
   </header>
   <nav class="sf-tabs">
     <button class="sf-tab active" data-tab="signals" onclick="NTSignals.switchTab('signals')">איתותים</button>
+    <button class="sf-tab" data-tab="ai" onclick="NTSignals.switchTab('ai')">🤖 ניתוח AI למניות</button>
     <button class="sf-tab" data-tab="trades" onclick="NTSignals.switchTab('trades')">העסקאות שלי</button>
     <button class="sf-tab" data-tab="history" onclick="NTSignals.switchTab('history')">היסטוריה</button>
     <button class="sf-tab" data-tab="alerts" onclick="NTSignals.switchTab('alerts')">🔔 יומן</button>
   </nav>
-  <div class="sf-search" id="sfSearchWrap">
-    <span class="sf-search-ic">🔍</span>
-    <input id="sfSearchInput" type="text" inputmode="search" autocomplete="off"
-      placeholder="חפש מניה (לדוגמה: AAPL, טבע)…"
-      oninput="if(window.NTSignals)NTSignals.onSearch(this.value)" />
-    <button class="sf-search-add" id="sfSearchAdd" onclick="if(window.NTSignals)NTSignals.addWatchFromSearch()">+ הוסף למעקב</button>
-  </div>
   <div class="sf-body" id="sfBody"></div>
+</div>
+
+<!-- AI STOCK ANALYSIS POPUP -->
+<div id="aiModal" class="ai-modal" onclick="if(event.target===this&&window.NTSignals)NTSignals.closeAiModal()">
+  <div class="ai-modal-card">
+    <button class="nt-upgrade-x" onclick="if(window.NTSignals)NTSignals.closeAiModal()">✕</button>
+    <div class="ai-modal-body" id="aiModalBody"></div>
+  </div>
 </div>
 
 <!-- UPGRADE / PAYWALL MODAL -->
 <div id="ntUpgradeModal" class="nt-upgrade-modal" onclick="if(event.target===this&&window.NTPlan)NTPlan.closeUpgrade()">
-  <div class="nt-upgrade-card">
+  <div class="nt-upgrade-card wide">
     <button class="nt-upgrade-x" onclick="if(window.NTPlan)NTPlan.closeUpgrade()">✕</button>
     <div class="nt-upgrade-crown">⭐</div>
-    <h2 class="nt-upgrade-title">שדרג ל‑NexTrade פרימיום</h2>
-    <p class="nt-upgrade-sub" id="ntUpgradeSub">קבל את כל האיתותים בזמן אמת, בלי הגבלות.</p>
-    <ul class="nt-upgrade-list">
-      <li>✓ כל האיתותים בזמן אמת — בלי הגבלה יומית</li>
-      <li>✓ התראות Push ברגע שנוצר איתות</li>
-      <li>✓ מעקב ומועדפים ללא הגבלה</li>
-      <li>✓ יומן התראות מלא + סיכום ביצועים</li>
-      <li>✓ התראת דוחות (earnings) לפני פרסום</li>
-    </ul>
-    <div class="nt-plan-options">
-      <button class="nt-plan-opt" onclick="if(window.NTPlan)NTPlan.startCheckout('yearly')">
-        <div class="nt-plan-opt-name">שנתי</div>
-        <div class="nt-plan-opt-price">₪490<span>/שנה</span></div>
-        <div class="nt-plan-opt-tag">חודשיים חינם</div>
-      </button>
-      <button class="nt-plan-opt primary" onclick="if(window.NTPlan)NTPlan.startCheckout('monthly')">
-        <div class="nt-plan-opt-name">חודשי</div>
-        <div class="nt-plan-opt-price">₪69<span>/חודש</span></div>
-        <div class="nt-plan-opt-tag">הכי גמיש</div>
-      </button>
+    <h2 class="nt-upgrade-title">שדרג ל‑NexTrade — בחר מסלול</h2>
+    <p class="nt-upgrade-sub" id="ntUpgradeSub">שדרג לקבל יותר ניתוחי AI, איתותים בזמן אמת ומעקב חופשי יותר.</p>
+    <div class="nt-tiers">
+      <div class="nt-tier gold">
+        <div class="nt-tier-badge">🥇 גולד</div>
+        <div class="nt-tier-price">₪39<span>/חודש</span></div>
+        <ul class="nt-tier-list">
+          <li>✓ 15 ניתוחי AI ביום</li>
+          <li>✓ איתותים בזמן אמת (עד 15)</li>
+          <li>✓ עד 15 מניות במעקב</li>
+          <li>✓ יומן התראות + סיכום ביצועים</li>
+        </ul>
+        <button class="nt-tier-btn" onclick="if(window.NTPlan)NTPlan.startCheckout('monthly','gold')">חודשי · ₪39</button>
+        <button class="nt-tier-btn ghost" onclick="if(window.NTPlan)NTPlan.startCheckout('yearly','gold')">שנתי · ₪390</button>
+      </div>
+      <div class="nt-tier premium">
+        <div class="nt-tier-ribbon">הכי משתלם</div>
+        <div class="nt-tier-badge">⭐ פרימיום</div>
+        <div class="nt-tier-price">₪69<span>/חודש</span></div>
+        <ul class="nt-tier-list">
+          <li>✓ ניתוחי AI ללא הגבלה</li>
+          <li>✓ כל האיתותים בזמן אמת</li>
+          <li>✓ מעקב ומועדפים ללא הגבלה</li>
+          <li>✓ התראת דוחות (earnings) לפני פרסום</li>
+          <li>✓ כל מה שבגולד</li>
+        </ul>
+        <button class="nt-tier-btn primary" onclick="if(window.NTPlan)NTPlan.startCheckout('monthly','premium')">חודשי · ₪69</button>
+        <button class="nt-tier-btn ghost" onclick="if(window.NTPlan)NTPlan.startCheckout('yearly','premium')">שנתי · ₪490</button>
+      </div>
     </div>
-    <div class="nt-upgrade-foot">ביטול בכל עת · תשלום מאובטח</div>
+    <div class="nt-upgrade-foot">המסלול הבסיסי (חינם): 3 ניתוחי AI ביום, 3 מניות במעקב, 3 איתותים בעיכוב · ביטול בכל עת · תשלום מאובטח</div>
   </div>
 </div>
 
-<script src="scanner-symbols.js?v=20261018g"></script>
-<script src="scanner-engine.js?v=20261018g"></script>
-<script src="plan.js?v=20261018g"></script>
-<script src="main.js?v=20261018g"></script>
-<script src="drawing.js?v=20261018g"></script>
-<script src="features.js?v=20261018g"></script>
-<script src="signals.js?v=20261018g"></script>
+<script src="scanner-symbols.js?v=20261018h"></script>
+<script src="scanner-engine.js?v=20261018h"></script>
+<script src="plan.js?v=20261018h"></script>
+<script src="main.js?v=20261018h"></script>
+<script src="drawing.js?v=20261018h"></script>
+<script src="features.js?v=20261018h"></script>
+<script src="signals.js?v=20261018h"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">

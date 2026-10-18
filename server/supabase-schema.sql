@@ -15,8 +15,8 @@ create table if not exists public.users (
 alter table public.users add column if not exists mode text;
 alter table public.users add column if not exists email_alerts boolean not null default true;
 
--- Monetization / plan columns (Freemium: free | premium, with a 7-day trial).
---   plan          : 'free' | 'premium'
+-- Monetization / plan columns (3 tiers: free(=Basic) | gold | premium, with a 7-day premium trial).
+--   plan          : 'free' | 'gold' | 'premium'
 --   premium_until : when premium access expires (trial end or paid-period end)
 --   trial_used    : whether the one-time 7-day trial was already granted
 --   stripe_customer : Stripe customer id, for managing the subscription
@@ -52,5 +52,17 @@ create table if not exists public.signals (
 create index if not exists signals_ts_idx on public.signals (ts desc);
 
 alter table public.signals enable row level security;
+
+-- AI stock analysis usage: which symbols a user analysed on a given day (Asia/Jerusalem date).
+-- Powers the daily quota (Basic 3/day, Gold 15/day, Premium unlimited). Re-analysing a
+-- symbol already in `syms` the same day does not consume another credit.
+create table if not exists public.analysis_usage (
+  user_id    bigint not null references public.users(id) on delete cascade,
+  day        text   not null,
+  syms       jsonb  not null default '[]'::jsonb,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, day)
+);
+alter table public.analysis_usage enable row level security;
 
 
