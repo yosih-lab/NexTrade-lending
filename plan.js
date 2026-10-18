@@ -43,7 +43,7 @@
   function nowMs() { return Date.now(); }
 
   function defaultState() {
-    return { plan: 'free', premiumUntil: null, trialUsed: false, admin: false, limits: null };
+    return { plan: 'free', premiumUntil: null, trialUsed: false, onTrial: null, admin: false, limits: null };
   }
 
   function loadState() {
@@ -54,6 +54,7 @@
         plan: (s.plan === 'premium' || s.plan === 'gold') ? s.plan : 'free',
         premiumUntil: s.premiumUntil || null,
         trialUsed: !!s.trialUsed,
+        onTrial: (typeof s.onTrial === 'boolean') ? s.onTrial : null,
         admin: !!s.admin,
         limits: (s.limits && typeof s.limits === 'object') ? s.limits : null
       };
@@ -84,7 +85,10 @@
   function isTrialActive() {
     var s = loadState();
     if (s.admin || s.plan !== 'premium' || !s.premiumUntil) return false;
-    return s.trialUsed && nowMs() < new Date(s.premiumUntil).getTime();
+    if (nowMs() >= new Date(s.premiumUntil).getTime()) return false;
+    // The server tells us whether this premium window is a free trial (vs. paid).
+    if (s.onTrial !== null) return s.onTrial;
+    return false;
   }
 
   // Whole days left on the current paid window (0 if none / expired).
@@ -139,6 +143,8 @@
     if (info.plan === 'premium' || info.plan === 'gold' || info.plan === 'free') s.plan = info.plan;
     if (info.premiumUntil !== undefined) s.premiumUntil = info.premiumUntil || null;
     if (typeof info.trialUsed === 'boolean') s.trialUsed = info.trialUsed;
+    if (typeof info.onTrial === 'boolean') s.onTrial = info.onTrial;
+    if (typeof info.admin === 'boolean') s.admin = info.admin;
     if (info.limits && typeof info.limits === 'object') {
       s.limits = {
         tier: info.tier || info.plan || 'free',
@@ -233,11 +239,11 @@
     try { if (window.NTSignals && window.NTSignals.render) window.NTSignals.render(); } catch (e) {}
   }
 
-  // Called after login. role may grant admin; otherwise start trial for newcomers.
+  // Called after login. Admin gets full access; everyone else is governed by the
+  // server's plan (applied via applyServerPlan) -- no client-side fake trial.
   function onLogin(opts) {
     opts = opts || {};
     if (opts.role === 'admin') grantAdmin();
-    else maybeStartTrial();
     refreshUI();
   }
 

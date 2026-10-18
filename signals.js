@@ -1010,15 +1010,17 @@
         tb.classList.toggle('urgent', !!(ti && ti.last));
         if (ic) ic.textContent = '🎁';
       } else if (premium) {
+        tb.classList.remove('urgent');
         tb.classList.add('premium');
         tt.textContent = 'פרימיום פעיל';
         if (ic) ic.textContent = '⭐';
       } else if (tid === 'gold') {
+        tb.classList.remove('urgent');
         tb.classList.add('premium');
         tt.textContent = 'גולד · שדרג לפרימיום';
         if (ic) ic.textContent = '🥇';
       } else {
-        tb.classList.remove('premium');
+        tb.classList.remove('premium', 'urgent');
         tt.textContent = '⭐ שדרג מסלול';
         if (ic) ic.textContent = '';
       }
@@ -1063,13 +1065,15 @@
   var _aiBusy = false;
   var _aiTok = null, _aiQuotaTs = 0;
   var _aiRun = 0, _aiStepTimer = null;
-  var AI_MIN_MS = 7500;   // an analysis always takes at least ~7.5s (feels like real work behind the scenes)
+  var AI_MIN_MS = 12500;  // an analysis always takes at least ~12.5s (feels like real work behind the scenes)
   var AI_STEPS = [
+    'מתחבר לשרת הנתונים ומאמת את הסימול',
     'מושך 5 שנות נתונים שבועיים',
     'מחשב ממוצע נע SMA30 ושיפוע המגמה',
     'מזהה רמות תמיכה והתנגדות חזקות',
     'בודק פריצות ואישור 5 נרות',
     'בוחן מחזורי מסחר ופרסום דוחות',
+    'מחשב ציון הזדמנות ורמות כניסה, סטופ ויעד',
     'מסכם מסקנות וזמן משוער לאיתות'
   ];
 
@@ -1130,6 +1134,7 @@
     if (!token) return;
     // a different user logged in on this device -> drop the previous user's quota view
     if (_aiTok !== token) { _aiTok = token; _aiQuota = null; _aiQuotaTs = 0; updateAiQuotaUI(); }
+    if (_histTok !== token) { _histTok = token; histSyncServer(token); }
     if (Date.now() - _aiQuotaTs < 30000) return;
     _aiQuotaTs = Date.now();
     fetch(apiBase() + '/api/analyze/quota', { headers: { 'Authorization': 'Bearer ' + token }, cache: 'no-store' })
@@ -1423,8 +1428,8 @@
             _aiQuota = { quota: d.quota, symbols: syms };
           }
           showSuccess(function () {
-            autoRemind(d.analysis);
-            histAdd(d);
+            histAdd(d);                                   // save first -- nothing below may prevent it
+            try { autoRemind(d.analysis); } catch (e1) {}
             setAiModal(resultHtml(d));
             updateAiQuotaUI();
             aiRefreshLists();
@@ -1678,6 +1683,25 @@
       score: a.score ? a.score.value : null, vkey: (a.verdict || {}).key, snap: a });
     arr = arr.slice(0, HIST_MAX);
     while (arr.length && !lsSet(histKey(), arr)) arr.pop();   // storage full -> drop the oldest
+  }
+  // Pull the account's history from the server (follows the user across devices / cleared caches)
+  // and merge it with what's stored locally (newest entry per symbol wins).
+  var _histTok = null;
+  function histSyncServer(token) {
+    fetch(apiBase() + '/api/analyze/history', { headers: { 'Authorization': 'Bearer ' + token }, cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !Array.isArray(d.items)) { _histTok = null; return; }
+        var map = {};
+        histLoad().concat(d.items.filter(function (h) { return h && h.sym && h.snap; })).forEach(function (h) {
+          if (!map[h.sym] || h.ts > map[h.sym].ts) map[h.sym] = h;
+        });
+        var arr = Object.keys(map).map(function (k) { return map[k]; })
+          .sort(function (x, y) { return y.ts - x.ts; }).slice(0, HIST_MAX);
+        while (arr.length && !lsSet(histKey(), arr)) arr.pop();
+        aiRefreshLists();
+      })
+      .catch(function () { _histTok = null; });
   }
   function histDayLabel(ts) {
     var d = new Date(ts), t = new Date(); t.setHours(0, 0, 0, 0);

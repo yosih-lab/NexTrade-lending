@@ -158,7 +158,7 @@ function handleLogin(e) {
       // Apply the authoritative plan from the server (overrides local trial state).
       try {
         if (window.NTPlan && result.data.plan) {
-          window.NTPlan.applyServerPlan({ plan: result.data.plan, tier: result.data.tier, limits: result.data.limits, premiumUntil: result.data.premiumUntil, trialUsed: result.data.trialUsed });
+          window.NTPlan.applyServerPlan({ plan: result.data.plan, tier: result.data.tier, limits: result.data.limits, premiumUntil: result.data.premiumUntil, trialUsed: result.data.trialUsed, onTrial: result.data.onTrial, admin: result.data.admin });
         }
       } catch (e2) {}
       // Deliberate 3-second entry transition after a successful manual login.
@@ -350,6 +350,7 @@ function handleLogout() {
   localStorage.removeItem('nt_user');
   // The usage mode belongs to the account — never leave it behind for the next user.
   localStorage.removeItem('nt_user_plan');
+  localStorage.removeItem('nt_plan_state');
   localStorage.removeItem('nt_user_mode');
   localStorage.removeItem('nt_mode_owner');
   localStorage.removeItem('nt_server_signals');
@@ -967,6 +968,13 @@ document.addEventListener('click', function(e) {
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(me) {
           if (!me) return;
+          // Authoritative plan from the server (session restore never passes through /api/login).
+          try {
+            if (window.NTPlan && me.plan) {
+              window.NTPlan.applyServerPlan({ plan: me.plan, tier: me.tier, limits: me.limits, premiumUntil: me.premiumUntil, trialUsed: me.trialUsed, onTrial: me.onTrial, admin: me.admin });
+              if (window.NTSignals && window.NTSignals.render) window.NTSignals.render();
+            }
+          } catch (e3) {}
           if (ntApplyServerMode(me.username || serverUser.username, me.mode)) {
             ntRefreshModeUI(serverUser.role);
             if (window.NTSignals) window.NTSignals.onAppReady();

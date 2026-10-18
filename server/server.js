@@ -315,7 +315,14 @@ function resolvePlan(user) {
   const paidTier = (user.plan === 'gold' || user.plan === 'premium') ? user.plan : null;
   const active = !!paidTier && (!user.premiumUntil || Date.now() < new Date(user.premiumUntil).getTime());
   const tier = active ? paidTier : 'free';
-  return { plan: tier, tier: tier, premiumUntil: user.premiumUntil || null, isPremium: tier === 'premium', isPaid: active, trialUsed: user.trialUsed };
+  // onTrial: active premium that came from the free trial (never paid via Stripe).
+  const onTrial = active && tier === 'premium' && !!user.trialUsed && !user.stripeCustomer;
+  return { plan: tier, tier: tier, premiumUntil: active ? (user.premiumUntil || null) : null, isPremium: tier === 'premium', isPaid: active, trialUsed: user.trialUsed, onTrial: onTrial };
+}
+// Plan payload mirrored by the client (login / session restore / billing status).
+function planPayload(user) {
+  const info = resolvePlan(user);
+  return { plan: info.plan, tier: info.tier, limits: limitsFor(info.tier), premiumUntil: info.premiumUntil, trialUsed: !!(user && user.trialUsed), onTrial: !!info.onTrial, isPremium: info.isPremium, admin: !!(user && user.role === 'admin') };
 }
 
 // Get all users (id/username/email/role/createdAt/hash)
@@ -633,8 +640,7 @@ app.post('/api/login', async (req, res) => {
     }
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
     console.log('[NexTrade] ✓ Login success:', user.username, 'role:', user.role);
-    const planInfo = resolvePlan(user);
-    res.json({ token, username: user.username, role: user.role, mode: user.mode || null, plan: planInfo.plan, tier: planInfo.tier, limits: limitsFor(planInfo.tier), premiumUntil: planInfo.premiumUntil, trialUsed: !!user.trialUsed });
+    res.json(Object.assign({ token, username: user.username, role: user.role, mode: user.mode || null }, planPayload(user)));
   } catch(e) {
     console.error('[NexTrade] ✗ Login error:', e.message);
     res.status(500).json({ error: 'שגיאת שרת בעת ההתחברות' });
@@ -644,9 +650,9 @@ app.post('/api/login', async (req, res) => {
 // Me
 app.get('/api/me', requireAuth, async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
-  let mode = null;
-  try { const u = await getUserById(req.user.id); mode = (u && u.mode) || null; } catch (e) {}
-  res.json({ username: req.user.username, role: req.user.role, mode: mode });
+  let mode = null, planInfo = {};
+  try { const u = await getUserById(req.user.id); mode = (u && u.mode) || null; if (u) planInfo = planPayload(u); } catch (e) {}
+  res.json(Object.assign({ username: req.user.username, role: req.user.role, mode: mode }, planInfo));
 });
 
 // Save onboarding preferences (usage mode + email opt-in) for the logged-in user.
@@ -669,7 +675,7 @@ app.get('/api/billing/status', requireAuth, async (req, res) => {
     const user = await getUserById(req.user.id);
     const info = resolvePlan(user);
     res.setHeader('Cache-Control', 'no-store');
-    res.json({ plan: info.plan, tier: info.tier, limits: limitsFor(info.tier), premiumUntil: info.premiumUntil, isPremium: info.isPremium, trialUsed: !!(user && user.trialUsed) });
+    res.json(planPayload(user));
   } catch (e) {
     console.error('[NexTrade] GET /api/billing/status error:', e.message);
     res.status(500).json({ error: 'שגיאה בבדיקת המנוי' });
@@ -1544,6 +1550,33 @@ app.get('/api/analyze/quota', requireAuth, async (req, res) => {
   }
 });
 
+// ---- per-user analysis history (last 7 days, full snapshots) ----
+// Stored in the existing analysis_usage table under the special day key 'hist'
+// (day is text, syms is jsonb) so no schema change is needed.
+const HIST_DAYS = 7, HIST_MAX = 30;
+async function getHistory(uid) {
+  const arr = await getUsage(uid, 'hist');
+  const cut = Date.now() - HIST_DAYS * 86400000;
+  return arr.filter(h => h && typeof h === 'object' && h.sym && h.snap && h.ts >= cut);
+}
+async function addHistory(uid, a) {
+  const arr = (await getHistory(uid)).filter(h => h.sym !== a.symbol);
+  arr.unshift({ sym: a.symbol, name: a.name, ts: Date.now(), price: a.price, curr: a.curr,
+    score: a.score ? a.score.value : null, vkey: (a.verdict || {}).key, snap: a });
+  await setUsage(uid, 'hist', arr.slice(0, HIST_MAX));
+}
+
+// Last 7 days of analyses for the logged-in user (follows the account across devices).
+app.get('/api/analyze/history', requireAuth, async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ items: await getHistory(req.user.id) });
+  } catch (e) {
+    console.error('[Analyze] history error:', e.message);
+    res.status(500).json({ error: 'שגיאה בטעינת ההיסטוריה' });
+  }
+});
+
 app.post('/api/analyze', requireAuth, async (req, res) => {
   if (!NTScanner || typeof NTScanner.describe !== 'function') {
     return res.status(503).json({ error: 'מנוע הניתוח לא זמין כרגע', code: 'engine_unavailable' });
@@ -1571,6 +1604,7 @@ app.post('/api/analyze', requireAuth, async (req, res) => {
     if (analysis.insufficient) return res.status(422).json({ error: 'אין מספיק היסטוריה שבועית למניה זו לניתוח', code: 'no_data' });
     let usedAfter = used;
     if (!already) { usedAfter = used.concat(sym); await setUsage(uid, day, usedAfter); }
+    try { await addHistory(uid, analysis); } catch (he) { console.error('[Analyze] history write error:', he.message); }
     res.setHeader('Cache-Control', 'no-store');
     res.json({ ok: true, analysis: analysis, quota: quotaFor(info.tier, usedAfter.length), charged: !already });
   } catch (e) {
