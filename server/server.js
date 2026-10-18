@@ -723,6 +723,7 @@ app.get('/api/signals', requireAuth, async (req, res) => {
       shown: payload.signals.length,
       delayedMs: payload.delayedMs,
       lastScan: _lastSigScan,
+      scannerResting: isWeekendIL(),
       signals: payload.signals
     });
   } catch (e) {
@@ -1059,9 +1060,20 @@ function pruneSignals() {
   if (_sigStore.length > 400) _sigStore = _sigStore.slice(0, 400);
 }
 
+// No trading on Saturday/Sunday (TASE and US both trade Mon–Fri) → the scanner rests.
+// Day is evaluated in Israel time. Override with SCAN_WEEKENDS=1 (e.g. for testing).
+function isWeekendIL() {
+  if (process.env.SCAN_WEEKENDS === '1') return false;
+  try {
+    const d = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Jerusalem', weekday: 'short' });
+    return d === 'Sat' || d === 'Sun';
+  } catch (e) { const g = new Date().getUTCDay(); return g === 0 || g === 6; }
+}
+
 // Scan the next chunk of the universe. Called on a schedule and on-demand.
 async function scanSignalsChunk() {
   if (_scanBusy || !NTScanner) return;
+  if (isWeekendIL()) return;
   _scanBusy = true;
   try {
     const universe = scanUniverse();

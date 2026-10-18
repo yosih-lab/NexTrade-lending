@@ -2518,6 +2518,8 @@
     .sf-live i { width:7px; height:7px; border-radius:50%; background:#4ade80; box-shadow:0 0 0 0 rgba(74,222,128,.7); animation:sfPulse 1.6s infinite; }
     @keyframes sfPulse { 0%{box-shadow:0 0 0 0 rgba(74,222,128,.6);} 70%{box-shadow:0 0 0 8px rgba(74,222,128,0);} 100%{box-shadow:0 0 0 0 rgba(74,222,128,0);} }
     .sf-live-txt { font-size:.74rem; color:var(--text-muted); font-weight:700; flex:1; }
+    .sf-live.rest { color:#9fb4d9; background:rgba(159,180,217,.1); border-color:rgba(159,180,217,.35); letter-spacing:0; }
+    .sf-live.rest i { background:#9fb4d9; animation:none; box-shadow:none; }
     .sf-clearall, .sig-del { background:rgba(239,83,80,.12); border:1px solid rgba(239,83,80,.4); color:#ff8a87; border-radius:8px;
       cursor:pointer; font-family:Heebo,sans-serif; font-weight:800; }
     .sf-clearall { font-size:.72rem; padding:.3rem .7rem; }
@@ -3304,10 +3306,10 @@
 <script src="scanner-symbols.js?v=20261018l"></script>
 <script src="scanner-engine.js?v=20261018j"></script>
 <script src="plan.js?v=20261018j"></script>
-<script src="main.js?v=20261018m"></script>
+<script src="main.js?v=20261018n"></script>
 <script src="drawing.js?v=20261018j"></script>
 <script src="features.js?v=20261018j"></script>
-<script src="signals.js?v=20261018m"></script>
+<script src="signals.js?v=20261018n"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">

@@ -160,7 +160,7 @@
         try {
           localStorage.setItem(SERVER_KEY, JSON.stringify({
             ts: Date.now(), data: d.signals, total: d.total,
-            isPremium: d.isPremium, tier: d.tier, delayedMs: d.delayedMs, lastScan: d.lastScan
+            isPremium: d.isPremium, tier: d.tier, delayedMs: d.delayedMs, lastScan: d.lastScan, resting: !!d.scannerResting
           }));
         } catch (e) {}
         // keep the plan badge/UI + limits honest with the server's authoritative answer
@@ -199,7 +199,7 @@
     var sc = loadServerCache();
     if (sc && Array.isArray(sc.data)) {
       raw = sc.data;
-      _serverInfo = { total: sc.total, isPremium: sc.isPremium, tier: sc.tier || (sc.isPremium ? 'premium' : 'free'), delayedMs: sc.delayedMs, lastScan: sc.lastScan };
+      _serverInfo = { total: sc.total, isPremium: sc.isPremium, tier: sc.tier || (sc.isPremium ? 'premium' : 'free'), delayedMs: sc.delayedMs, lastScan: sc.lastScan, resting: !!sc.resting };
     } else {
       _serverInfo = null;
       try { raw = JSON.parse(localStorage.getItem(ALERTS_KEY) || '[]'); } catch (e) { raw = []; }
@@ -669,9 +669,15 @@
 
     // live status strip
     var lastScan = _serverInfo && _serverInfo.lastScan;
+    var resting = false;
+    try {
+      var wd = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Jerusalem', weekday: 'short' });
+      resting = (wd === 'Sat' || wd === 'Sun');
+    } catch (e) {}
     var live = '<div class="sf-live-bar">' +
-      '<span class="sf-live"><i></i>LIVE</span>' +
-      '<span class="sf-live-txt">הסורק פעיל' + (lastScan ? ' · עודכן ' + ageTxt(lastScan) : '') + '</span>' +
+      (resting
+        ? '<span class="sf-live rest"><i></i>סוף שבוע</span><span class="sf-live-txt">הסורק עוצר בשבת ובראשון (אין מסחר) · חוזר ביום שני' + (lastScan ? ' · סריקה אחרונה ' + ageTxt(lastScan) : '') + '</span>'
+        : '<span class="sf-live"><i></i>LIVE</span><span class="sf-live-txt">הסורק פעיל' + (lastScan ? ' · עודכן ' + ageTxt(lastScan) : '') + '</span>') +
       (isAdmin() && uniq.length ? '<button class="sf-clearall" onclick="NTSignals.clearAllSignals()">🗑 מחק הכל (מנהל)</button>' : '') +
     '</div>';
 

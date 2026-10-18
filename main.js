@@ -3953,6 +3953,14 @@ function fmtNum(x) {
   return (Math.round(x * Math.pow(10, dp)) / Math.pow(10, dp)).toFixed(dp);
 }
 
+// Saturday/Sunday (Israel time): no TASE/US trading → auto-scanners rest.
+function ntIsWeekendIL() {
+  try {
+    var d = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Jerusalem', weekday: 'short' });
+    return d === 'Sat' || d === 'Sun';
+  } catch (e) { var g = new Date().getDay(); return g === 0 || g === 6; }
+}
+
 async function runBackgroundScanner() {
   if (_scannerRunning) return;
   _scannerRunning = true;
@@ -4218,8 +4226,8 @@ function showBuySignalPopup(r) {
 
 // Start scanner on init + every 5 minutes
 function startBackgroundScanner() {
-  setTimeout(function() { runBackgroundScanner(); }, 15000);
-  _scannerInterval = setInterval(function() { runBackgroundScanner(); }, 5 * 60 * 1000);
+  setTimeout(function() { if (!ntIsWeekendIL()) runBackgroundScanner(); }, 15000);
+  _scannerInterval = setInterval(function() { if (!ntIsWeekendIL()) runBackgroundScanner(); }, 5 * 60 * 1000);
 }
 
 // Manual test
