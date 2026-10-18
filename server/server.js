@@ -458,6 +458,14 @@ async function startTrialForUser(id) {
 
 async function deleteUserById(id) {
   if (supabase) {
+    // Remove rows that reference this user first, so a missing/old ON DELETE CASCADE
+    // foreign key can never block the delete. Best-effort: a missing table is ignored.
+    for (const t of ['watchlists', 'analysis_usage']) {
+      const r = await supabase.from(t).delete().eq('user_id', id);
+      if (r.error && !/does not exist|schema cache|Could not find/i.test(r.error.message || '')) {
+        console.error('[NexTrade] cleanup', t, 'for user', id, ':', r.error.message);
+      }
+    }
     const { data, error } = await supabase.from('users').delete().eq('id', id).select();
     if (error) throw error;
     return data && data.length > 0;
@@ -776,6 +784,7 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
 // Delete user
 app.delete('/api/admin/users/:id', requireAdmin, async (req, res) => {
   const targetId = req.params.id;
+  if (!/^\d{1,18}$/.test(String(targetId))) return res.status(400).json({ error: 'מזהה משתמש לא תקין' });
   try {
     const deleted = await deleteUserById(targetId);
     if (!deleted) {
@@ -785,8 +794,9 @@ app.delete('/api/admin/users/:id', requireAdmin, async (req, res) => {
     console.log('[NexTrade] ✓ Deleted user id:', targetId);
     res.json({ ok: true });
   } catch(e) {
-    console.error('[NexTrade] ✗ Delete user error:', e.message);
-    res.status(500).json({ error: 'שגיאת שרת' });
+    console.error('[NexTrade] ✗ Delete user error:', e.message, e.details || '', e.hint || '');
+    // Admin-only route: return the real DB reason so the cause is visible in the UI.
+    res.status(500).json({ error: 'שגיאת שרת במחיקה: ' + (e.message || 'לא ידועה') });
   }
 });
 

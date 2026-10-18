@@ -297,7 +297,8 @@ async function deleteUser(id, idx) {
       method: 'DELETE',
       headers: { 'Authorization': 'Bearer ' + token }
     });
-    var data = await r.json();
+    var data = {};
+    try { data = await r.json(); } catch (je) { data = { error: 'תגובה לא תקינה מהשרת (קוד ' + r.status + ')' }; }
     if (!r.ok) { alert('שגיאה: ' + (data.error || 'לא ידוע')); setMsg(data.error || 'שגיאה', 'err'); return; }
     setMsg('✅ המשתמש נמחק', 'ok');
     loadUsers();

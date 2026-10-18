@@ -137,8 +137,13 @@ function handleLogin(e) {
   var email    = document.getElementById('loginEmail').value.trim().toLowerCase();
   var password = document.getElementById('loginPassword').value;
   var errEl    = document.getElementById('loginError');
+  var btn      = e.target && e.target.querySelector ? e.target.querySelector('button[type="submit"]') : null;
   errEl.classList.remove('show');
   if (!email || !password) { errEl.textContent = 'נא למלא אימייל וסיסמה'; errEl.classList.add('show'); return; }
+  if (btn && btn.disabled) return; // already signing in
+  var btnLabel = btn ? btn.innerHTML : '';
+  function resetBtn() { if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.innerHTML = btnLabel; } }
+  if (btn) { btn.disabled = true; btn.style.opacity = '.75'; btn.innerHTML = 'מתחבר…'; }
 
   fetch(API_BASE + '/api/login', {
     method: 'POST',
@@ -155,16 +160,26 @@ function handleLogin(e) {
           window.NTPlan.applyServerPlan({ plan: result.data.plan, tier: result.data.tier, limits: result.data.limits, premiumUntil: result.data.premiumUntil, trialUsed: result.data.trialUsed });
         }
       } catch (e2) {}
-      loginSuccess({ name: result.data.username, email: email, role: result.data.role });
+      // Deliberate 3-second entry transition after a successful manual login.
+      // (Auto-restore of an existing session on refresh is NOT delayed.)
+      if (btn) btn.innerHTML = '✓ נכנסים…';
+      setTimeout(function() {
+        resetBtn();
+        loginSuccess({ name: result.data.username, email: email, role: result.data.role });
+      }, LOGIN_ENTRY_DELAY_MS);
     } else {
+      resetBtn();
       errEl.textContent = result.data.error || 'אימייל או סיסמה שגויים';
       errEl.classList.add('show');
     }
   }).catch(function() {
+    resetBtn();
     errEl.textContent = 'השרת מתעורר... נסה שוב בעוד רגע (עד 30 שניות)';
     errEl.classList.add('show');
   });
 }
+
+var LOGIN_ENTRY_DELAY_MS = 3000;
 
 function handleSignup(e) {
   e.preventDefault();
