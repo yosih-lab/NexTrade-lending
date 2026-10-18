@@ -709,7 +709,7 @@
       '<span class="rk-banner-ic">🛡️</span>' +
       '<span class="rk-banner-txt"><b>לפני שנכנסים לעסקה - נהל סיכונים</b><small>כלל ה-1%, סטופ לוס ויחס סיכוי/סיכון · לחץ לקריאה</small></span>' +
       '<span class="rk-banner-go">←</span></button>';
-    return riskBanner + perf + hero + live + toolbar + '<div id="sigDyn">' + renderSigDyn() + '</div>';
+    return trialStripHtml() + riskBanner + perf + hero + live + toolbar + '<div id="sigDyn">' + renderSigDyn() + '</div>';
   }
 
   function tradePnl(t, live) {
@@ -1004,7 +1004,9 @@
     if (tb && tt) {
       if (trialActive) {
         tb.classList.remove('premium');
-        tt.textContent = 'נותרו ' + days + ' ימי ניסיון';
+        var ti = trialInfo();
+        tt.textContent = ti ? ti.short : ('נותרו ' + days + ' ימי ניסיון');
+        tb.classList.toggle('urgent', !!(ti && ti.last));
         if (ic) ic.textContent = '🎁';
       } else if (premium) {
         tb.classList.add('premium');
@@ -1059,7 +1061,44 @@
   var _aiQuota = null;   // { quota:{tier,used,limit,remaining}, symbols:[today's analysed] }
   var _aiBusy = false;
   var _aiTok = null, _aiQuotaTs = 0;
-  var AI_QUICK = ['AAPL', 'TSLA', 'NVDA', 'TEVA', 'NICE'];
+  var _aiRun = 0, _aiStepTimer = null;
+  var AI_MIN_MS = 7500;   // an analysis always takes at least ~7.5s (feels like real work behind the scenes)
+  var AI_STEPS = [
+    'מושך 5 שנות נתונים שבועיים',
+    'מחשב ממוצע נע SMA30 ושיפוע המגמה',
+    'מזהה רמות תמיכה והתנגדות חזקות',
+    'בודק פריצות ואישור 5 נרות',
+    'בוחן מחזורי מסחר ופרסום דוחות',
+    'מסכם מסקנות וזמן משוער לאיתות'
+  ];
+
+  // Trial countdown: exact time left of the free premium window.
+  function trialInfo() {
+    var P = window.NTPlan;
+    if (!P || !P.isTrialActive || !P.isTrialActive() || !P.msLeft) return null;
+    var ms = P.msLeft();
+    if (!isFinite(ms) || ms <= 0) return null;
+    var total = (P.LIMITS && P.LIMITS.TRIAL_DAYS) || 7;
+    var days = Math.ceil(ms / 86400000);
+    var hours = Math.ceil(ms / 3600000);
+    var dayNo = Math.max(1, Math.min(total, total - days + 1));
+    var elapsed = Math.max(0, Math.min(1, 1 - ms / (total * 86400000)));
+    var last = days <= 1;
+    var txt = days >= 2 ? ('נותרו ' + days + ' ימים לתקופת הניסיון')
+      : (hours > 1 ? ('היום האחרון לתקופת הניסיון · נותרו ' + hours + ' שעות') : 'פחות משעה לסיום תקופת הניסיון');
+    var short = days >= 2 ? ('נותרו ' + days + ' ימים') : (hours > 1 ? ('יום אחרון · ' + hours + ' שעות') : 'פחות משעה');
+    return { days: days, hours: hours, dayNo: dayNo, total: total, pct: Math.round(elapsed * 100), last: last, txt: txt, short: short };
+  }
+  function trialStripHtml() {
+    var t = trialInfo();
+    if (!t) return '';
+    return '<div class="trial-strip' + (t.last ? ' urgent' : '') + '">' +
+      '<div class="ts-top"><span class="ts-l">🎁 תקופת ניסיון פרימיום · יום ' + t.dayNo + ' מתוך ' + t.total + '</span><b class="ts-r">' + esc(t.txt) + '</b></div>' +
+      '<div class="ts-bar"><i style="width:' + Math.max(4, t.pct) + '%"></i></div>' +
+      '<div class="ts-sub">' + (t.last ? 'הניסיון מסתיים בקרוב — שדרג כדי לא לאבד גישה לכל האיתותים והניתוחים. ' : 'כל התכונות פתוחות לך בזמן הניסיון. ') +
+        '<button class="ts-up" onclick="NTSignals.openUpgrade()">⭐ שדרג</button></div>' +
+    '</div>';
+  }
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -1108,10 +1147,7 @@
   }
 
   function renderAI() {
-    var quick = AI_QUICK.map(function (s) {
-      return '<button class="ai-chip" data-sym="' + s + '" onclick="NTSignals.analyzeSymbol(this.getAttribute(\'data-sym\'))">' + s + '</button>';
-    }).join('');
-    return '<div class="ai-panel" id="aiPanel">' +
+    return '<div class="ai-panel" id="aiPanel">' + trialStripHtml() +
       '<div class="ai-hero">' +
         '<div class="ai-hero-title">🤖 ניתוח AI למניות</div>' +
         '<div class="ai-hero-sub">הקלד סימול או שם מניה וקבל ניתוח מלא לפי שיטת הסורק: מגמה, SMA30, תמיכה והתנגדות, פריצות, דוחות וזמן משוער לאיתות.</div>' +
@@ -1128,8 +1164,6 @@
           '<button class="ai-upgrade" id="aiUpgradeBtn" onclick="NTSignals.openUpgrade()" style="display:none">⭐ שדרג</button>' +
         '</div>' +
       '</div>' +
-      '<div class="ai-sec">מניות פופולריות</div>' +
-      '<div class="ai-chips">' + quick + '</div>' +
       '<div id="aiDoneSec" style="display:none"><div class="ai-sec">נותחו היום (פתיחה חוזרת לא נספרת)</div><div class="ai-chips" id="aiDoneWrap"></div></div>' +
       '<div class="ai-note">הניתוח מבוסס על נתוני 5 שנים בגרף שבועי. אינו מהווה ייעוץ השקעות.</div>' +
     '</div>';
@@ -1316,6 +1350,37 @@
   }
   function closeAiModal() {
     var m = aiModalEl(); if (m) m.classList.remove('open');
+    // closing mid-analysis cancels the pending display (the result stays under "analysed today")
+    _aiRun++; _aiBusy = false;
+    clearInterval(_aiStepTimer);
+  }
+
+  function aiProgressHtml(sym) {
+    var steps = AI_STEPS.map(function (s, i) {
+      return '<li id="aiStep' + i + '" class="aim-step">' + esc(s) + '</li>';
+    }).join('');
+    return '<div class="aim-msg aim-work"><div class="aim-spin"></div>' +
+      '<div class="aim-msg-title">מנתח את ' + esc(sym) + '…</div>' +
+      '<div class="aim-pbar"><i id="aiPbar" style="transition-duration:' + AI_MIN_MS + 'ms"></i></div>' +
+      '<ul class="aim-steps">' + steps + '</ul>' +
+      '<div class="aim-msg-sub">אם השרת התעורר הרגע זה יכול לקחת עד דקה.</div></div>';
+  }
+  function aiStartProgress(run) {
+    clearInterval(_aiStepTimer);
+    var bar = document.getElementById('aiPbar');
+    if (bar) { void bar.offsetWidth; bar.style.width = '92%'; }
+    var n = 0;
+    function tick() {
+      if (run !== _aiRun) { clearInterval(_aiStepTimer); return; }
+      for (var i = 0; i < AI_STEPS.length; i++) {
+        var el = document.getElementById('aiStep' + i);
+        if (el) { el.className = 'aim-step' + (i < n ? ' done' : (i === n ? ' act' : '')); }
+      }
+      n++;
+      if (n > AI_STEPS.length) clearInterval(_aiStepTimer);
+    }
+    tick();
+    _aiStepTimer = setInterval(tick, Math.floor(AI_MIN_MS / AI_STEPS.length));
   }
 
   function aiMsgHtml(icon, title, sub, extra) {
@@ -1338,15 +1403,25 @@
       return;
     }
     _aiBusy = true;
-    openAiModal('<div class="aim-msg"><div class="aim-spin"></div><div class="aim-msg-title">מנתח את ' + esc(q.toUpperCase()) + '…</div>' +
-      '<div class="aim-msg-sub">סורק 5 שנות נתונים שבועיים. אם השרת התעורר הרגע זה יכול לקחת עד דקה.</div></div>');
+    var run = ++_aiRun, t0 = Date.now();
+    openAiModal(aiProgressHtml(q.toUpperCase()));
+    aiStartProgress(run);
+    // Successful results are held back until AI_MIN_MS has passed; errors show immediately.
+    function showSuccess(fn) {
+      var wait = Math.max(0, AI_MIN_MS - (Date.now() - t0));
+      setTimeout(function () {
+        if (run !== _aiRun) return;           // user closed the popup / started another run
+        clearInterval(_aiStepTimer);
+        _aiBusy = false;
+        fn();
+      }, wait);
+    }
     fetch(apiBase() + '/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken() },
       body: JSON.stringify({ symbol: q })
     }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d || {} }; }, function () { return { ok: false, d: {} }; }); })
       .then(function (res) {
-        _aiBusy = false;
         var d = res.d;
         if (res.ok && d.analysis) {
           if (d.quota) {
@@ -1354,20 +1429,22 @@
             if (d.charged && syms.indexOf(d.analysis.symbol) === -1) syms.push(d.analysis.symbol);
             _aiQuota = { quota: d.quota, symbols: syms };
           }
-          setAiModal(resultHtml(d));
-          updateAiQuotaUI();
+          showSuccess(function () { setAiModal(resultHtml(d)); updateAiQuotaUI(); });
           return;
         }
+        if (run === _aiRun) { clearInterval(_aiStepTimer); _aiBusy = false; }
         if (d.code === 'quota') {
           if (d.quota) _aiQuota = { quota: d.quota, symbols: (_aiQuota && _aiQuota.symbols) || [] };
-          setAiModal(quotaHtml(d.quota));
+          if (run === _aiRun) setAiModal(quotaHtml(d.quota));
           updateAiQuotaUI();
           return;
         }
-        setAiModal(aiMsgHtml('⚠️', d.error || 'שגיאה בניתוח', d.code === 'not_found' || d.code === 'bad_symbol' || d.code === 'no_data' ? 'הניתוח לא נספר במכסה שלך.' : '',
+        if (run === _aiRun) setAiModal(aiMsgHtml('⚠️', d.error || 'שגיאה בניתוח', d.code === 'not_found' || d.code === 'bad_symbol' || d.code === 'no_data' ? 'הניתוח לא נספר במכסה שלך.' : '',
           '<button class="sig-btn aim-next-btn" onclick="NTSignals.aiNext()">🔍 נסה מניה אחרת</button>'));
       })
       .catch(function () {
+        if (run !== _aiRun) return;
+        clearInterval(_aiStepTimer);
         _aiBusy = false;
         setAiModal(aiMsgHtml('📡', 'אין חיבור לשרת', 'נסה שוב בעוד רגע. הניתוח לא נספר במכסה שלך.'));
       });

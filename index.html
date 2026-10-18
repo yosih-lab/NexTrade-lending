@@ -2347,6 +2347,31 @@
     .ai-hero-title { font-size:1.25rem; font-weight:900; color:#fff; }
     .ai-hero-sub { font-size:.82rem; color:var(--text-muted); line-height:1.55; margin:.35rem 0 .8rem; }
     .ai-input-row { display:flex; gap:.5rem; }
+    .trial-strip { max-width:1100px; margin:0 auto .8rem; padding:.65rem .9rem; border-radius:14px; border:1px solid rgba(41,98,255,.5);
+      background:linear-gradient(135deg,rgba(41,98,255,.2),rgba(41,98,255,.05)); }
+    .ai-panel .trial-strip { max-width:none; }
+    .trial-strip.urgent { border-color:rgba(239,83,80,.65); background:linear-gradient(135deg,rgba(239,83,80,.2),rgba(239,83,80,.05)); }
+    .ts-top { display:flex; justify-content:space-between; align-items:center; gap:.6rem; flex-wrap:wrap; font-size:.82rem; }
+    .ts-l { color:var(--text-muted); font-weight:700; }
+    .ts-r { color:#fff; font-size:.95rem; font-weight:900; }
+    .trial-strip.urgent .ts-r { color:#ff8a87; }
+    .ts-bar { height:7px; border-radius:99px; background:rgba(255,255,255,.1); margin:.5rem 0; overflow:hidden; }
+    .ts-bar i { display:block; height:100%; border-radius:99px; background:linear-gradient(90deg,#2962ff,#5b8bff); }
+    .trial-strip.urgent .ts-bar i { background:linear-gradient(90deg,#ef5350,#ff8a65); }
+    .ts-sub { display:flex; justify-content:space-between; align-items:center; gap:.6rem; font-size:.74rem; color:var(--text-muted); flex-wrap:wrap; }
+    .ts-up { background:linear-gradient(135deg,#f5a623,#f7c76b); color:#1a1205; border:none; border-radius:999px; padding:.25rem .8rem; font-size:.74rem; font-weight:900; cursor:pointer; font-family:Heebo,sans-serif; }
+    .sf-trial.urgent { background:linear-gradient(135deg,#ef5350,#ff8a65); color:#fff; }
+    .aim-work .aim-msg-title { margin-bottom:.7rem; }
+    .aim-pbar { height:6px; border-radius:99px; background:rgba(255,255,255,.1); overflow:hidden; margin:.2rem 0 .9rem; }
+    .aim-pbar i { display:block; width:2%; height:100%; border-radius:99px; background:linear-gradient(90deg,#2962ff,#5b8bff); transition-property:width; transition-timing-function:cubic-bezier(.25,.6,.35,1); }
+    .aim-steps { list-style:none; margin:0 0 .7rem; padding:0; text-align:right; display:flex; flex-direction:column; gap:.4rem; }
+    .aim-step { font-size:.84rem; color:var(--text-muted); opacity:.35; transition:opacity .3s,color .3s; padding-right:1.5rem; position:relative; }
+    .aim-step::before { content:'○'; position:absolute; right:0; }
+    .aim-step.act { opacity:1; color:#fff; font-weight:700; }
+    .aim-step.act::before { content:'●'; color:var(--accent); animation:aimblink 1s infinite; }
+    .aim-step.done { opacity:.85; color:var(--green); }
+    .aim-step.done::before { content:'✓'; }
+    @keyframes aimblink { 50% { opacity:.2; } }
     .ai-input-wrap { position:relative; flex:1; min-width:0; }
     .ai-input-wrap #aiInput { width:100%; box-sizing:border-box; }
     .ai-sug { display:none; position:absolute; top:calc(100% + 5px); right:0; left:0; z-index:60; background:var(--surface);
@@ -3389,11 +3414,11 @@
 
 <script src="scanner-symbols.js?v=20261018l"></script>
 <script src="scanner-engine.js?v=20261018j"></script>
-<script src="plan.js?v=20261018j"></script>
+<script src="plan.js?v=20261019e"></script>
 <script src="main.js?v=20261019b"></script>
 <script src="drawing.js?v=20261019b"></script>
 <script src="features.js?v=20261018j"></script>
-<script src="signals.js?v=20261019d"></script>
+<script src="signals.js?v=20261019e"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">

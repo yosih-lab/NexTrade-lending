@@ -96,8 +96,15 @@
     return ms <= 0 ? 0 : Math.ceil(ms / 86400000);
   }
 
-  function planName() { return tier(); }
+  // Exact milliseconds left on the current paid/trial window (0 if none / expired).
+  function msLeft() {
+    var s = loadState();
+    if (s.admin) return Infinity;
+    if ((s.plan !== 'premium' && s.plan !== 'gold') || !s.premiumUntil) return 0;
+    return Math.max(0, new Date(s.premiumUntil).getTime() - nowMs());
+  }
 
+  function planName() { return tier(); }
   function canUse(feature) {
     var need = FEATURE_TIER[feature];
     if (!need) return true; // not gated
@@ -245,6 +252,7 @@
     isPaid: isPaid,
     isTrialActive: isTrialActive,
     daysLeft: daysLeft,
+    msLeft: msLeft,
     planName: planName,
     canUse: canUse,
     signalLimit: signalLimit,
