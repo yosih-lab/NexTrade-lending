@@ -2562,7 +2562,7 @@
     @keyframes sfGlow { 0%,100%{box-shadow:0 0 0 1px rgba(245,166,35,.3), 0 0 10px rgba(245,166,35,.08);} 50%{box-shadow:0 0 0 1px rgba(245,166,35,.6), 0 0 22px rgba(245,166,35,.22);} }
     .sig-card.ready { box-shadow:0 0 0 1px rgba(245,166,35,.4), 0 4px 22px rgba(245,166,35,.12); }
     .sr-main { display:grid; align-items:center; gap:.6rem; padding:.55rem .75rem; cursor:pointer;
-      grid-template-columns:26px minmax(90px,1.2fr) 70px repeat(3,minmax(64px,.8fr)) minmax(90px,1fr) 48px auto 80px auto; }
+      grid-template-columns:26px minmax(90px,1.2fr) 70px repeat(3,minmax(64px,.8fr)) minmax(90px,1fr) 48px 76px auto 80px auto; }
     .sr-sym b { display:block; font-size:.98rem; font-weight:900; color:#fff; line-height:1.1; }
     .sr-sym small { display:block; font-size:.66rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px; }
     .sr-new { display:inline-block; margin-inline-start:.35rem; font-size:.58rem; font-weight:900; color:#fff; background:linear-gradient(135deg,#2962ff,#7c4dff);
@@ -2573,6 +2573,9 @@
     .sr-dir.short { background:rgba(239,83,80,.16); color:var(--red); }
     .sr-lv { font-size:.85rem; font-weight:800; color:#fff; line-height:1.15; white-space:nowrap; }
     .sr-lv small, .sr-rr small { display:block; font-size:.58rem; color:var(--text-muted); font-weight:700; }
+    .sr-vol { font-size:.8rem; font-weight:800; color:#9fb4d9; line-height:1.15; white-space:nowrap; }
+    .sr-vol small { display:block; font-size:.56rem; color:var(--text-muted); font-weight:700; white-space:normal; }
+    .sig-setup.vol { color:#9fb4d9; background:rgba(159,180,217,.1); }
     .sr-lv.stop { color:var(--red); }
     .sr-lv.tp { color:var(--green); }
     .sr-rr { font-size:.8rem; font-weight:900; color:var(--gold); }
@@ -2603,7 +2606,7 @@
       .sr-main > .sr-act { order:3; }
       .sr-main > .sr-lv { order:4; flex:1 1 26%; }
       .sr-main > .sr-bar { order:5; flex:1 1 100%; }
-      .sr-main > .sr-rr, .sr-main > .sig-status, .sr-main > .sr-age { order:6; }
+      .sr-main > .sr-rr, .sr-main > .sr-vol, .sr-main > .sig-status, .sr-main > .sr-age { order:6; }
       .sr-main > .sr-age { margin-inline-start:auto; }
       .sr-sym small { max-width:200px; }
     }
@@ -3301,10 +3304,10 @@
 <script src="scanner-symbols.js?v=20261018l"></script>
 <script src="scanner-engine.js?v=20261018j"></script>
 <script src="plan.js?v=20261018j"></script>
-<script src="main.js?v=20261018l"></script>
+<script src="main.js?v=20261018m"></script>
 <script src="drawing.js?v=20261018j"></script>
 <script src="features.js?v=20261018j"></script>
-<script src="signals.js?v=20261018l"></script>
+<script src="signals.js?v=20261018m"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">

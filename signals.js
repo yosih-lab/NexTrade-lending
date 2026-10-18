@@ -106,6 +106,16 @@
     return (curr || '') + s;
   }
   function pct(n) { return (n >= 0 ? '+' : '') + n.toFixed(2) + '%'; }
+  // Compact money / volume: 1.2K, 3.4M, 5.6B (curr prefix optional)
+  function fmtBig(n, curr) {
+    if (n == null || isNaN(n)) return '--';
+    var a = Math.abs(n), s;
+    if (a >= 1e9) s = (n / 1e9).toFixed(2) + 'B';
+    else if (a >= 1e6) s = (n / 1e6).toFixed(a >= 1e7 ? 1 : 2) + 'M';
+    else if (a >= 1e3) s = (n / 1e3).toFixed(0) + 'K';
+    else s = String(Math.round(n));
+    return (curr || '') + s;
+  }
 
   function livePrice(sym) {
     try {
@@ -215,6 +225,9 @@
         reasons: Array.isArray(a.reasons) ? a.reasons : [],
         alertLevel: (a.alertLevel != null ? a.alertLevel : null),
         alertSide: a.alertSide || '',
+        avgTurnover: (a.avgTurnover != null ? a.avgTurnover : null),
+        avgVolume: (a.avgVolume != null ? a.avgVolume : null),
+        lastWeekTurnover: (a.lastWeekTurnover != null ? a.lastWeekTurnover : null),
         scanStatus: a.status || ''
       });
     });
@@ -352,6 +365,12 @@
     if (setupTxt) chips += '<span class="sig-setup">' + esc(setupTxt) + '</span> ';
     if (s.trendType) chips += '<span class="sig-setup">מגמה ' + esc(s.trendType) + '</span> ';
     chips += '<span class="sig-setup">' + (MARKET_TXT[marketOf(s.sym)] || '') + '</span>';
+    if (s.avgTurnover != null) {
+      var tc = s.sym.slice(-3) === '.TA' ? '₪' : '$';
+      chips += ' <span class="sig-setup vol">מחזור יומי ממוצע (3 חודשים): ' + fmtBig(s.avgTurnover, tc) + '</span>';
+      if (s.lastWeekTurnover != null) chips += ' <span class="sig-setup vol">שבוע אחרון (ממוצע יומי): ' + fmtBig(s.lastWeekTurnover, tc) + '</span>';
+      if (s.avgVolume != null) chips += ' <span class="sig-setup vol">נפח ממוצע: ' + fmtBig(s.avgVolume, '') + ' מניות</span>';
+    }
     if (stt.dist != null) chips += ' <span class="sig-dist ' + (Math.abs(stt.dist) <= 1.5 ? 'near' : '') + '">' + (stt.dist >= 0 ? '+' : '') + stt.dist.toFixed(1) + '% מהכניסה</span>';
     out += '<div class="sr-chips">' + chips + '</div>';
     if (s.reasons && s.reasons.length) out += '<div class="sig-why">💡 ' + s.reasons.slice(0, 3).map(esc).join(' · ') + '</div>';
@@ -386,6 +405,7 @@
         '<div class="sr-lv tp"><small>יעד</small>' + fmt(s.tp, s.curr) + '</div>' +
         '<div class="sr-bar">' + rangeBar(s) + '</div>' +
         '<div class="sr-rr"><small>R:R</small>' + esc(String(s.rr)) + '</div>' +
+        '<div class="sr-vol" title="מחזור מסחר יומי ממוצע ל-3 חודשים"><small>מחזור יומי ממוצע</small>' + (s.avgTurnover != null ? fmtBig(s.avgTurnover, s.sym.slice(-3) === '.TA' ? '₪' : '$') : '—') + '</div>' +
         '<span class="sig-status ' + st + '" title="' + STATUS_HINT[st] + '">' + STATUS_TXT[st] + '</span>' +
         '<div class="sr-age">' + ageTxt(s.ts) + '</div>' +
         '<div class="sr-act">' + adminDelBtn(s) + '<span class="sr-chev">' + (open ? '▴' : '▾') + '</span></div>' +
@@ -443,6 +463,7 @@
       earnTxt +
       '<div class="sig-meta">' +
         '<span class="sig-rr">יחס סיכוי/סיכון ' + s.rr + '</span>' +
+        (s.avgTurnover != null ? '<span class="sig-dist" title="מחזור מסחר יומי ממוצע ל-3 חודשים">💵 מחזור ממוצע: ' + fmtBig(s.avgTurnover, s.sym.slice(-3) === '.TA' ? '₪' : '$') + '</span>' : '') +
         distTxt +
         '<span class="sig-status ' + st + '">' + STATUS_TXT[st] + '</span>' +
       '</div>' +
@@ -1114,6 +1135,20 @@
       eTxt = '<span class="aim-dim">לא זמין למניה זו</span>';
     }
 
+    // liquidity: last session vs 3-month daily average
+    var lq = a.liquidity, lqTxt = '';
+    if (lq && lq.isIndex) {
+      lqTxt = '<span class="aim-dim">מדד — לא רלוונטי</span>';
+    } else if (lq) {
+      var lc = lq.curr || '';
+      var ratioTxt = lq.ratio != null ? ' <span class="' + (lq.ratio >= 1 ? 'pos' : 'neg') + '">(' + (lq.ratio >= 1 ? '+' : '') + Math.round((lq.ratio - 1) * 100) + '% מהממוצע)</span>' : '';
+      lqTxt = '<div>יום מסחר אחרון' + (lq.lastDate ? ' <span class="aim-dim">(' + heDate(lq.lastDate) + ')</span>' : '') + ': <b>' + fmtBig(lq.lastTurnover, lc) + '</b> · ' + fmtBig(lq.lastVolume, '') + ' מניות' + ratioTxt + '</div>' +
+        '<div>ממוצע יומי ל-3 חודשים: <b>' + fmtBig(lq.avgTurnover, lc) + '</b> · ' + fmtBig(lq.avgVolume, '') + ' מניות</div>' +
+        (lq.meetsMin ? '' : '<div class="neg"><b>⚠️ סחירות נמוכה</b> — מתחת לסף ' + fmtBig(lq.min, lc) + ' ליום, לא מומלץ לסחור</div>');
+    } else {
+      lqTxt = '<span class="aim-dim">לא זמין למניה זו</span>';
+    }
+
     // 7. enter now?
     var enterNow = en.canEnter
       ? '<b class="pos">✅ כן — ניתנת לכניסה כעת</b>'
@@ -1150,6 +1185,7 @@
         aiRow('🔴', 'התנגדות חזקה אחרונה', lvl(a.resistance, 'לא זוהתה התנגדות מעל המחיר')) +
         aiRow('💥', 'פריצה / שבירה', bTxt) +
         aiRow('📅', 'פרסום דוחות', eTxt) +
+        aiRow('💵', 'מחזור מסחר', lqTxt) +
         aiRow('🎯', 'ניתנת לכניסה כרגע?', enterNow + levelsBlock) +
         aiRow('⏱️', 'זמן משוער לאיתות כניסה', etaTxt) +
       '</div>' +

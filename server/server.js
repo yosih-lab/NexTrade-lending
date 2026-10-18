@@ -959,6 +959,32 @@ function scanUniverse() {
 const INDEX_SYMS = ['^GSPC', 'TA35.TA'];
 function isIndexSym(sym) { return INDEX_SYMS.indexOf(sym) !== -1; }
 
+// ---- liquidity rules ----
+// Only tradable names are scanned: average daily turnover over the last ~3 months must be
+// at least 1M ₪ on TASE and $2M on US. Indices are exempt (and shown without turnover).
+// TASE shorts on individual stocks are never signalled.
+const MIN_TURNOVER_TASE = parseFloat(process.env.MIN_TURNOVER_TASE || '1000000');
+const MIN_TURNOVER_US   = parseFloat(process.env.MIN_TURNOVER_US   || '2000000');
+function minTurnoverFor(sym) { return sym.endsWith('.TA') ? MIN_TURNOVER_TASE : MIN_TURNOVER_US; }
+function isTaseStock(sym) { return sym.endsWith('.TA') && !isIndexSym(sym); }
+// Yahoo quotes TASE stocks in agorot (currency ILA) — divide by 100 to get ₪ turnover.
+function currencyDivisor(sym, currency) { return (sym.endsWith('.TA') && currency !== 'ILS') ? 100 : 1; }
+// bars: weekly (daysPerBar=5) or daily (1). Averages the last `count` COMPLETE bars
+// (the newest, possibly still-forming bar is excluded when there are enough).
+function turnoverStats(sym, bars, currency, daysPerBar, count) {
+  if (!bars || !bars.length) return null;
+  const div = currencyDivisor(sym, currency);
+  const src = bars.length > count + 1 ? bars.slice(-(count + 1), -1) : bars.slice(-count);
+  let t = 0, v = 0, n = 0;
+  src.forEach(b => {
+    if (b.volume == null || b.close == null) return;
+    t += (b.volume * b.close) / div; v += b.volume; n++;
+  });
+  if (!n) return null;
+  const days = n * daysPerBar;
+  return { avgTurnover: t / days, avgVolume: v / days, bars: n };
+}
+
 const SIG_CHUNK      = parseInt(process.env.SCAN_CHUNK || '60', 10);   // symbols per cycle
 const SIG_CONCURRENCY= parseInt(process.env.SCAN_CONCURRENCY || '6', 10);
 const SIG_CYCLE_MS   = parseInt(process.env.SCAN_CYCLE_MS || String(5 * 60 * 1000), 10);
@@ -991,7 +1017,7 @@ const SETUP_HE = {
 };
 
 // Build the stored signal object from an analyze() result (mirrors main.js).
-function buildSignalObject(sym, a) {
+function buildSignalObject(sym, a, liq) {
   const isTASE = sym.endsWith('.TA');
   const curr = isIndexSym(sym) ? '' : (isTASE ? '₪' : '$');
   const isShort = a.direction === 'short';
@@ -1012,6 +1038,8 @@ function buildSignalObject(sym, a) {
     sma30: a.sma30, atr: a.atr, level: a.level, levelTouches: a.levelTouches,
     entry: a.entry, stop: a.stop, target: a.target, rr: a.rr,
     alertLevel: a.alertLevel, alertSide: a.alertSide, reasons: a.reasons,
+    avgTurnover: liq ? liq.avgTurnover : null, avgVolume: liq ? liq.avgVolume : null,
+    lastWeekTurnover: liq ? (liq.lastWeekTurnover == null ? null : liq.lastWeekTurnover) : null,
     ma16: a.sma30, maGain: '0', support5: a.stop,
     supportDistPct: a.level ? ((a.price - a.level) / a.level * 100) : 0,
     distPct: a.level ? (((a.price - a.level) / a.level) * 100).toFixed(1) : '0',
@@ -1022,7 +1050,9 @@ function buildSignalObject(sym, a) {
 
 function pruneSignals() {
   const cutoff = Date.now() - SIG_MAX_AGE_MS;
-  _sigStore = _sigStore.filter(s => s.ts >= cutoff && !_sigDismissed.has(s.key) && !/=[FX]$|-USD$/i.test(s.sym || ''));
+  _sigStore = _sigStore.filter(s => s.ts >= cutoff && !_sigDismissed.has(s.key) && !/=[FX]$|-USD$/i.test(s.sym || '') &&
+    !(s.direction === 'short' && isTaseStock(s.sym || '')) &&
+    (isIndexSym(s.sym || '') || (s.avgTurnover != null && s.avgTurnover >= minTurnoverFor(s.sym || ''))));
   _sigByKey = {};
   _sigStore.forEach(s => { _sigByKey[s.key] = s; });
   _sigStore.sort((a, b) => b.ts - a.ts);
@@ -1055,11 +1085,21 @@ async function scanSignalsChunk() {
           const last8 = bars.slice(-8);
           const avgVol8 = last8.reduce((s, b) => s + (b.volume || 0), 0) / last8.length;
           if (avgVol8 < 1000 && !isIndexSym(sym)) return;
+          // liquidity gate (3 months ≈ 13 weekly bars)
+          let liq = null;
+          if (!isIndexSym(sym)) {
+            const cur = json.chart.result[0].meta && json.chart.result[0].meta.currency;
+            liq = turnoverStats(sym, bars, cur, 5, 13);
+            if (!liq || liq.avgTurnover < minTurnoverFor(sym)) return;
+            const lw = turnoverStats(sym, bars.slice(0, -1), cur, 5, 1);
+            liq.lastWeekTurnover = lw ? lw.avgTurnover : null;
+          }
           const a = NTScanner.analyze(bars, { symbol: sym, name: sym.replace('.TA', ''), curr: sym.endsWith('.TA') ? '₪' : '$' });
           if (!a || !a.direction || a.entry == null) return;
+          if (a.direction === 'short' && isTaseStock(sym)) return;   // no TASE stock shorts
           const armed = a.alertLevel != null && Math.abs(a.price - a.alertLevel) / a.alertLevel <= 0.015;
           if (a.status !== 'entry' && !armed) return;
-          const sig = buildSignalObject(sym, a);
+          const sig = buildSignalObject(sym, a, liq);
           if (_sigDismissed.has(sig.key)) return;
           if (!_sigByKey[sig.key]) added++;
           _sigByKey[sig.key] = sig;
@@ -1292,6 +1332,31 @@ const _analysisCache = new Map();  // sym -> { ts, data }  (shared across users;
 const ANALYSIS_TTL = 10 * 60 * 1000;
 const CURR_SYMBOL = { ILS: '₪', ILA: '₪', USD: '$', EUR: '€', GBP: '£' };
 
+// Daily trading volume + turnover (volume × price) for the last session and the 3-month average.
+async function fetchLiquidity(sym, rawCurrency, currSym) {
+  if (isIndexSym(sym) || /^\^|=[FX]$/.test(sym)) return { isIndex: true };
+  try {
+    const json = await fetchYahoo(sym, '1d', '3mo');
+    const bars = barsFromYahoo(json).filter(b => b.volume != null);
+    if (bars.length < 5) return null;
+    const div = currencyDivisor(sym, rawCurrency);
+    const last = bars[bars.length - 1];
+    const hist = bars.slice(0, -1);              // complete sessions only
+    let t = 0, v = 0;
+    hist.forEach(b => { t += (b.volume * b.close) / div; v += b.volume; });
+    const avgTurnover = t / hist.length, avgVolume = v / hist.length;
+    const lastTurnover = (last.volume * last.close) / div;
+    const min = minTurnoverFor(sym);
+    return {
+      isIndex: false, curr: currSym, lastDate: last.time,
+      lastVolume: last.volume, lastTurnover: lastTurnover,
+      avgVolume: avgVolume, avgTurnover: avgTurnover, days: hist.length,
+      ratio: avgTurnover > 0 ? lastTurnover / avgTurnover : null,
+      min: min, meetsMin: avgTurnover >= min
+    };
+  } catch (e) { return null; }
+}
+
 async function buildAnalysis(sym) {
   const cached = _analysisCache.get(sym);
   if (cached && Date.now() - cached.ts < ANALYSIS_TTL) return cached.data;
@@ -1315,6 +1380,7 @@ async function buildAnalysis(sym) {
     days = Math.round((new Date(edate + 'T00:00:00') - t) / 86400000);
   }
   d.earnings = { date: edate, days: days, available: !!edate };
+  d.liquidity = await fetchLiquidity(sym, meta.currency, curr);
   _analysisCache.set(sym, { ts: Date.now(), data: d });
   if (_analysisCache.size > 300) { _analysisCache.delete(_analysisCache.keys().next().value); }
   return d;

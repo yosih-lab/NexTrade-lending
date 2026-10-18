@@ -3999,6 +3999,21 @@ async function runBackgroundScanner() {
           curr: curr
         });
         if (a && a.direction && a.entry != null) {
+          // Rules: no TASE-stock shorts; only liquid names (≥1M ₪/day TASE, ≥$2M/day US; 3-month avg).
+          // Yahoo quotes TASE in agorot, so TASE turnover = volume × price / 100.
+          var taseStockShort = isTASE && !isIndexSym && a.direction === 'short';
+          var liqOk = true, liqAvg = null, liqVol = null, liqWeek = null;
+          if (!isIndexSym) {
+            var liqBars = bars.length > 14 ? bars.slice(-14, -1) : bars.slice(-13);
+            var tSum = 0, vSum = 0, nB = 0;
+            liqBars.forEach(function(b) { if (b.volume != null && b.close != null) { tSum += b.volume * b.close / (isTASE ? 100 : 1); vSum += b.volume; nB++; } });
+            liqAvg = nB ? tSum / (nB * 5) : 0;
+            liqVol = nB ? vSum / (nB * 5) : 0;
+            var lwBar = bars[bars.length - 2];
+            liqWeek = lwBar && lwBar.volume != null ? lwBar.volume * lwBar.close / (isTASE ? 100 : 1) / 5 : null;
+            liqOk = liqAvg >= (isTASE ? 1000000 : 2000000);
+          }
+        if (!taseStockShort && liqOk) {
           // "armed" = price has reached the pre-entry alert buffer near the level.
           var armed = a.alertLevel != null && Math.abs(a.price - a.alertLevel) / a.alertLevel <= 0.015;
           if (a.status === 'entry' || armed) {
@@ -4023,13 +4038,14 @@ async function runBackgroundScanner() {
               alertLevel: a.alertLevel,
               alertSide: a.alertSide,
               reasons: a.reasons,
-              // back-compat fields consumed by the existing bell / signals.js
+              avgTurnover: liqAvg, avgVolume: liqVol, lastWeekTurnover: liqWeek,
               ma16: a.sma30,
               maGain: '0',
               support5: a.stop,
               supportDistPct: a.level ? ((a.price - a.level) / a.level * 100) : 0,
               distPct: a.level ? (((a.price - a.level) / a.level) * 100).toFixed(1) : '0'
             });
+          }
           }
         }
 
@@ -4112,6 +4128,7 @@ async function runBackgroundScanner() {
         alertLevel: r.alertLevel,
         alertSide: r.alertSide,
         reasons: r.reasons,
+        avgTurnover: r.avgTurnover, avgVolume: r.avgVolume, lastWeekTurnover: r.lastWeekTurnover,
         // back-compat fields consumed by signals.js computeLevels / cards
         ma16: r.ma16,
         maGain: r.maGain,
