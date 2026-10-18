@@ -709,7 +709,7 @@
       '<span class="rk-banner-ic">🛡️</span>' +
       '<span class="rk-banner-txt"><b>לפני שנכנסים לעסקה - נהל סיכונים</b><small>כלל ה-1%, סטופ לוס ויחס סיכוי/סיכון · לחץ לקריאה</small></span>' +
       '<span class="rk-banner-go">←</span></button>';
-    return trialStripHtml() + riskBanner + perf + hero + live + toolbar + '<div id="sigDyn">' + renderSigDyn() + '</div>';
+    return trialStripHtml() + earnBannerHtml() + riskBanner + perf + hero + live + toolbar + '<div id="sigDyn">' + renderSigDyn() + '</div>';
   }
 
   function tradePnl(t, live) {
@@ -890,6 +890,7 @@
   }
 
   function renderRisk() {
+    var sp = portLoad().vals, prePort = sp['₪'] || sp['$'] || 100000;
     var tbl = [['1%', '~22'], ['2%', '~11'], ['5%', '~4'], ['10%', '~2']].map(function (r, i) {
       return '<tr' + (i === 0 ? ' class="best"' : '') + '><td>' + r[0] + '</td><td>' + r[1] + ' הפסדים רצופים</td></tr>';
     }).join('');
@@ -917,7 +918,7 @@
 
       '<div class="rk-card rk-calc"><div class="rk-h"><span class="rk-ic">⚙️</span>מחשבון גודל פוזיציה</div>' +
         '<div class="rk-form">' +
-          '<label>גודל התיק<input id="rkPort" type="number" inputmode="decimal" value="100000" oninput="NTSignals.riskCalc()"></label>' +
+          '<label>גודל התיק<input id="rkPort" type="number" inputmode="decimal" value="' + prePort + '" oninput="NTSignals.riskCalc()"></label>' +
           '<label>סיכון לעסקה (%)<input id="rkPct" type="number" inputmode="decimal" step="0.1" value="1" oninput="NTSignals.riskCalc()"></label>' +
           '<label>מחיר כניסה<input id="rkEntry" type="number" inputmode="decimal" step="any" value="50" oninput="NTSignals.riskCalc()"></label>' +
           '<label>מחיר סטופ לוס<input id="rkStop" type="number" inputmode="decimal" step="any" value="47" oninput="NTSignals.riskCalc()"></label>' +
@@ -1123,15 +1124,6 @@
     var q = _aiQuota && _aiQuota.quota;
     var up = document.getElementById('aiUpgradeBtn');
     if (up) up.style.display = (q && q.limit != null) ? '' : 'none';
-    var done = document.getElementById('aiDoneWrap');
-    if (done) {
-      var syms = (_aiQuota && _aiQuota.symbols) || [];
-      done.innerHTML = syms.map(function (s) {
-        return '<button class="ai-chip done" data-sym="' + esc(s) + '" onclick="NTSignals.analyzeSymbol(this.getAttribute(\'data-sym\'))">✓ ' + esc(s.replace('.TA', '')) + '</button>';
-      }).join('');
-      var sec = document.getElementById('aiDoneSec');
-      if (sec) sec.style.display = syms.length ? '' : 'none';
-    }
   }
   function loadAiQuota() {
     var token = authToken();
@@ -1147,7 +1139,7 @@
   }
 
   function renderAI() {
-    return '<div class="ai-panel" id="aiPanel">' + trialStripHtml() +
+    return '<div class="ai-panel" id="aiPanel">' + trialStripHtml() + earnBannerHtml() +
       '<div class="ai-hero">' +
         '<div class="ai-hero-title">🤖 ניתוח AI למניות</div>' +
         '<div class="ai-hero-sub">הקלד סימול או שם מניה וקבל ניתוח מלא לפי שיטת הסורק: מגמה, SMA30, תמיכה והתנגדות, פריצות, דוחות וזמן משוער לאיתות.</div>' +
@@ -1164,7 +1156,8 @@
           '<button class="ai-upgrade" id="aiUpgradeBtn" onclick="NTSignals.openUpgrade()" style="display:none">⭐ שדרג</button>' +
         '</div>' +
       '</div>' +
-      '<div id="aiDoneSec" style="display:none"><div class="ai-sec">נותחו היום (פתיחה חוזרת לא נספרת)</div><div class="ai-chips" id="aiDoneWrap"></div></div>' +
+      '<div id="aiRemWrap">' + remListInner() + '</div>' +
+      '<div id="aiHistWrap">' + historyInner() + '</div>' +
       '<div class="ai-note">הניתוח מבוסס על נתוני 5 שנים בגרף שבועי. אינו מהווה ייעוץ השקעות.</div>' +
     '</div>';
   }
@@ -1429,7 +1422,13 @@
             if (d.charged && syms.indexOf(d.analysis.symbol) === -1) syms.push(d.analysis.symbol);
             _aiQuota = { quota: d.quota, symbols: syms };
           }
-          showSuccess(function () { setAiModal(resultHtml(d)); updateAiQuotaUI(); });
+          showSuccess(function () {
+            autoRemind(d.analysis);
+            histAdd(d);
+            setAiModal(resultHtml(d));
+            updateAiQuotaUI();
+            aiRefreshLists();
+          });
           return;
         }
         if (run === _aiRun) { clearInterval(_aiStepTimer); _aiBusy = false; }
@@ -1458,6 +1457,431 @@
       : 'שדרג לפרימיום לניתוחים ללא הגבלה.';
     return aiMsgHtml('🎟️', 'ניצלת את ' + lim + ' הניתוחים היומיים', nextTxt + '<br>המכסה מתאפסת בחצות (שעון ישראל).',
       '<button class="sig-btn aim-up-btn" onclick="NTSignals.closeAiModal();NTSignals.openUpgrade(\'ניצלת את מכסת ניתוחי ה-AI היומית. שדרג להמשך.\')">⭐ שדרג עכשיו</button>');
+  }
+
+  // ============================================================
+  //  AI result extras: score, mini chart, position size, similar signals,
+  //  7-day history, share, earnings reminders, entry price alert
+  // ============================================================
+  var _aiCur = null;   // result currently shown in the popup: { analysis, quota, charged, fromHistory }
+
+  function userKey() {
+    try {
+      var u = JSON.parse(localStorage.getItem('nt_user') || '{}') || {};
+      return String(u.username || u.email || u.id || 'u').toLowerCase();
+    } catch (e) { return 'u'; }
+  }
+  function lsGet(key, def) {
+    try { var v = JSON.parse(localStorage.getItem(key)); return v == null ? def : v; } catch (e) { return def; }
+  }
+  function lsSet(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch (e) { return false; }
+  }
+  function toast(m) { try { if (typeof window.ntToast === 'function') window.ntToast(m); } catch (e) {} }
+  function nfmt(n, d) { return Number(n).toLocaleString('he-IL', { maximumFractionDigits: d == null ? 0 : d }); }
+  function isIdxSym(s) { return /^\^|^TA35\.TA$/i.test(s || ''); }
+  function daysTo(dateStr) {
+    var d = new Date(dateStr + 'T00:00:00');
+    if (isNaN(d.getTime())) return null;
+    var t = new Date(); t.setHours(0, 0, 0, 0);
+    return Math.round((d - t) / 86400000);
+  }
+  function dayTxt(d) { return d === 0 ? 'היום' : (d === 1 ? 'מחר' : 'בעוד ' + d + ' ימים'); }
+  function requestNotifPerm() {
+    try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {}
+  }
+
+  // ---- 1. opportunity score ----
+  function scoreColor(v) { return v >= 75 ? '#26a69a' : (v >= 55 ? '#8bc34a' : (v >= 35 ? '#f5a623' : '#ef5350')); }
+  function scoreHtml(a) {
+    var s = a.score;
+    if (!s || s.value == null) return '';
+    var col = scoreColor(s.value), C = 2 * Math.PI * 42;
+    var parts = (s.parts || []).map(function (p) {
+      var pc = p.v / 20 * 100;
+      return '<div class="sc-part"><span class="sc-pl">' + esc(p.label) + '</span>' +
+        '<div class="sc-pbar"><i style="width:' + pc + '%;background:' + scoreColor(pc) + '"></i></div><b>' + p.v + '/20</b></div>';
+    }).join('');
+    return '<div class="aim-score">' +
+      '<div class="sc-top">' +
+        '<div class="sc-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" class="sc-bg"/>' +
+          '<circle cx="50" cy="50" r="42" class="sc-fg" style="stroke:' + col + ';stroke-dasharray:' + (C * s.value / 100).toFixed(1) + ' ' + C.toFixed(1) + '"/></svg>' +
+          '<div class="sc-num" style="color:' + col + '">' + s.value + '<small>/100</small></div></div>' +
+        '<div class="sc-body"><div class="sc-title">ציון הזדמנות</div>' +
+          '<div class="sc-label" style="color:' + col + '">' + esc(s.label) + '</div>' +
+          '<div class="sc-grad"><i style="left:' + s.value + '%"></i></div>' +
+          '<div class="sc-scale"><span>נמנע</span><span>חלש</span><span>סביר</span><span>חזק</span></div></div>' +
+      '</div>' +
+      '<div class="sc-parts">' + parts + '</div></div>';
+  }
+
+  // ---- 2. mini weekly chart (SVG: candles + SMA30 + support/resistance + entry/stop/target) ----
+  function mcFmt(p) { return Math.abs(p) >= 1000 ? p.toFixed(0) : (Math.abs(p) >= 100 ? p.toFixed(1) : p.toFixed(2)); }
+  function miniChartHtml(a) {
+    var ch = a.chart;
+    if (!ch || !ch.c || ch.c.length < 8) return '';
+    var n = ch.c.length, W = 420, H = 232, padL = 4, padR = 50, padT = 10, padB = 20, i;
+    var en = a.entry || {};
+    var lv = [];
+    if (a.support) lv.push({ p: a.support.price, col: '#26a69a', dash: '', lab: 'תמיכה' });
+    if (a.resistance) lv.push({ p: a.resistance.price, col: '#ef5350', dash: '', lab: 'התנגדות' });
+    var hasTrade = en.entry != null && en.stop != null && en.target != null;
+    if (hasTrade) {
+      lv.push({ p: en.entry, col: '#ffffff', dash: '5 3', lab: 'כניסה' });
+      lv.push({ p: en.stop, col: '#ff8a80', dash: '2 3', lab: 'סטופ' });
+      lv.push({ p: en.target, col: '#69f0ae', dash: '2 3', lab: 'יעד' });
+    }
+    var lo = Infinity, hi = -Infinity;
+    for (i = 0; i < n; i++) { if (ch.l[i] < lo) lo = ch.l[i]; if (ch.h[i] > hi) hi = ch.h[i]; }
+    var span0 = (hi - lo) || 1;
+    lv = lv.filter(function (l) { return l.p >= lo - span0 * 0.2 && l.p <= hi + span0 * 0.2; });
+    lv.forEach(function (l) { if (l.p < lo) lo = l.p; if (l.p > hi) hi = l.p; });
+    var pad = (hi - lo) * 0.05; lo -= pad; hi += pad;
+    var iw = W - padL - padR, ih = H - padT - padB;
+    function X(k) { return padL + (k + 0.5) * iw / n; }
+    function Y(p) { return padT + (hi - p) / (hi - lo) * ih; }
+    var bw = Math.max(1.6, iw / n * 0.62), s = '';
+    for (i = 0; i <= 4; i++) {
+      var gp = lo + (hi - lo) * i / 4, gy = Y(gp);
+      s += '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + gy.toFixed(1) + '" y2="' + gy.toFixed(1) + '" class="mc-grid"/>' +
+        '<text x="' + (W - padR + 4) + '" y="' + (gy + 3).toFixed(1) + '" class="mc-ax">' + mcFmt(gp) + '</text>';
+    }
+    for (i = 0; i < n; i++) {
+      var up = ch.c[i] >= ch.o[i], col = up ? '#26a69a' : '#ef5350', x = X(i);
+      var yo = Y(ch.o[i]), yc = Y(ch.c[i]);
+      s += '<line x1="' + x.toFixed(1) + '" x2="' + x.toFixed(1) + '" y1="' + Y(ch.h[i]).toFixed(1) + '" y2="' + Y(ch.l[i]).toFixed(1) + '" stroke="' + col + '" stroke-width="1"/>' +
+        '<rect x="' + (x - bw / 2).toFixed(1) + '" y="' + Math.min(yo, yc).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(1, Math.abs(yo - yc)).toFixed(1) + '" fill="' + col + '"/>';
+    }
+    var pts = [];
+    for (i = 0; i < n; i++) { if (ch.sma && ch.sma[i] != null) pts.push(X(i).toFixed(1) + ',' + Y(ch.sma[i]).toFixed(1)); }
+    if (pts.length > 1) s += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#f5a623" stroke-width="2" stroke-linejoin="round"/>';
+    lv.forEach(function (l) {
+      var y = Y(l.p).toFixed(1);
+      s += '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + y + '" y2="' + y + '" stroke="' + l.col + '" stroke-width="1.3"' + (l.dash ? ' stroke-dasharray="' + l.dash + '"' : '') + '/>' +
+        '<text x="' + (padL + 3) + '" y="' + (parseFloat(y) - 3) + '" class="mc-lv" fill="' + l.col + '">' + l.lab + ' ' + mcFmt(l.p) + '</text>';
+    });
+    function tl(k) { var t = String(ch.t[k] || ''); return t.slice(5, 7) + '/' + t.slice(2, 4); }
+    [0, Math.floor(n / 2), n - 1].forEach(function (k, idx) {
+      s += '<text x="' + X(k).toFixed(1) + '" y="' + (H - 5) + '" class="mc-ax" text-anchor="' + (idx === 0 ? 'start' : (idx === 2 ? 'end' : 'middle')) + '">' + tl(k) + '</text>';
+    });
+    return '<div class="aim-chart"><div class="aim-chart-h">📈 גרף שבועי · ' + n + ' שבועות אחרונים</div>' +
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" class="mc-svg" role="img" aria-label="גרף שבועי">' + s + '</svg>' +
+      '<div class="mc-legend"><span><i style="background:#f5a623"></i>SMA30</span><span><i style="background:#26a69a"></i>תמיכה</span><span><i style="background:#ef5350"></i>התנגדות</span>' +
+      (hasTrade ? '<span><i style="background:#fff"></i>כניסה</span><span><i style="background:#69f0ae"></i>יעד</span>' : '') + '</div></div>';
+  }
+
+  // ---- 3. position size (risk rule) ----
+  function portLoad() {
+    var p = lsGet('nt_ai_port_' + userKey(), null);
+    if (!p || typeof p !== 'object') p = {};
+    if (!p.vals || typeof p.vals !== 'object') p.vals = {};
+    if (!(p.risk > 0)) p.risk = 1;
+    return p;
+  }
+  function portSave(p) { lsSet('nt_ai_port_' + userKey(), p); }
+  function posInner(a) {
+    var en = a.entry || {};
+    if (en.entry == null || en.stop == null || en.entry === en.stop || isIdxSym(a.symbol) || !a.curr) return '';
+    var cur = a.curr, p = portLoad(), val = p.vals[cur];
+    var head = '<div class="aim-card-h">💼 כמה מניות לקנות? <span>לפי כלל הסיכון</span></div>';
+    if (!(val > 0)) {
+      return head + '<div class="pz-ask">הזן פעם אחת את גודל התיק שלך ב-<b>' + esc(cur) + '</b> (נשמר רק במכשיר שלך), ונחשב לך כמות מניות מדויקת בכל ניתוח.</div>' +
+        '<div class="pz-form"><input id="pzPort" type="number" inputmode="decimal" placeholder="לדוגמה 100000" onkeydown="if(event.key===\'Enter\')this.nextSibling.click()">' +
+        '<button class="pz-save" data-cur="' + esc(cur) + '" onclick="NTSignals.aiSavePort(this)">שמור וחשב</button></div>';
+    }
+    var div = a.div || 1;
+    var riskAmt = val * p.risk / 100;
+    var perShare = Math.abs(en.entry - en.stop) / div;
+    var shares = Math.floor(riskAmt / perShare);
+    var posVal = shares * en.entry / div;
+    var posPct = posVal / val * 100;
+    var warn = '';
+    if (shares < 1) warn = 'הסטופ רחוק מדי ביחס לסיכון שהגדרת — יוצא פחות ממניה אחת.';
+    else if (posPct > 100) warn = 'שווי הפוזיציה גדול מהתיק — דרוש מינוף. מומלץ לצמצם.';
+    else if (posPct > 30) warn = 'פוזיציה גדולה (' + nfmt(posPct, 0) + '% מהתיק) — שקול פיזור.';
+    var sel = [0.5, 1, 2].map(function (r) { return '<option value="' + r + '"' + (p.risk === r ? ' selected' : '') + '>' + r + '%</option>'; }).join('');
+    return head +
+      '<div class="pz-grid">' +
+        '<div><span>סיכון מקסימלי</span><b>' + esc(cur) + nfmt(riskAmt, riskAmt < 100 ? 2 : 0) + '</b></div>' +
+        '<div class="big"><span>כמות מניות</span><b>' + nfmt(shares) + '</b></div>' +
+        '<div><span>שווי פוזיציה</span><b>' + esc(cur) + nfmt(posVal) + '</b><small>' + nfmt(posPct, 1) + '% מהתיק</small></div>' +
+      '</div>' +
+      (warn ? '<div class="pz-warn">⚠️ ' + warn + '</div>' : '') +
+      '<div class="pz-foot"><label>סיכון לעסקה <select onchange="NTSignals.aiSetRisk(this.value)">' + sel + '</select></label>' +
+        '<span>תיק: ' + esc(cur) + nfmt(val) + ' <a onclick="NTSignals.aiEditPort(\'' + esc(cur) + '\')">✏️ שנה</a></span>' +
+        '<a onclick="NTSignals.aiGoRisk()">איך זה מחושב? ←</a></div>';
+  }
+  function posRefresh() {
+    var w = document.getElementById('aiPosWrap');
+    if (w && _aiCur) w.innerHTML = posInner(_aiCur.analysis);
+  }
+  function aiSavePort(btn) {
+    var cur = btn && btn.getAttribute('data-cur');
+    var el = document.getElementById('pzPort');
+    var v = el ? parseFloat(el.value) : NaN;
+    if (!cur || !(v > 0)) { toast('הזן סכום תקין'); return; }
+    var p = portLoad(); p.vals[cur] = v; portSave(p);
+    posRefresh();
+  }
+  function aiEditPort(cur) {
+    var p = portLoad(); delete p.vals[cur]; portSave(p);
+    posRefresh();
+  }
+  function aiSetRisk(v) {
+    var p = portLoad(); p.risk = parseFloat(v) || 1; portSave(p);
+    posRefresh();
+  }
+  function aiGoRisk() { closeAiModal(); switchTab('risk'); }
+
+  // ---- 4. similar stocks with a live signal ----
+  function similarHtml(a) {
+    var cur = String(a.symbol || '').toUpperCase(), en = a.entry || {};
+    var dir = en.direction || (a.trend && a.trend.type === 'down' ? 'short' : (a.trend && a.trend.type === 'up' ? 'long' : null));
+    var mk = marketOf(a.symbol), list = [], seen = {};
+    try { list = loadSignals(); } catch (e) { list = []; }
+    list = list.filter(function (s) {
+      var u = String(s.sym || '').toUpperCase();
+      if (!u || u === cur || seen[u]) return false;
+      seen[u] = 1; return true;
+    });
+    var pool = list.filter(function (s) { return marketOf(s.sym) === mk && (!dir || s.dir === dir); });
+    if (pool.length < 2) pool = list.filter(function (s) { return marketOf(s.sym) === mk; });
+    if (!pool.length) return '';
+    pool.forEach(function (s) { s._st = signalStatus(s).key; });
+    pool.sort(function (x, y) { return (x._st === 'armed' ? 0 : 1) - (y._st === 'armed' ? 0 : 1) || (y.ts || 0) - (x.ts || 0); });
+    var items = pool.slice(0, 3).map(function (s) {
+      return '<button class="sim-item" data-sym="' + esc(s.sym) + '" onclick="NTSignals.analyzeSymbol(this.getAttribute(\'data-sym\'))">' +
+        '<span class="sim-sym">' + esc(dispSym(s.sym)) + '</span>' +
+        '<span class="sim-dir ' + s.dir + '">' + (s.dir === 'long' ? 'לונג' : 'שורט') + '</span>' +
+        '<span class="sim-rr">' + esc(s.rr || '') + '</span>' +
+        '<span class="sim-st">' + esc(STATUS_TXT[s._st] || '') + '</span>' +
+        '<span class="sim-go">נתח ←</span></button>';
+    }).join('');
+    return '<div class="aim-card sim"><div class="aim-card-h">🔥 מניות דומות עם איתות עכשיו <span>' + esc(MARKET_TXT[mk] || '') +
+      (dir ? (dir === 'long' ? ' · לונג' : ' · שורט') : '') + '</span></div><div class="sim-list">' + items + '</div></div>';
+  }
+
+  // ---- 5. 7-day analysis history (kept on this device, per user; opens instantly, no quota) ----
+  var HIST_DAYS = 7, HIST_MAX = 30;
+  function histKey() { return 'nt_ai_hist_' + userKey(); }
+  function histLoad() {
+    var arr = lsGet(histKey(), []);
+    if (!Array.isArray(arr)) arr = [];
+    var cut = Date.now() - HIST_DAYS * 86400000;
+    return arr.filter(function (h) { return h && h.sym && h.snap && h.ts >= cut; });
+  }
+  function histAdd(res) {
+    var a = res && res.analysis;
+    if (!a || !a.symbol) return;
+    var arr = histLoad().filter(function (h) { return h.sym !== a.symbol; });
+    arr.unshift({ sym: a.symbol, name: a.name, ts: Date.now(), price: a.price, curr: a.curr,
+      score: a.score ? a.score.value : null, vkey: (a.verdict || {}).key, snap: a });
+    arr = arr.slice(0, HIST_MAX);
+    while (arr.length && !lsSet(histKey(), arr)) arr.pop();   // storage full -> drop the oldest
+  }
+  function histDayLabel(ts) {
+    var d = new Date(ts), t = new Date(); t.setHours(0, 0, 0, 0);
+    var dd = new Date(d); dd.setHours(0, 0, 0, 0);
+    var diff = Math.round((t - dd) / 86400000);
+    return diff <= 0 ? 'היום' : (diff === 1 ? 'אתמול' : (d.getDate() + '.' + (d.getMonth() + 1)));
+  }
+  function historyInner() {
+    var h = histLoad();
+    if (!h.length) return '';
+    var out = '<div class="ai-sec">🕘 היסטוריית ניתוחים · 7 ימים אחרונים</div><div class="hist-list">', lastDay = '';
+    h.forEach(function (x) {
+      var dl = histDayLabel(x.ts);
+      if (dl !== lastDay) { out += '<div class="hist-day">' + esc(dl) + '</div>'; lastDay = dl; }
+      var vi = x.vkey === 'enter' ? '✅' : (x.vkey === 'wait' ? '⏳' : '⛔');
+      out += '<button class="hist-row" data-sym="' + esc(x.sym) + '" onclick="NTSignals.aiOpenHist(this.getAttribute(\'data-sym\'))">' +
+        '<span class="hr-sym">' + esc(dispSym(x.sym)) + '</span><span class="hr-name">' + esc(x.name || '') + '</span>' +
+        '<span class="hr-v">' + vi + '</span>' +
+        (x.score != null ? '<span class="hr-score" style="background:' + scoreColor(x.score) + '">' + x.score + '</span>' : '') + '</button>';
+    });
+    return out + '</div>';
+  }
+  function aiOpenHist(sym) {
+    var h = histLoad().filter(function (x) { return x.sym === sym; })[0];
+    if (!h) return;
+    openAiModal(resultHtml({ analysis: h.snap, quota: (_aiQuota && _aiQuota.quota) || {}, charged: false, fromHistory: h.ts }));
+  }
+
+  // ---- 6. earnings reminders (day before the report) ----
+  function remKey() { return 'nt_earn_remind_' + userKey(); }
+  function remLoad() { var m = lsGet(remKey(), {}); return (m && typeof m === 'object' && !Array.isArray(m)) ? m : {}; }
+  function remSave(m) { lsSet(remKey(), m); }
+  function autoRemind(a) {
+    var e = a && a.earnings;
+    if (!e || !e.available || !e.date) return;
+    var d = daysTo(e.date);
+    if (d == null || d < 0 || d > 150) return;
+    var m = remLoad(), k = a.symbol, r = m[k];
+    if (!r) m[k] = { sym: k, name: a.name, date: e.date, on: true, notified: false };
+    else { if (r.date !== e.date) { r.date = e.date; r.notified = false; } r.name = a.name; }
+    remSave(m);
+    // also feed the signal cards' "exit before earnings" warning
+    try { var em = loadEarnings(); em[k] = e.date; localStorage.setItem(EARN_KEY, JSON.stringify(em)); } catch (err) {}
+  }
+  function earnCardInner(a) {
+    var e = a.earnings;
+    if (!e || !e.available || !e.date) return '';
+    var d = daysTo(e.date);
+    if (d == null || d < 0) return '';
+    var r = remLoad()[a.symbol], on = !!(r && r.on);
+    return '<div class="aim-card-h">📅 תזכורת דוחות</div>' +
+      '<div class="er-row"><div class="er-txt">דוחות ב-<b>' + heDate(e.date) + '</b> (' + dayTxt(d) + ')<br>' +
+        '<span class="aim-dim">' + (on ? 'נתריע לך יום לפני הפרסום — כדי לצאת מהפוזיציה בזמן.' : 'התזכורת כבויה.') + '</span></div>' +
+      '<button class="er-btn' + (on ? ' on' : '') + '" onclick="NTSignals.aiToggleRemind()">' + (on ? '🔔 פעילה' : '🔕 הפעל') + '</button></div>';
+  }
+  function aiToggleRemind() {
+    var a = _aiCur && _aiCur.analysis;
+    if (!a || !a.earnings || !a.earnings.date) return;
+    var m = remLoad(), r = m[a.symbol];
+    if (!r) r = m[a.symbol] = { sym: a.symbol, name: a.name, date: a.earnings.date, on: false, notified: false };
+    r.on = !r.on;
+    remSave(m);
+    if (r.on) { requestNotifPerm(); toast('🔔 נתריע לך יום לפני הדוחות של ' + dispSym(a.symbol)); }
+    var w = document.getElementById('aiEarnWrap');
+    if (w) w.innerHTML = earnCardInner(a);
+    aiRefreshLists();
+  }
+  function aiRemoveRemind(sym) {
+    var m = remLoad();
+    if (m[sym]) { m[sym].on = false; remSave(m); }
+    aiRefreshLists();
+  }
+  function remListInner() {
+    var m = remLoad(), rows = [];
+    Object.keys(m).forEach(function (k) {
+      var r = m[k]; if (!r || !r.on) return;
+      var d = daysTo(r.date); if (d == null || d < 0) return;
+      rows.push({ r: r, d: d });
+    });
+    if (!rows.length) return '';
+    rows.sort(function (x, y) { return x.d - y.d; });
+    var perm = (window.Notification && Notification.permission === 'default')
+      ? '<button class="er-perm" onclick="NTSignals.aiNotifPerm();this.remove()">🔔 אפשר התראות דפדפן</button>' : '';
+    return '<div class="ai-sec">🔔 תזכורות דוחות פעילות</div><div class="er-list">' +
+      rows.map(function (x) {
+        return '<div class="er-item' + (x.d <= 1 ? ' soon' : '') + '"><span class="er-sym">' + esc(dispSym(x.r.sym)) + '</span>' +
+          '<span class="er-d">' + heDate(x.r.date) + ' · ' + dayTxt(x.d) + '</span>' +
+          '<button class="er-x" title="בטל תזכורת" data-sym="' + esc(x.r.sym) + '" onclick="NTSignals.aiRemoveRemind(this.getAttribute(\'data-sym\'))">✕</button></div>';
+      }).join('') + perm + '</div>';
+  }
+  function earnBannerHtml() {
+    var m = remLoad(), soon = [];
+    Object.keys(m).forEach(function (k) {
+      var r = m[k]; if (!r || !r.on) return;
+      var d = daysTo(r.date);
+      if (d != null && d >= 0 && d <= 1) soon.push({ r: r, d: d });
+    });
+    if (!soon.length) return '';
+    return '<div class="earn-banner">📅 <b>' + (soon.some(function (x) { return x.d === 0; }) ? 'היום' : 'מחר') + ' דוחות:</b> ' +
+      soon.map(function (x) { return esc(dispSym(x.r.sym)) + (x.d === 0 ? ' (היום)' : ' (מחר)'); }).join(', ') +
+      ' — מומלץ לצאת מהפוזיציה יום לפני הפרסום.</div>';
+  }
+  function checkEarnReminders() {
+    var m = remLoad(), changed = false, due = [];
+    Object.keys(m).forEach(function (k) {
+      var r = m[k]; if (!r || !r.date) return;
+      var d = daysTo(r.date);
+      if (d == null) return;
+      if (d < -1) { delete m[k]; changed = true; return; }          // report already out
+      if (r.on && !r.notified && d >= 0 && d <= 1) { r.notified = true; changed = true; due.push({ r: r, d: d }); }
+    });
+    if (changed) remSave(m);
+    due.forEach(function (x) {
+      var msg = '📅 ' + dayTxt(x.d) + ' דוחות ' + dispSym(x.r.sym) + ' — מומלץ לצאת מהפוזיציה יום לפני';
+      toast(msg);
+      try { if (window.Notification && Notification.permission === 'granted') new Notification('NexTrade · תזכורת דוחות', { body: msg }); } catch (e) {}
+    });
+    if (due.length) { var f = document.getElementById('signalFeed'); if (f && f.style.display !== 'none') render(); }
+  }
+  var _remTimer = null;
+  function startRemChecks() {
+    checkEarnReminders();
+    if (!_remTimer) _remTimer = setInterval(checkEarnReminders, 30 * 60 * 1000);
+  }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { try { checkEarnReminders(); } catch (e) {} } });
+
+  function aiRefreshLists() {
+    var r = document.getElementById('aiRemWrap'); if (r) r.innerHTML = remListInner();
+    var h = document.getElementById('aiHistWrap'); if (h) h.innerHTML = historyInner();
+  }
+
+  // ---- 7. action bar: entry price alert / watch / share ----
+  function entryLevel(a) { var en = a.entry || {}; return en.entry != null ? en.entry : (en.alertLevel != null ? en.alertLevel : null); }
+  function alertIsSet(sym, lvl) {
+    try { return (window.alerts || []).some(function (x) { return x.symbol === sym && Math.abs(x.price - lvl) < 1e-9; }); } catch (e) { return false; }
+  }
+  function actionsInner() {
+    var a = _aiCur && _aiCur.analysis;
+    if (!a) return '';
+    var lvl = entryLevel(a), sym = a.symbol, fav = isFav(sym), h = '';
+    if (lvl != null) {
+      var set = alertIsSet(sym, lvl);
+      h += '<button class="aim-act primary' + (set ? ' done' : '') + '" onclick="NTSignals.aiSetEntryAlert()">' +
+        (set ? '✓ התראה נקבעה' : '🔔 התראה על מחיר הכניסה') + '<small>' + fmt(lvl, a.curr) + '</small></button>';
+    }
+    h += '<button class="aim-act' + (fav ? ' on' : '') + '" onclick="NTSignals.aiToggleWatch()">' + (fav ? '★ במעקב' : '☆ הוסף למעקב') + '</button>';
+    h += '<button class="aim-act wa" onclick="NTSignals.aiShare()">📲 שתף</button>';
+    return h;
+  }
+  function aiRefreshActions() { var b = document.getElementById('aiActBar'); if (b) b.innerHTML = actionsInner(); }
+  function aiSetEntryAlert() {
+    var a = _aiCur && _aiCur.analysis;
+    if (!a) return;
+    var lvl = entryLevel(a);
+    if (lvl == null) return;
+    if (typeof window.ntAddEntryAlert !== 'function') { toast('התראות אינן זמינות כרגע'); return; }
+    if (!isFav(a.symbol)) { var f = loadFavs(); if (f.length < favCap()) { f.push(a.symbol); saveFavs(f); } }
+    var r = window.ntAddEntryAlert(a.symbol, lvl, a.price);
+    requestNotifPerm();
+    toast(r && r.dup ? 'ההתראה כבר קיימת' : ('🔔 נקבעה התראה: ' + dispSym(a.symbol) + (r && r.cond === 'above' ? ' מעל ' : ' מתחת ל') + fmt(lvl, a.curr)));
+    aiRefreshActions();
+  }
+  function aiToggleWatch() {
+    var a = _aiCur && _aiCur.analysis;
+    if (!a) return;
+    toggleFav(a.symbol);
+    aiRefreshActions();
+  }
+  function shareText(a) {
+    var en = a.entry || {}, v = a.verdict || {}, tr = a.trend || {}, sm = a.sma || {}, s = a.score, c = a.curr || '', L = [];
+    L.push('📊 *ניתוח AI · ' + dispSym(a.symbol) + '*' + (a.name ? ' (' + a.name + ')' : ''));
+    if (s) L.push('🎯 ציון הזדמנות: *' + s.value + '/100* (' + s.label + ')');
+    if (v.text) L.push(v.text);
+    L.push('📈 ' + (tr.text || '') + ' · ' + (sm.position === 'above' ? 'מעל' : 'מתחת') + ' SMA30');
+    if (en.entry != null && en.stop != null && en.target != null) {
+      L.push('כניסה ' + fmt(en.entry, c) + ' | סטופ ' + fmt(en.stop, c) + ' | יעד ' + fmt(en.target, c) + ' (1:' + en.rr + ')');
+    }
+    var d = (a.earnings && a.earnings.available) ? daysTo(a.earnings.date) : null;
+    if (d != null && d >= 0 && d <= 21) L.push('📅 דוחות ' + dayTxt(d));
+    L.push('');
+    L.push('⚠️ אינו ייעוץ השקעות');
+    L.push('🤖 ניתוח AI למניות ב-NexTrade: ' + location.origin);
+    return L.join('\n');
+  }
+  function aiShare() {
+    var a = _aiCur && _aiCur.analysis;
+    if (!a) return;
+    var url = 'https://wa.me/?text=' + encodeURIComponent(shareText(a));
+    var w = null;
+    try { w = window.open(url, '_blank', 'noopener'); } catch (e) {}
+    if (!w) { try { window.location.href = url; } catch (e2) {} }
+  }
+  function aiCopy() {
+    var a = _aiCur && _aiCur.analysis;
+    if (!a) return;
+    var txt = shareText(a);
+    function fallback() {
+      try {
+        var ta = document.createElement('textarea'); ta.value = txt; ta.style.cssText = 'position:fixed;opacity:0';
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast('הסיכום הועתק ✓');
+      } catch (e) { toast('לא ניתן להעתיק'); }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function () { toast('הסיכום הועתק ✓'); }, fallback);
+    else fallback();
   }
 
   function aiRow(icon, label, html) {
@@ -1551,13 +1975,26 @@
     var reasons = (a.reasons || []).slice(0, 4).map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('');
     var q = res.quota || {};
     var symRaw = a.symbol || '';
-    var isFavNow = isFav(symRaw);
+    _aiCur = res;
+
+    var histNote = '';
+    if (res.fromHistory) {
+      var hd = new Date(res.fromHistory);
+      histNote = '<div class="aim-hist-note">🕘 ניתוח שמור מה-' + hd.getDate() + '.' + (hd.getMonth() + 1) + ' · השעה ' +
+        ('0' + hd.getHours()).slice(-2) + ':' + ('0' + hd.getMinutes()).slice(-2) + ' — המחיר והנתונים נכונים לאותו זמן. ' +
+        '<button class="aim-hist-btn" data-sym="' + esc(symRaw) + '" onclick="NTSignals.analyzeSymbol(this.getAttribute(\'data-sym\'))">🔄 נתח מחדש</button>' +
+        '<span class="aim-dim"> (נספר במכסה אם לא נותח היום)</span></div>';
+    }
+    var posInr = posInner(a);
+    var earnInr = earnCardInner(a);
 
     return '<div class="aim-head">' +
-        '<div><div class="aim-sym">' + esc(symRaw.replace('.TA', '')) + '</div><div class="aim-name">' + esc(a.name) + '</div></div>' +
+        '<div><div class="aim-sym">' + esc(dispSym(symRaw)) + '</div><div class="aim-name">' + esc(a.name) + '</div></div>' +
         '<div class="aim-price"><div class="aim-price-v">' + fmt(a.price, c) + '</div><div class="aim-dim">נכון ל-' + heDate(a.lastBar) + '</div></div>' +
-      '</div>' +
+      '</div>' + histNote +
       '<div class="aim-verdict ' + esc(v.key) + '">' + esc(v.text) + '</div>' +
+      scoreHtml(a) +
+      miniChartHtml(a) +
       '<div class="aim-rows">' +
         aiRow(trIcon, 'מגמה ומשכה', trTxt) +
         aiRow('〰️', 'ממוצע נע 30', smaTxt) +
@@ -1569,14 +2006,18 @@
         aiRow('🎯', 'ניתנת לכניסה כרגע?', enterNow + levelsBlock) +
         aiRow('⏱️', 'זמן משוער לאיתות כניסה', etaTxt) +
       '</div>' +
+      (posInr ? '<div class="aim-card" id="aiPosWrap">' + posInr + '</div>' : '') +
+      (earnInr ? '<div class="aim-card" id="aiEarnWrap">' + earnInr + '</div>' : '') +
+      similarHtml(a) +
       (reasons ? '<div class="aim-why"><div class="aim-why-title">💡 למה?</div><ul>' + reasons + '</ul></div>' : '') +
       aiNextHtml(q, symRaw) +
       '<div class="aim-foot">' +
-        '<button class="sig-btn ' + (isFavNow ? 'ghost' : '') + '" data-sym="' + esc(symRaw) + '" onclick="NTSignals.setAlert(this.getAttribute(\'data-sym\'));NTSignals.closeAiModal()">' + (isFavNow ? '★ במעקב' : '☆ הוסף למעקב') + '</button>' +
+        '<button class="sig-btn ghost" onclick="NTSignals.aiCopy()">📋 העתק סיכום</button>' +
         '<button class="sig-btn ghost" onclick="NTSignals.closeAiModal()">סגור</button>' +
       '</div>' +
       '<div class="aim-disc">' + (q.limit == null ? 'ניתוחים ללא הגבלה' : ('נוצלו ' + q.used + ' מתוך ' + q.limit + ' ניתוחים היום')) +
-        (res.charged === false ? ' · ניתוח חוזר, לא נספר' : '') + '<br>אינו מהווה ייעוץ השקעות.</div>';
+        (res.charged === false && !res.fromHistory ? ' · ניתוח חוזר, לא נספר' : '') + '<br>אינו מהווה ייעוץ השקעות.</div>' +
+      '<div class="aim-actions" id="aiActBar">' + actionsInner() + '</div>';
   }
 
   function addTrade(sym) {
@@ -1766,6 +2207,7 @@
 
   // Called after the app is logged-in and ready
   function onAppReady() {
+    startRemChecks();
     syncServerSignals(true); // fetch the server feed as soon as we're logged in
     // Admins default to the regular (analysis) site — they are not signal-locked.
     if (isAdmin()) { setMode('analysis'); return; }
@@ -1803,6 +2245,9 @@
     resetFilters: resetFilters, onFilterText: onFilterText, toggleRow: toggleRow,
     deleteSignal: deleteSignal, clearAllSignals: clearAllSignals, isAdmin: isAdmin,
     analyzeSymbol: analyzeSymbol, analyzeFromInput: analyzeFromInput, closeAiModal: closeAiModal,
+    aiSetEntryAlert: aiSetEntryAlert, aiToggleWatch: aiToggleWatch, aiShare: aiShare, aiCopy: aiCopy,
+    aiSavePort: aiSavePort, aiEditPort: aiEditPort, aiSetRisk: aiSetRisk, aiGoRisk: aiGoRisk,
+    aiToggleRemind: aiToggleRemind, aiRemoveRemind: aiRemoveRemind, aiNotifPerm: requestNotifPerm, aiOpenHist: aiOpenHist,
     syncServerSignals: syncServerSignals,
     toggleUserMenu: toggleUserMenu,
     openUpgrade: function (ctx) { openUpgrade(ctx); }

@@ -1404,6 +1404,62 @@ const _analysisCache = new Map();  // sym -> { ts, data }  (shared across users;
 const ANALYSIS_TTL = 10 * 60 * 1000;
 const CURR_SYMBOL = { ILS: '₪', ILA: '₪', USD: '$', EUR: '€', GBP: '£' };
 
+// Opportunity score 0-100 = 5 explainable parts of 0-20 each. Capped by the verdict so a
+// "not enterable" stock can never look like a top opportunity.
+function scoreAnalysis(d) {
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const tr = d.trend || {}, sm = d.sma || {}, en = d.entry || {}, v = d.verdict || {};
+  const dir = en.direction || (tr.type === 'down' ? 'short' : (tr.type === 'up' ? 'long' : null));
+
+  // 1. trend clarity + age
+  const trend = tr.type === 'range' ? 6 : 12 + clamp((tr.weeks || 0) / 3, 0, 8);
+
+  // 2. SMA30 alignment with the trade direction
+  let sma = 8;
+  if (dir) {
+    const aligned = dir === 'long' ? sm.position === 'above' : sm.position === 'below';
+    const slopeOk = dir === 'long' ? sm.slope === 'rising' : sm.slope === 'falling';
+    sma = (aligned ? 10 : 2) + (slopeOk ? 6 : (sm.slope === 'flat' ? 3 : 0)) + clamp((sm.sideWeeks || 0) / 3, 0, 4);
+  }
+
+  // 3. levels: protective level behind the trade + room before the next obstacle
+  let lv = 8;
+  if (dir) {
+    const base = dir === 'long' ? d.support : d.resistance;
+    const room = dir === 'long' ? d.resistance : d.support;
+    lv = 0;
+    if (base) lv += base.veryStrong ? 10 : (base.strong ? 7 : 3);
+    if (!room) lv += 10;
+    else { const dist = Math.abs(room.distPct || 0); lv += dist >= 8 ? 10 : (dist >= 4 ? 7 : (dist >= 2 ? 4 : 1)); }
+  }
+
+  // 4. entry readiness
+  let entry = v.key === 'enter' ? 20 : (v.key === 'wait' ? 11 : 3);
+  if (v.key === 'wait' && d.eta && d.eta.maxWeeks != null && d.eta.maxWeeks <= 2) entry += 4;
+  if (d.broke && d.broke.confirmed) entry += 3;
+
+  // 5. risk: liquidity, earnings proximity, reward/risk
+  const lq = d.liquidity, e = d.earnings;
+  let risk = (lq && lq.isIndex) ? 8 : (lq ? (lq.meetsMin ? 10 : 2) : 5);
+  risk += (!e || !e.available) ? 4 : ((e.days >= 0 && e.days <= 7) ? 0 : 6);
+  risk += en.rr >= 2 ? 4 : 2;
+
+  const parts = [
+    { k: 'trend', label: 'מגמה', v: Math.round(clamp(trend, 0, 20)) },
+    { k: 'sma', label: 'ממוצע SMA30', v: Math.round(clamp(sma, 0, 20)) },
+    { k: 'levels', label: 'תמיכה / התנגדות', v: Math.round(clamp(lv, 0, 20)) },
+    { k: 'entry', label: 'מוכנות לכניסה', v: Math.round(clamp(entry, 0, 20)) },
+    { k: 'risk', label: 'סיכון וסחירות', v: Math.round(clamp(risk, 0, 20)) }
+  ];
+  let total = parts.reduce((s, p) => s + p.v, 0);
+  if (v.key === 'avoid') total = Math.min(total, 45);
+  else if (v.key === 'wait') total = Math.min(total, 74);
+  else if (v.key === 'enter') total = Math.max(total, 50);
+  total = clamp(total, 0, 100);
+  const label = total >= 75 ? 'הזדמנות חזקה' : (total >= 55 ? 'סביר' : (total >= 35 ? 'חלש' : 'נמנע'));
+  return { value: total, label: label, parts: parts };
+}
+
 // Daily trading volume + turnover (volume × price) for the last session and the 3-month average.
 async function fetchLiquidity(sym, rawCurrency, currSym) {
   if (isIndexSym(sym) || /^\^|=[FX]$/.test(sym)) return { isIndex: true };
@@ -1443,6 +1499,7 @@ async function buildAnalysis(sym) {
   const d = NTScanner.describe(bars, { symbol: sym, name: name, curr: curr });
   if (!d || !d.ok) return { insufficient: true };
   d.symbol = sym; d.name = name; d.curr = curr;
+  d.div = currencyDivisor(sym, meta.currency);   // 100 when prices are quoted in agorot
   d.lastBar = bars[bars.length - 1].time;
   d.asOf = Date.now();
   const edate = await fetchEarningsDate(sym);
@@ -1453,6 +1510,19 @@ async function buildAnalysis(sym) {
   }
   d.earnings = { date: edate, days: days, available: !!edate };
   d.liquidity = await fetchLiquidity(sym, meta.currency, curr);
+  // compact weekly series (last ~80 weeks) + SMA30 for the client's mini chart
+  try {
+    const W = Math.min(80, bars.length), off = bars.length - W;
+    const smaN = (NTScanner.config && NTScanner.config.smaPeriod) || 30;
+    const r4 = x => Math.round(x * 10000) / 10000;
+    const cs = bars.slice(off);
+    d.chart = {
+      t: cs.map(b => b.time), o: cs.map(b => r4(b.open)), h: cs.map(b => r4(b.high)),
+      l: cs.map(b => r4(b.low)), c: cs.map(b => r4(b.close)),
+      sma: cs.map((b, k) => { const x = NTScanner._sma(bars, smaN, off + k); return (x == null || isNaN(x)) ? null : r4(x); })
+    };
+  } catch (e) { d.chart = null; }
+  try { d.score = scoreAnalysis(d); } catch (e) { d.score = null; }
   _analysisCache.set(sym, { ts: Date.now(), data: d });
   if (_analysisCache.size > 300) { _analysisCache.delete(_analysisCache.keys().next().value); }
   return d;

@@ -3429,6 +3429,23 @@ function addAlert() {
   if (typeof incrementAlertBadge === 'function') incrementAlertBadge();
 }
 
+// Price alert at a signal's entry level (used by the AI-analysis popup). The direction is
+// inferred from where the live price is: below the level -> alert when it crosses up, else down.
+function ntAddEntryAlert(sym, level, curPrice) {
+  if (!sym || !(level > 0)) return null;
+  var cond = (curPrice != null && curPrice > level) ? 'below' : 'above';
+  var dup = alerts.some(function(a) { return a.symbol === sym && a.condition === cond && Math.abs(a.price - level) < 1e-9; });
+  if (!dup) {
+    alerts.push({ symbol: sym, condition: cond, price: level, email: null });
+    localStorage.setItem('ml_alerts', JSON.stringify(alerts));
+  }
+  try {
+    fetchQuote(sym).then(function(d) { if (d) priceCache[sym] = d; renderAlerts(); }).catch(function() {});
+  } catch (e) {}
+  try { renderAlerts(); } catch (e) {}
+  return { cond: cond, dup: dup };
+}
+
 function removeAlert(i) {
   var a = alerts[i];
   if (a) { var k = a.symbol + '_' + a.condition + '_' + a.price; delete _alertFired[k]; }
@@ -3455,6 +3472,11 @@ function addTriggeredToBell(a, currentPrice) {
   var ibAlerts2 = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
   var exists = ibAlerts2.some(function(b) { return b.key === key; });
   if (exists) return;
+  try {
+    var _lbl = a.symbol.replace('.TA', '') + (a.condition === 'above' ? ' עלתה מעל ' : ' ירדה מתחת ל') + formatPrice(a.price, a.symbol);
+    ntToast('🔔 ' + _lbl);
+    if (window.Notification && Notification.permission === 'granted') new Notification('NexTrade', { body: _lbl });
+  } catch (e) {}
   ibAlerts2.push({
     sym: a.symbol,
     price: a.price,
@@ -3831,7 +3853,7 @@ async function buildTicker() {
 }
 
 async function refreshPrices() {
-  var all = Array.from(new Set(DEFAULT_SYMBOLS.concat(watchlist).concat(portfolio.map(function(p) { return p.symbol; }))));
+  var all = Array.from(new Set(DEFAULT_SYMBOLS.concat(watchlist).concat(portfolio.map(function(p) { return p.symbol; })).concat(alerts.map(function(a) { return a.symbol; }))));
   await Promise.all(all.map(async function(sym) {
     var d = await fetchQuote(sym);
     if (d) { priceCache[sym] = d; renderCard(sym, d); }
