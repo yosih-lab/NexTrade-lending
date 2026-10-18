@@ -167,6 +167,7 @@
   // Index / commodity / forex tickers are shown with readable names (e.g. ^GSPC → S&P 500).
   var SPECIAL_SYM = {
     '^GSPC': { disp: 'S&P 500', name: 'מדד S&P 500' },
+    'TA35.TA': { disp: 'ת״א 35', name: 'מדד תל אביב 35' },
     'GC=F': { disp: 'GOLD', name: 'זהב (חוזה עתידי)' },
     'SI=F': { disp: 'SILVER', name: 'כסף (חוזה עתידי)' },
     'CL=F': { disp: 'OIL', name: 'נפט WTI (חוזה עתידי)' },
@@ -199,12 +200,13 @@
       var isBuy  = cond === 'buy_signal'  || a.direction === 'long'  || a.direction === 'bullish';
       var isSell = cond === 'sell_signal' || a.direction === 'short' || a.direction === 'bearish';
       if (!isBuy && !isSell) return;
+      if (/=[FX]$|-USD$/i.test(a.sym || '')) return;   // only stocks + the two indices
       var dir = isBuy ? 'long' : 'short';
       var levels = computeLevels(a, dir);
       out.push({
         sym: a.sym, name: friendlyName(a.sym, a.name),
         key: a.key || (a.sym + '_' + dir),
-        dir: dir, curr: (a.sym && a.sym.charAt(0) === '^') ? '' : (a.curr || ''),
+        dir: dir, curr: (a.sym && (a.sym.charAt(0) === '^' || a.sym === 'TA35.TA')) ? '' : (a.curr || ''),
         price: a.price,
         entry: levels.entry, stop: levels.stop, tp: levels.tp, rr: levels.rr,
         ts: a.ts || 0, date: a.date || '', time: a.time || '',
@@ -276,13 +278,20 @@
   }
   var STATUS_TXT = {
     waiting: 'ממתין לכניסה',
-    armed: 'מזומן — קרוב לכניסה',
-    active: 'פעיל',
+    armed: '⚡ קרוב לכניסה',
+    active: 'בכניסה (פעיל)',
     hit: 'הגיע ליעד ✓',
     stopped: 'נפגע סטופ ✕'
   };
 
   // ---------- rendering ----------
+  var STATUS_HINT = {
+    waiting: 'המחיר עדיין רחוק מרמת הכניסה',
+    armed: 'המחיר במרחק של עד 1.5% מרמת הכניסה — הכין התראה',
+    active: 'המחיר עבר את רמת הכניסה',
+    hit: 'המחיר הגיע ליעד',
+    stopped: 'המחיר פגע בסטופ'
+  };
   function marketOf(sym) {
     sym = sym || '';
     if (/\.TA$/i.test(sym)) return 'tase';
@@ -377,7 +386,7 @@
         '<div class="sr-lv tp"><small>יעד</small>' + fmt(s.tp, s.curr) + '</div>' +
         '<div class="sr-bar">' + rangeBar(s) + '</div>' +
         '<div class="sr-rr"><small>R:R</small>' + esc(String(s.rr)) + '</div>' +
-        '<span class="sig-status ' + st + '">' + STATUS_TXT[st] + '</span>' +
+        '<span class="sig-status ' + st + '" title="' + STATUS_HINT[st] + '">' + STATUS_TXT[st] + '</span>' +
         '<div class="sr-age">' + ageTxt(s.ts) + '</div>' +
         '<div class="sr-act">' + adminDelBtn(s) + '<span class="sr-chev">' + (open ? '▴' : '▾') + '</span></div>' +
       '</div>' +
@@ -541,7 +550,7 @@
         label + ' <b>' + cnt[k] + '</b></button>';
     }
     var filterBar = '<div class="sf-chips">' +
-      chip('all', 'הכל') + chip('long', '▲ לונג') + chip('short', '▼ שורט') + chip('ready', '⚡ מזומנות') + chip('fav', '★ מועדפים') +
+      chip('all', 'הכל') + chip('long', '▲ לונג') + chip('short', '▼ שורט') + chip('ready', '⚡ קרובות לכניסה') + chip('fav', '★ מועדפים') +
     '</div>';
 
     var list = base.filter(function (s) {
@@ -617,7 +626,7 @@
       else gWait.push(s);
     });
     var groups = [
-      { t: '⚡ מזומנות לכניסה', cls: 'ready', items: gReady },
+      { t: '⚡ קרובות לכניסה', cls: 'ready', items: gReady },
       { t: '👀 ממתינות לכניסה', cls: 'wait', items: gWait },
       { t: '✓ הושלמו / נפגעו', cls: 'done', items: gDone }
     ].filter(function (g) { return g.items.length; });

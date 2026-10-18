@@ -951,9 +951,13 @@ try {
 // SCAN_UNIVERSE=all to include US.
 function scanUniverse() {
   if (!SYMS) return [];
-  if ((process.env.SCAN_UNIVERSE || 'tase') === 'all') return SYMS.ALL_SCANNER_SYMBOLS;
-  return SYMS.TASE_SYMBOLS.concat(SYMS.COMMODITIES_SYMBOLS || []);
+  // Default: TASE + US stocks + the two indices. Rotates SIG_CHUNK symbols per cycle.
+  // Set SCAN_UNIVERSE=tase to restrict to Tel Aviv only.
+  if ((process.env.SCAN_UNIVERSE || 'all') === 'tase') return SYMS.TASE_SYMBOLS.concat(SYMS.COMMODITIES_SYMBOLS || []);
+  return SYMS.ALL_SCANNER_SYMBOLS;
 }
+const INDEX_SYMS = ['^GSPC', 'TA35.TA'];
+function isIndexSym(sym) { return INDEX_SYMS.indexOf(sym) !== -1; }
 
 const SIG_CHUNK      = parseInt(process.env.SCAN_CHUNK || '60', 10);   // symbols per cycle
 const SIG_CONCURRENCY= parseInt(process.env.SCAN_CONCURRENCY || '6', 10);
@@ -989,7 +993,7 @@ const SETUP_HE = {
 // Build the stored signal object from an analyze() result (mirrors main.js).
 function buildSignalObject(sym, a) {
   const isTASE = sym.endsWith('.TA');
-  const curr = isTASE ? '₪' : '$';
+  const curr = isIndexSym(sym) ? '' : (isTASE ? '₪' : '$');
   const isShort = a.direction === 'short';
   const trendType = a.trend === 'up' ? 'עלייה' : (a.trend === 'down' ? 'ירידה' : 'דישדוש');
   const now = new Date();
@@ -1018,7 +1022,7 @@ function buildSignalObject(sym, a) {
 
 function pruneSignals() {
   const cutoff = Date.now() - SIG_MAX_AGE_MS;
-  _sigStore = _sigStore.filter(s => s.ts >= cutoff && !_sigDismissed.has(s.key));
+  _sigStore = _sigStore.filter(s => s.ts >= cutoff && !_sigDismissed.has(s.key) && !/=[FX]$|-USD$/i.test(s.sym || ''));
   _sigByKey = {};
   _sigStore.forEach(s => { _sigByKey[s.key] = s; });
   _sigStore.sort((a, b) => b.ts - a.ts);
@@ -1034,6 +1038,8 @@ async function scanSignalsChunk() {
     if (!universe.length) return;
     const chunk = [];
     for (let i = 0; i < SIG_CHUNK; i++) chunk.push(universe[(_scanOffset + i) % universe.length]);
+    // the two indices are checked on every cycle
+    INDEX_SYMS.forEach(s => { if (chunk.indexOf(s) === -1) chunk.push(s); });
     _scanOffset = (_scanOffset + SIG_CHUNK) % universe.length;
 
     let added = 0;
@@ -1048,7 +1054,7 @@ async function scanSignalsChunk() {
           if (price < 1) return;
           const last8 = bars.slice(-8);
           const avgVol8 = last8.reduce((s, b) => s + (b.volume || 0), 0) / last8.length;
-          if (avgVol8 < 1000) return;
+          if (avgVol8 < 1000 && !isIndexSym(sym)) return;
           const a = NTScanner.analyze(bars, { symbol: sym, name: sym.replace('.TA', ''), curr: sym.endsWith('.TA') ? '₪' : '$' });
           if (!a || !a.direction || a.entry == null) return;
           const armed = a.alertLevel != null && Math.abs(a.price - a.alertLevel) / a.alertLevel <= 0.015;

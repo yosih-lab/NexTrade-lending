@@ -65,13 +65,11 @@ var TASE_SYMBOLS = [
   'YOSH.TA','ZION.TA','ZMRN.TA','ZVLG.TA'
 ];
 
-// ── Commodities & Forex ──
+// ── Indices (the only non-stock symbols scanned) ──
+// Kept under the legacy name COMMODITIES_SYMBOLS (used by server.js). No gold/oil/forex.
 var COMMODITIES_SYMBOLS = [
-  'GC=F',   // Gold futures
-  'SI=F',   // Silver futures
-  'CL=F',   // Crude Oil WTI
-  '^GSPC',  // S&P 500
-  'EURUSD=X' // EUR/USD
+  '^GSPC',   // S&P 500
+  'TA35.TA'  // TA-35 (Tel Aviv)
 ];
 
 // ── US STOCKS (~5000 — S&P 500 + NASDAQ 100 + Russell 2000 + large/mid cap) ──

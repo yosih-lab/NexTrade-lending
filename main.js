@@ -3977,16 +3977,17 @@ async function runBackgroundScanner() {
         var currentPrice = bars[bars.length - 1].close;
 
         // Skip penny/junk symbols (unreliable price action)
+        var isIndexSym = (sym.charAt(0) === '^' || sym === 'TA35.TA');
         if (currentPrice < 1) return;
 
         // Filter out dead/illiquid symbols (avg weekly volume too low = unreliable data)
         var last8 = bars.slice(-8);
         var avgVol8 = last8.reduce(function(s, b) { return s + (b.volume || 0); }, 0) / last8.length;
-        if (avgVol8 < 1000) return;
+        if (!isIndexSym && avgVol8 < 1000) return;
 
-        // Determine currency
+        // Determine currency (indices are quoted in points)
         var isTASE = sym.endsWith('.TA');
-        var curr = isTASE ? '₪' : '$';
+        var curr = isIndexSym ? '' : (isTASE ? '₪' : '$');
 
         // ===== SMA30 METHOD ENGINE (scanner-engine.js) =====
         // Runs Yosi's weekly method: SMA30 + S/R flips + 5-candle breakout/retest +
