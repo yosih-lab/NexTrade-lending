@@ -561,6 +561,8 @@ async function seedAndStart() {
   // the universe in rotating chunks on a schedule (also woken on-demand by /api/signals).
   if (NTScanner) {
     await loadSignalsFromDB();
+    await loadUsUniverse();
+    setInterval(() => { loadUsUniverse().catch(() => {}); }, 24 * 3600 * 1000);
     setTimeout(() => { scanSignalsChunk().catch(e => console.error('[Signals] first scan:', e.message)); }, 8000);
     setInterval(() => { scanSignalsChunk().catch(e => console.error('[Signals] cycle:', e.message)); }, SIG_CYCLE_MS);
     console.log('[NexTrade] ✓ Signal scanner scheduled every', Math.round(SIG_CYCLE_MS / 60000), 'min · universe', scanUniverse().length, 'symbols');
@@ -947,16 +949,63 @@ try {
   console.error('[NexTrade] ⚠ Could not load scanner engine — server signals disabled:', e.message);
 }
 
-// Which universe to scan on the server. US list is ~5000 symbols — too heavy for a
-// free tier + Yahoo limits — so default to TASE + commodities (~250). Override with
-// SCAN_UNIVERSE=all to include US.
-function scanUniverse() {
-  if (!SYMS) return [];
-  // Default: TASE + US stocks + the two indices. Rotates SIG_CHUNK symbols per cycle.
-  // Set SCAN_UNIVERSE=tase to restrict to Tel Aviv only.
-  if ((process.env.SCAN_UNIVERSE || 'all') === 'tase') return SYMS.TASE_SYMBOLS.concat(SYMS.COMMODITIES_SYMBOLS || []);
-  return SYMS.ALL_SCANNER_SYMBOLS;
+// Which universe to scan on the server: TASE + the two indices + ALL US common stocks.
+// The US list is downloaded from NASDAQ Trader (official symbol directory, ~5,500 common
+// stocks after removing ETFs / warrants / units / preferreds / test issues) at startup and
+// refreshed daily. If the download fails, the static list in scanner-symbols.js is used.
+// Set SCAN_UNIVERSE=tase to restrict to Tel Aviv only.
+let _usLive = null;            // { ts, list }
+let _universeCache = null;
+function rebuildUniverse() {
+  if (!SYMS) { _universeCache = []; return; }
+  const base = SYMS.TASE_SYMBOLS.concat(SYMS.COMMODITIES_SYMBOLS || []);
+  if ((process.env.SCAN_UNIVERSE || 'all') === 'tase') { _universeCache = base; return; }
+  const us = (_usLive && _usLive.list.length > 3000) ? _usLive.list : SYMS.US_SYMBOLS;
+  _universeCache = Array.from(new Set(base.concat(us)));
 }
+function scanUniverse() {
+  if (!_universeCache) rebuildUniverse();
+  return _universeCache;
+}
+function parseSymDir(text, kind) {
+  const out = [];
+  const bad = /warrant|\brights?\b|\bunits?\b|preferred|\bnotes?\b|depositary|debenture|subordinated|\d+(\.\d+)?\s?%|acquisition corp/i;
+  String(text || '').split(/\r?\n/).forEach((line, i) => {
+    if (i === 0 || !line || line.indexOf('|') === -1 || line.startsWith('File Creation')) return;
+    const c = line.split('|');
+    let sym = c[0], name = c[1] || '', etf, test;
+    if (kind === 'nasdaq') { test = c[3]; etf = c[6]; if (c[4] && c[4] !== 'N') return; }
+    else { etf = c[4]; test = c[6]; }
+    if (etf === 'Y' || test === 'Y' || bad.test(name)) return;
+    sym = String(sym || '').trim().toUpperCase().replace('.', '-');   // BRK.B → BRK-B (Yahoo)
+    if (!/^[A-Z]{1,5}(-[A-Z])?$/.test(sym)) return;
+    out.push(sym);
+  });
+  return out;
+}
+async function loadUsUniverse() {
+  try {
+    const hdr = { 'User-Agent': 'Mozilla/5.0 NexTrade' };
+    const [a, b] = await Promise.all([
+      httpsGetRaw('www.nasdaqtrader.com', '/dynamic/SymDir/nasdaqlisted.txt', hdr, 25000),
+      httpsGetRaw('www.nasdaqtrader.com', '/dynamic/SymDir/otherlisted.txt', hdr, 25000)
+    ]);
+    if (a.status !== 200 || b.status !== 200) throw new Error('HTTP ' + a.status + '/' + b.status);
+    const list = Array.from(new Set(parseSymDir(a.body, 'nasdaq').concat(parseSymDir(b.body, 'other'))));
+    if (list.length < 3000) throw new Error('suspiciously small list: ' + list.length);
+    _usLive = { ts: Date.now(), list: list };
+    rebuildUniverse();
+    console.log('[Signals] US universe loaded from NASDAQ Trader:', list.length, 'stocks · total universe', _universeCache.length);
+  } catch (e) {
+    console.error('[Signals] US universe download failed (' + e.message + ') — using static list of', SYMS ? SYMS.US_SYMBOLS.length : 0);
+    rebuildUniverse();
+  }
+}
+// Symbols that failed the liquidity / data rules are skipped for a few days (their
+// turnover barely changes), so the scan time goes to symbols that can actually signal.
+const ILLIQUID_RECHECK_MS = parseFloat(process.env.ILLIQUID_RECHECK_HOURS || '72') * 3600 * 1000;
+const _illiquidUntil = new Map();
+function markSkip(sym) { _illiquidUntil.set(sym, Date.now() + ILLIQUID_RECHECK_MS); }
 const INDEX_SYMS = ['^GSPC', 'TA35.TA'];
 function isIndexSym(sym) { return INDEX_SYMS.indexOf(sym) !== -1; }
 
@@ -1079,10 +1128,19 @@ async function scanSignalsChunk() {
     const universe = scanUniverse();
     if (!universe.length) return;
     const chunk = [];
-    for (let i = 0; i < SIG_CHUNK; i++) chunk.push(universe[(_scanOffset + i) % universe.length]);
+    // next SIG_CHUNK symbols that are not on the illiquid/no-data cooldown
+    const nowMs = Date.now();
+    let steps = 0;
+    while (chunk.length < SIG_CHUNK && steps < universe.length) {
+      const s = universe[_scanOffset % universe.length];
+      _scanOffset = (_scanOffset + 1) % universe.length;
+      steps++;
+      const until = _illiquidUntil.get(s);
+      if (until && until > nowMs) continue;
+      chunk.push(s);
+    }
     // the two indices are checked on every cycle
     INDEX_SYMS.forEach(s => { if (chunk.indexOf(s) === -1) chunk.push(s); });
-    _scanOffset = (_scanOffset + SIG_CHUNK) % universe.length;
 
     let added = 0;
     for (let i = 0; i < chunk.length; i += SIG_CONCURRENCY) {
@@ -1091,18 +1149,18 @@ async function scanSignalsChunk() {
         try {
           const json = await fetchYahoo(sym, '1wk', '5y');
           const bars = barsFromYahoo(json);
-          if (!bars || bars.length < 21) return;
+          if (!bars || bars.length < 21) { markSkip(sym); return; }
           const price = bars[bars.length - 1].close;
-          if (price < 1) return;
+          if (price < 1) { markSkip(sym); return; }
           const last8 = bars.slice(-8);
           const avgVol8 = last8.reduce((s, b) => s + (b.volume || 0), 0) / last8.length;
-          if (avgVol8 < 1000 && !isIndexSym(sym)) return;
+          if (avgVol8 < 1000 && !isIndexSym(sym)) { markSkip(sym); return; }
           // liquidity gate (3 months ≈ 13 weekly bars)
           let liq = null;
           if (!isIndexSym(sym)) {
             const cur = json.chart.result[0].meta && json.chart.result[0].meta.currency;
             liq = turnoverStats(sym, bars, cur, 5, 13);
-            if (!liq || liq.avgTurnover < minTurnoverFor(sym)) return;
+            if (!liq || liq.avgTurnover < minTurnoverFor(sym)) { markSkip(sym); return; }
             const lw = turnoverStats(sym, bars.slice(0, -1), cur, 5, 1);
             liq.lastWeekTurnover = lw ? lw.avgTurnover : null;
           }
