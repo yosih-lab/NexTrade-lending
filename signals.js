@@ -38,7 +38,15 @@
 
   var activeTab = 'signals';
   var refreshTimer = null;
-  var favFilter = false; // when true, show only favorite symbols in the signals tab
+  // Signals-tab view state
+  var VIEW_KEY = 'nt_sig_view';
+  var viewMode = 'list';      // 'list' (compact rows) | 'cards'
+  try { if (localStorage.getItem(VIEW_KEY) === 'cards') viewMode = 'cards'; } catch (e) {}
+  var filterKey = 'all';      // all | long | short | ready | fav
+  var sortBy = 'newest';      // newest | entry | rr
+  var marketFilter = 'all';   // all | tase | us | cmd
+  var textFilter = '';
+  var _expanded = {};         // row key -> true (expanded details)
 
   // ---------- plan helpers (thin wrappers over window.NTPlan) ----------
   function isPremium() { try { return !window.NTPlan || window.NTPlan.isPremium(); } catch (e) { return true; } }
@@ -178,6 +186,7 @@
       var levels = computeLevels(a, dir);
       out.push({
         sym: a.sym, name: a.name || (a.sym || '').replace('.TA', ''),
+        key: a.key || (a.sym + '_' + dir),
         dir: dir, curr: a.curr || '',
         price: a.price,
         entry: levels.entry, stop: levels.stop, tp: levels.tp, rr: levels.rr,
@@ -257,17 +266,106 @@
   };
 
   // ---------- rendering ----------
-  function miniChart(dir) {
-    // Schematic sparkline for illustration only (no network). Up for long, down for short.
-    var up = dir === 'long';
-    var color = up ? '#26a69a' : '#ef5350';
-    var path = up
-      ? 'M2,46 L30,40 L58,44 L92,30 L130,34 L170,14 L200,8'
-      : 'M2,10 L30,16 L58,12 L92,26 L130,22 L170,42 L200,50';
-    return '<svg class="sig-thumb" viewBox="0 0 200 60" preserveAspectRatio="none">' +
-      '<polyline points="0,58 200,58" stroke="rgba(255,255,255,.06)" fill="none"/>' +
-      '<path d="' + path + '" fill="none" stroke="' + color + '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '</svg>';
+  function marketOf(sym) {
+    sym = sym || '';
+    if (/\.TA$/i.test(sym)) return 'tase';
+    if (/=F$|-USD$/i.test(sym)) return 'cmd';
+    return 'us';
+  }
+  var MARKET_TXT = { tase: 'ת״א', us: 'ארה״ב', cmd: 'סחורות/קריפטו' };
+
+  function ageTxt(ts) {
+    if (!ts) return '';
+    var m = Math.floor((Date.now() - ts) / 60000);
+    if (m < 1) return 'ממש עכשיו';
+    if (m < 60) return 'לפני ' + m + ' דק׳';
+    var h = Math.floor(m / 60);
+    if (h < 24) return 'לפני ' + h + ' שע׳';
+    var d = Math.floor(h / 24);
+    return 'לפני ' + d + (d === 1 ? ' יום' : ' ימים');
+  }
+  function isNewSig(s) { return s.ts && (Date.now() - s.ts) < 24 * 3600 * 1000; }
+  function rrNum(s) { var n = parseFloat(String(s.rr || '').split(':')[1]); return isNaN(n) ? 0 : n; }
+
+  // Real stop / entry / target bar with the live price marker (always left→right).
+  function rangeBar(s) {
+    var live = livePrice(s.sym);
+    var vals = [s.stop, s.entry, s.tp];
+    if (live != null) vals.push(live);
+    for (var i = 0; i < vals.length; i++) { if (vals[i] == null || isNaN(vals[i])) return ''; }
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+    var span = (hi - lo) || 1;
+    function pos(v) { return ((v - lo) / span * 100).toFixed(1); }
+    function seg(a, b, cls) {
+      var l = Math.min(a, b), w = Math.abs(a - b);
+      return '<div class="' + cls + '" style="left:' + pos(l) + '%;width:' + (w / span * 100).toFixed(1) + '%"></div>';
+    }
+    return '<div class="sig-rb" dir="ltr" title="סטופ · כניסה · יעד">' +
+      seg(s.stop, s.entry, 'sig-rb-risk') + seg(s.entry, s.tp, 'sig-rb-rew') +
+      '<div class="sig-rb-entry" style="left:' + pos(s.entry) + '%"></div>' +
+      (live != null ? '<div class="sig-rb-live" style="left:' + pos(live) + '%"></div>' : '') +
+    '</div>';
+  }
+
+  function adminDelBtn(s) {
+    if (!isAdmin()) return '';
+    return '<button class="sig-del" title="מחק איתות (מנהל)" onclick="event.stopPropagation();NTSignals.deleteSignal(\'' + s.sym + '\',\'' + s.dir + '\')">🗑</button>';
+  }
+
+  // Shared detail block (reasons, earnings, actions) for row expansion.
+  function sigDetail(s) {
+    var earn = earningsInfo(s.sym);
+    var setupTxt = SETUP_TXT[s.setup] || s.setup || '';
+    var stt = signalStatus(s);
+    var out = '<div class="sr-detail-grid">' +
+      '<div class="sig-lvl entry"><div class="sig-lvl-label">כניסה</div><div class="sig-lvl-val">' + fmt(s.entry, s.curr) + '</div></div>' +
+      '<div class="sig-lvl stop"><div class="sig-lvl-label">סטופ</div><div class="sig-lvl-val">' + fmt(s.stop, s.curr) + '</div></div>' +
+      '<div class="sig-lvl tp"><div class="sig-lvl-label">יעד</div><div class="sig-lvl-val">' + fmt(s.tp, s.curr) + '</div></div>' +
+    '</div>';
+    var chips = '';
+    if (setupTxt) chips += '<span class="sig-setup">' + esc(setupTxt) + '</span> ';
+    if (s.trendType) chips += '<span class="sig-setup">מגמה ' + esc(s.trendType) + '</span> ';
+    chips += '<span class="sig-setup">' + (MARKET_TXT[marketOf(s.sym)] || '') + '</span>';
+    if (stt.dist != null) chips += ' <span class="sig-dist ' + (Math.abs(stt.dist) <= 1.5 ? 'near' : '') + '">' + (stt.dist >= 0 ? '+' : '') + stt.dist.toFixed(1) + '% מהכניסה</span>';
+    out += '<div class="sr-chips">' + chips + '</div>';
+    if (s.reasons && s.reasons.length) out += '<div class="sig-why">💡 ' + s.reasons.slice(0, 3).map(esc).join(' · ') + '</div>';
+    if (earn && canUse('earnings')) {
+      out += '<div class="sig-earn ' + (earn.exitToday ? 'warn' : '') + '">📅 דוח בעוד ' + earn.days + ' ימים' +
+        (earn.exitToday ? ' — מומלץ לצאת יום לפני!' : '') + '</div>';
+    }
+    out += '<div class="sig-card-foot">' +
+      '<button class="sig-btn" onclick="event.stopPropagation();NTSignals.addTrade(\'' + s.sym + '\')">הוסף לתיק</button>' +
+      '<button class="sig-btn ghost" onclick="event.stopPropagation();NTSignals.setAlert(\'' + s.sym + '\')">🔔 קבע התראה</button>' +
+    '</div>';
+    return out;
+  }
+
+  // Compact one-line row (default view). Click to expand details.
+  function signalRow(s) {
+    var stt = signalStatus(s);
+    var st = stt.key;
+    var fav = isFav(s.sym);
+    var open = !!_expanded[s.key];
+    var ready = (st === 'armed' || st === 'active');
+    var isLong = s.dir === 'long';
+    return '<div class="sig-row ' + s.dir + (ready ? ' ready' : '') + (st === 'hit' || st === 'stopped' ? ' done' : '') + (open ? ' open' : '') + '">' +
+      '<div class="sr-main" data-k="' + esc(s.key) + '" onclick="NTSignals.toggleRow(this.getAttribute(\'data-k\'))">' +
+        '<button class="sig-fav sr-fav ' + (fav ? 'on' : '') + '" title="מעקב" onclick="event.stopPropagation();NTSignals.toggleFav(\'' + s.sym + '\')">' + (fav ? '★' : '☆') + '</button>' +
+        '<div class="sr-sym"><b>' + esc((s.sym || '').replace('.TA', '')) + '</b>' +
+          (isNewSig(s) ? '<span class="sr-new">חדש</span>' : '') +
+          '<small>' + esc(s.name) + '</small></div>' +
+        '<span class="sr-dir ' + s.dir + '">' + (isLong ? '▲ לונג' : '▼ שורט') + '</span>' +
+        '<div class="sr-lv"><small>כניסה</small>' + fmt(s.entry, s.curr) + '</div>' +
+        '<div class="sr-lv stop"><small>סטופ</small>' + fmt(s.stop, s.curr) + '</div>' +
+        '<div class="sr-lv tp"><small>יעד</small>' + fmt(s.tp, s.curr) + '</div>' +
+        '<div class="sr-bar">' + rangeBar(s) + '</div>' +
+        '<div class="sr-rr"><small>R:R</small>' + esc(String(s.rr)) + '</div>' +
+        '<span class="sig-status ' + st + '">' + STATUS_TXT[st] + '</span>' +
+        '<div class="sr-age">' + ageTxt(s.ts) + '</div>' +
+        '<div class="sr-act">' + adminDelBtn(s) + '<span class="sr-chev">' + (open ? '▴' : '▾') + '</span></div>' +
+      '</div>' +
+      (open ? '<div class="sr-detail">' + sigDetail(s) + '</div>' : '') +
+    '</div>';
   }
 
   function signalCard(s) {
@@ -297,17 +395,19 @@
       whyTxt = '<div class="sig-why">💡 ' + s.reasons.slice(0, 2).join(' · ') + '</div>';
     }
 
-    return '<div class="sig-card ' + s.dir + '">' +
+    return '<div class="sig-card ' + s.dir + ((st === 'armed' || st === 'active') ? ' ready' : '') + '">' +
       '<div class="sig-head">' +
         '<div><div class="sig-sym">' + (s.sym || '').replace('.TA', '') +
+          (isNewSig(s) ? ' <span class="sr-new">חדש</span>' : '') +
           (setupTxt ? ' <span class="sig-setup">' + setupTxt + '</span>' : '') + '</div>' +
-        '<div class="sig-name">' + s.name + '</div></div>' +
+        '<div class="sig-name">' + s.name + ' · ' + ageTxt(s.ts) + '</div></div>' +
         '<div class="sig-head-right">' +
+          adminDelBtn(s) +
           '<button class="sig-fav ' + (fav ? 'on' : '') + '" title="קבל התראה על מניה זו" onclick="NTSignals.toggleFav(\'' + s.sym + '\')">' + (fav ? '★' : '☆') + '</button>' +
           '<span class="sig-dir ' + s.dir + '">' + dirTxt + '</span>' +
         '</div>' +
       '</div>' +
-      miniChart(s.dir) +
+      rangeBar(s) +
       '<div class="sig-levels">' +
         '<div class="sig-lvl entry"><div class="sig-lvl-label">כניסה</div><div class="sig-lvl-val">' + fmt(s.entry, s.curr) + '</div></div>' +
         '<div class="sig-lvl stop"><div class="sig-lvl-label">סטופ</div><div class="sig-lvl-val">' + fmt(s.stop, s.curr) + '</div></div>' +
@@ -390,37 +490,72 @@
     '</div>';
   }
 
-  function renderSignals() {
+  // De-duped (symbol+direction, newest wins) normalized signals.
+  function dedupedSignals() {
     var sigs = loadSignals();
-    // de-dupe by symbol+dir, keep newest
     var seen = {}, uniq = [];
     sigs.sort(function (a, b) { return b.ts - a.ts; });
     sigs.forEach(function (s) {
       var k = s.sym + '_' + s.dir;
       if (seen[k]) return; seen[k] = true; uniq.push(s);
     });
+    return uniq;
+  }
 
-    // Favorites filter toggle bar
-    var favCount = loadFavs().length;
-    var filterBar = '<div class="sf-filter">' +
-      '<button class="sf-filter-btn ' + (!favFilter ? 'active' : '') + '" onclick="NTSignals.setFavFilter(false)">הכל</button>' +
-      '<button class="sf-filter-btn ' + (favFilter ? 'active' : '') + '" onclick="NTSignals.setFavFilter(true)">★ מועדפים' + (favCount ? ' (' + favCount + ')' : '') + '</button>' +
+  function isReadySig(s) { var k = signalStatus(s).key; return k === 'armed' || k === 'active'; }
+
+  // Chips + (grouped) list + upsell. Re-rendered on its own when filtering/typing.
+  function renderSigDyn() {
+    var uniq = dedupedSignals();
+    var tf = (textFilter || '').trim().toLowerCase();
+    var base = uniq.filter(function (s) {
+      if (marketFilter !== 'all' && marketOf(s.sym) !== marketFilter) return false;
+      if (tf && (s.sym || '').toLowerCase().indexOf(tf) === -1 && (s.name || '').toLowerCase().indexOf(tf) === -1) return false;
+      return true;
+    });
+    var cnt = { all: base.length, long: 0, short: 0, ready: 0, fav: 0 };
+    base.forEach(function (s) {
+      if (s.dir === 'long') cnt.long++; else cnt.short++;
+      if (isReadySig(s)) cnt.ready++;
+      if (isFav(s.sym)) cnt.fav++;
+    });
+    function chip(k, label) {
+      return '<button class="sf-chip ' + k + (filterKey === k ? ' active' : '') + '" onclick="NTSignals.setFilter(\'' + k + '\')">' +
+        label + ' <b>' + cnt[k] + '</b></button>';
+    }
+    var filterBar = '<div class="sf-chips">' +
+      chip('all', 'הכל') + chip('long', '▲ לונג') + chip('short', '▼ שורט') + chip('ready', '⚡ מזומנות') + chip('fav', '★ מועדפים') +
     '</div>';
 
-    var list = uniq;
-    if (favFilter) list = uniq.filter(function (s) { return isFav(s.sym); });
-
-    var perf = perfSummary();
-    var hero = favFilter ? '' : heroCard(uniq);
+    var list = base.filter(function (s) {
+      if (filterKey === 'long') return s.dir === 'long';
+      if (filterKey === 'short') return s.dir === 'short';
+      if (filterKey === 'ready') return isReadySig(s);
+      if (filterKey === 'fav') return isFav(s.sym);
+      return true;
+    });
+    if (sortBy === 'entry') {
+      list.sort(function (a, b) {
+        var da = signalStatus(a).dist, db = signalStatus(b).dist;
+        da = da == null ? 1e9 : Math.abs(da); db = db == null ? 1e9 : Math.abs(db);
+        return da - db || b.ts - a.ts;
+      });
+    } else if (sortBy === 'rr') {
+      list.sort(function (a, b) { return rrNum(b) - rrNum(a) || b.ts - a.ts; });
+    } else {
+      list.sort(function (a, b) { return b.ts - a.ts; });
+    }
 
     if (!list.length) {
       var emptyMsg;
-      if (favFilter) {
+      if (!uniq.length) {
+        emptyMsg = 'אין איתותים פעילים כרגע.<br>הסורק רץ ברקע ומעדכן אוטומטית — איתותים חדשים יופיעו כאן.';
+      } else if (filterKey === 'fav') {
         emptyMsg = 'אין איתותים במניות המועדפות שלך כרגע.<br>סמן מניות בכוכב כדי לקבל עליהן התראות.';
       } else {
-        emptyMsg = 'אין איתותים פעילים כרגע.<br>הסורק רץ ברקע ומעדכן אוטומטית — איתותים חדשים יופיעו כאן.';
+        emptyMsg = 'אין איתותים שמתאימים לסינון.<br><button class="sf-filter-btn" onclick="NTSignals.resetFilters()">נקה סינון</button>';
       }
-      return perf + filterBar + '<div class="sf-empty">' + emptyMsg + '</div>';
+      return filterBar + '<div class="sf-empty">' + emptyMsg + '</div>';
     }
 
     // Free-tier cap + upsell. When the SERVER feed is active, enforcement already
@@ -428,14 +563,14 @@
     // reported. Otherwise (local fallback) we cap client-side.
     var upsell = '';
     if (_serverInfo) {
-      if (!_serverInfo.isPremium && _serverInfo.total > list.length && !favFilter) {
-        var hiddenS = _serverInfo.total - list.length;
+      if (!_serverInfo.isPremium && _serverInfo.total > uniq.length && filterKey !== 'fav') {
+        var hiddenS = _serverInfo.total - uniq.length;
         var goldTier = _serverInfo.tier === 'gold';
         upsell = '<div class="sf-upsell">' +
           '<div class="sf-upsell-txt">' +
             '<div class="sf-upsell-title">🔒 יש עוד ' + hiddenS + ' איתותים</div>' +
             '<div class="sf-upsell-sub">' + (goldTier
-              ? 'במסלול גולד מוצגים עד ' + list.length + ' איתותים בזמן אמת. שדרג לפרימיום לקבל את הכל ללא הגבלה.'
+              ? 'במסלול גולד מוצגים עד ' + uniq.length + ' איתותים בזמן אמת. שדרג לפרימיום לקבל את הכל ללא הגבלה.'
               : 'במסלול הבסיסי האיתותים מוצגים בעיכוב ובכמות מוגבלת. שדרג כדי לקבל את הכל בזמן אמת.') + '</div>' +
           '</div>' +
           '<button class="sf-upsell-btn" onclick="NTSignals.openUpgrade()">⭐ שדרג</button>' +
@@ -456,7 +591,68 @@
       }
     }
 
-    return perf + hero + filterBar + '<div class="sf-grid">' + list.map(signalCard).join('') + '</div>' + upsell;
+    // Group: ready to enter → waiting → finished (hit / stopped)
+    var gReady = [], gWait = [], gDone = [];
+    list.forEach(function (s) {
+      var k = signalStatus(s).key;
+      if (k === 'armed' || k === 'active') gReady.push(s);
+      else if (k === 'hit' || k === 'stopped') gDone.push(s);
+      else gWait.push(s);
+    });
+    var groups = [
+      { t: '⚡ מזומנות לכניסה', cls: 'ready', items: gReady },
+      { t: '👀 ממתינות לכניסה', cls: 'wait', items: gWait },
+      { t: '✓ הושלמו / נפגעו', cls: 'done', items: gDone }
+    ].filter(function (g) { return g.items.length; });
+    var showHeads = groups.length > 1;
+    var body = groups.map(function (g) {
+      var inner = viewMode === 'cards'
+        ? '<div class="sf-grid">' + g.items.map(signalCard).join('') + '</div>'
+        : '<div class="sig-rows">' + g.items.map(signalRow).join('') + '</div>';
+      return (showHeads ? '<div class="sig-group ' + g.cls + '"><span>' + g.t + '</span><b>' + g.items.length + '</b></div>' : '') + inner;
+    }).join('');
+
+    return filterBar + body + upsell;
+  }
+
+  function renderSignals() {
+    var uniq = dedupedSignals();   // also refreshes _serverInfo
+    var perf = perfSummary();
+    var hero = (filterKey === 'all' && !textFilter && marketFilter === 'all') ? heroCard(uniq) : '';
+
+    // live status strip
+    var lastScan = _serverInfo && _serverInfo.lastScan;
+    var live = '<div class="sf-live-bar">' +
+      '<span class="sf-live"><i></i>LIVE</span>' +
+      '<span class="sf-live-txt">הסורק פעיל' + (lastScan ? ' · עודכן ' + ageTxt(lastScan) : '') + '</span>' +
+      (isAdmin() && uniq.length ? '<button class="sf-clearall" onclick="NTSignals.clearAllSignals()">🗑 מחק הכל (מנהל)</button>' : '') +
+    '</div>';
+
+    // toolbar: search, sort, market, view toggle
+    var mk = {}, mkN = 0;
+    uniq.forEach(function (s) { var m = marketOf(s.sym); if (!mk[m]) { mk[m] = 1; mkN++; } });
+    var marketSel = '';
+    if (mkN > 1) {
+      marketSel = '<select class="sf-sel" onchange="NTSignals.setMarket(this.value)">' +
+        '<option value="all"' + (marketFilter === 'all' ? ' selected' : '') + '>כל השווקים</option>' +
+        Object.keys(mk).map(function (m) { return '<option value="' + m + '"' + (marketFilter === m ? ' selected' : '') + '>' + MARKET_TXT[m] + '</option>'; }).join('') +
+      '</select>';
+    }
+    var toolbar = '<div class="sf-toolbar">' +
+      '<input id="sigTextFilter" class="sf-search" type="search" placeholder="🔍 חפש מניה…" value="' + esc(textFilter) + '" oninput="NTSignals.onFilterText(this.value)" autocomplete="off">' +
+      '<select class="sf-sel" onchange="NTSignals.setSort(this.value)">' +
+        '<option value="newest"' + (sortBy === 'newest' ? ' selected' : '') + '>מיון: החדשים ביותר</option>' +
+        '<option value="entry"' + (sortBy === 'entry' ? ' selected' : '') + '>מיון: הקרובים לכניסה</option>' +
+        '<option value="rr"' + (sortBy === 'rr' ? ' selected' : '') + '>מיון: יחס סיכוי/סיכון</option>' +
+      '</select>' +
+      marketSel +
+      '<div class="sf-viewtog">' +
+        '<button class="' + (viewMode === 'list' ? 'active' : '') + '" title="רשימה" onclick="NTSignals.setView(\'list\')">☰</button>' +
+        '<button class="' + (viewMode === 'cards' ? 'active' : '') + '" title="כרטיסים" onclick="NTSignals.setView(\'cards\')">▦</button>' +
+      '</div>' +
+    '</div>';
+
+    return perf + hero + live + toolbar + '<div id="sigDyn">' + renderSigDyn() + '</div>';
   }
 
   function tradePnl(t, live) {
@@ -580,7 +776,13 @@
   function render() {
     var body = document.getElementById('sfBody');
     if (!body) return;
-    if (activeTab === 'signals') body.innerHTML = renderSignals();
+    if (activeTab === 'signals') {
+      // While typing in the search box, only refresh the list (keeps focus/caret).
+      var tfEl = document.getElementById('sigTextFilter');
+      var dyn = document.getElementById('sigDyn');
+      if (tfEl && dyn && document.activeElement === tfEl) dyn.innerHTML = renderSigDyn();
+      else body.innerHTML = renderSignals();
+    }
     else if (activeTab === 'trades') body.innerHTML = renderTrades();
     else if (activeTab === 'history') body.innerHTML = renderHistory();
     else if (activeTab === 'alerts') body.innerHTML = renderAlertsLog();
@@ -981,8 +1183,84 @@
     try { if (typeof window.selectSymbol === 'function') window.selectSymbol(sym); } catch (e) {}
   }
 
-  // Toggle the favorites filter in the signals tab.
-  function setFavFilter(on) { favFilter = !!on; render(); }
+  // Back-compat: old favorites toggle maps onto the new chip filter.
+  function setFavFilter(on) { filterKey = on ? 'fav' : 'all'; render(); }
+  function setFilter(k) { filterKey = k || 'all'; render(); }
+  function setSort(v) { sortBy = v || 'newest'; render(); }
+  function setMarket(v) { marketFilter = v || 'all'; render(); }
+  function setView(v) {
+    viewMode = v === 'cards' ? 'cards' : 'list';
+    try { localStorage.setItem(VIEW_KEY, viewMode); } catch (e) {}
+    render();
+  }
+  function resetFilters() { filterKey = 'all'; marketFilter = 'all'; textFilter = ''; render(); }
+  function onFilterText(v) {
+    textFilter = String(v || '');
+    var dyn = document.getElementById('sigDyn');
+    if (dyn) dyn.innerHTML = renderSigDyn(); else render();
+  }
+  function toggleRow(key) {
+    if (_expanded[key]) delete _expanded[key]; else _expanded[key] = true;
+    var dyn = document.getElementById('sigDyn');
+    if (dyn) dyn.innerHTML = renderSigDyn(); else render();
+  }
+
+  // ---- admin: delete signals from the scanner feed ----
+  function purgeLocalSignals(sym, dir) {
+    function match(a) {
+      if (!a || a.sym !== sym) return false;
+      if (!dir) return true;
+      var isShort = a.direction === 'short' || a.direction === 'bearish' || a.condition === 'sell_signal';
+      return (isShort ? 'short' : 'long') === dir;
+    }
+    try {
+      var sc = loadServerCache();
+      if (sc && Array.isArray(sc.data)) {
+        sc.data = sc.data.filter(function (a) { return !match(a); });
+        localStorage.setItem(SERVER_KEY, JSON.stringify(sc));
+      }
+    } catch (e) {}
+    try {
+      var al = JSON.parse(localStorage.getItem(ALERTS_KEY) || '[]');
+      al = al.filter(function (a) { return !match(a); });
+      localStorage.setItem(ALERTS_KEY, JSON.stringify(al));
+    } catch (e) {}
+  }
+  function adminDeleteRequest(body, done) {
+    var token = authToken();
+    if (!token) { done(null); return; }   // demo/offline: local only
+    fetch(apiBase() + '/api/admin/signals/delete', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }, function () { return { ok: r.ok, d: {} }; }); })
+      .then(function (res) { done(res.ok ? null : ((res.d && res.d.error) || 'שגיאה במחיקה')); })
+      .catch(function () { done('שגיאת רשת'); });
+  }
+  function deleteSignal(sym, dir) {
+    if (!isAdmin()) return;
+    if (!confirm('למחוק את האיתות על ' + (sym || '').replace('.TA', '') + ' (' + (dir === 'long' ? 'לונג' : 'שורט') + ')?')) return;
+    adminDeleteRequest({ sym: sym, direction: dir }, function (err) {
+      if (err) { alert(err); return; }
+      purgeLocalSignals(sym, dir);
+      render();
+      syncServerSignals(true);
+    });
+  }
+  function clearAllSignals(skipConfirm) {
+    if (!isAdmin()) return;
+    if (skipConfirm !== true && !confirm('למחוק את כל האיתותים מהסורק? הפעולה חלה על כל המשתמשים.')) return;
+    adminDeleteRequest({ all: true }, function (err) {
+      if (err) { alert(err); return; }
+      try {
+        var sc = loadServerCache();
+        if (sc) { sc.data = []; sc.total = 0; localStorage.setItem(SERVER_KEY, JSON.stringify(sc)); }
+        localStorage.setItem(ALERTS_KEY, '[]');
+      } catch (e) {}
+      render();
+      syncServerSignals(true);
+    });
+  }
 
   // "Set alert" — mark the symbol as a favorite (so it's watched) and confirm.
   function setAlert(sym) {
@@ -1063,6 +1341,9 @@
     switchTab: switchTab, addTrade: addTrade, closeTrade: closeTrade,
     analyze: analyze, render: render,
     toggleFav: toggleFav, setFavFilter: setFavFilter, setAlert: setAlert,
+    setFilter: setFilter, setSort: setSort, setMarket: setMarket, setView: setView,
+    resetFilters: resetFilters, onFilterText: onFilterText, toggleRow: toggleRow,
+    deleteSignal: deleteSignal, clearAllSignals: clearAllSignals, isAdmin: isAdmin,
     analyzeSymbol: analyzeSymbol, analyzeFromInput: analyzeFromInput, closeAiModal: closeAiModal,
     syncServerSignals: syncServerSignals,
     toggleUserMenu: toggleUserMenu,

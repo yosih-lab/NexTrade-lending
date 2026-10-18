@@ -962,6 +962,7 @@ const SIG_MAX_AGE_MS = parseInt(process.env.SIGNAL_MAX_AGE_MS || String(7 * 24 *
 
 let _sigStore   = [];   // authoritative signals, newest-first
 let _sigByKey   = {};   // key -> signal (dedupe one per symbol/day)
+const _sigDismissed = new Set();   // keys an admin deleted — scanner must not recreate them
 let _scanOffset = 0;    // rotates through the universe across cycles
 let _scanBusy   = false;
 let _lastSigScan= 0;
@@ -1017,7 +1018,7 @@ function buildSignalObject(sym, a) {
 
 function pruneSignals() {
   const cutoff = Date.now() - SIG_MAX_AGE_MS;
-  _sigStore = _sigStore.filter(s => s.ts >= cutoff);
+  _sigStore = _sigStore.filter(s => s.ts >= cutoff && !_sigDismissed.has(s.key));
   _sigByKey = {};
   _sigStore.forEach(s => { _sigByKey[s.key] = s; });
   _sigStore.sort((a, b) => b.ts - a.ts);
@@ -1053,6 +1054,7 @@ async function scanSignalsChunk() {
           const armed = a.alertLevel != null && Math.abs(a.price - a.alertLevel) / a.alertLevel <= 0.015;
           if (a.status !== 'entry' && !armed) return;
           const sig = buildSignalObject(sym, a);
+          if (_sigDismissed.has(sig.key)) return;
           if (!_sigByKey[sig.key]) added++;
           _sigByKey[sig.key] = sig;
         } catch (e) { /* skip symbol on error */ }
@@ -1084,12 +1086,47 @@ async function loadSignalsFromDB() {
     const cutoff = Date.now() - SIG_MAX_AGE_MS;
     const { data, error } = await supabase.from('signals').select('payload,ts').gte('ts', cutoff).order('ts', { ascending: false }).limit(400);
     if (error) { console.error('[Signals] load error:', error.message); return; }
-    (data || []).forEach(r => { const s = r.payload; if (s && s.key) _sigByKey[s.key] = s; });
+    (data || []).forEach(r => {
+      const s = r.payload;
+      if (!s || !s.key) return;
+      if (s.dismissed) { _sigDismissed.add(s.key); delete _sigByKey[s.key]; return; }
+      if (!_sigDismissed.has(s.key)) _sigByKey[s.key] = s;
+    });
     _sigStore = Object.keys(_sigByKey).map(k => _sigByKey[k]);
     pruneSignals();
     console.log('[Signals] loaded', _sigStore.length, 'from DB');
   } catch (e) { console.error('[Signals] load exception:', e.message); }
 }
+
+// Admin: delete signals from the feed. Body: { all:true } | { sym, direction } | { key }.
+// Deleted keys become tombstones (persisted) so the scanner does not recreate them today.
+app.post('/api/admin/signals/delete', requireAdmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    let targets;
+    if (b.all === true) targets = _sigStore.slice();
+    else if (typeof b.key === 'string' && b.key) targets = _sigStore.filter(s => s.key === b.key);
+    else if (typeof b.sym === 'string' && b.sym) {
+      const dir = b.direction === 'short' ? 'short' : (b.direction === 'long' ? 'long' : null);
+      targets = _sigStore.filter(s => s.sym === b.sym && (!dir || s.direction === dir));
+    } else return res.status(400).json({ error: 'חסר מזהה איתות' });
+    const now = Date.now();
+    const rows = [];
+    targets.forEach(s => {
+      _sigDismissed.add(s.key);
+      rows.push({ key: s.key, ts: now, sym: s.sym, payload: { key: s.key, dismissed: true, ts: now, sym: s.sym } });
+    });
+    pruneSignals();
+    if (supabase && rows.length) {
+      const { error } = await supabase.from('signals').upsert(rows, { onConflict: 'key' });
+      if (error) console.error('[Signals] tombstone persist error:', error.message);
+    }
+    res.json({ ok: true, deleted: targets.length, remaining: _sigStore.length });
+  } catch (e) {
+    console.error('[NexTrade] POST /api/admin/signals/delete error:', e.message);
+    res.status(500).json({ error: 'שגיאה במחיקת האיתותים' });
+  }
+});
 
 // Return signals a user is ENTITLED to, by tier:
 //   premium → everything, real-time.

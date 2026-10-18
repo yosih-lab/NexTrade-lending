@@ -2510,6 +2510,103 @@
       transition:background .15s;
     }
     .sig-btn:hover { background:#1a4fd6; }
+
+    /* ===== Signals page v2: live strip, toolbar, chips, rows, range bar ===== */
+    .sf-live-bar { display:flex; align-items:center; gap:.6rem; max-width:1100px; margin:0 auto .6rem; flex-wrap:wrap; }
+    .sf-live { display:inline-flex; align-items:center; gap:.35rem; font-size:.68rem; font-weight:900; letter-spacing:1px;
+      color:#4ade80; background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.35); border-radius:999px; padding:.15rem .6rem; }
+    .sf-live i { width:7px; height:7px; border-radius:50%; background:#4ade80; box-shadow:0 0 0 0 rgba(74,222,128,.7); animation:sfPulse 1.6s infinite; }
+    @keyframes sfPulse { 0%{box-shadow:0 0 0 0 rgba(74,222,128,.6);} 70%{box-shadow:0 0 0 8px rgba(74,222,128,0);} 100%{box-shadow:0 0 0 0 rgba(74,222,128,0);} }
+    .sf-live-txt { font-size:.74rem; color:var(--text-muted); font-weight:700; flex:1; }
+    .sf-clearall, .sig-del { background:rgba(239,83,80,.12); border:1px solid rgba(239,83,80,.4); color:#ff8a87; border-radius:8px;
+      cursor:pointer; font-family:Heebo,sans-serif; font-weight:800; }
+    .sf-clearall { font-size:.72rem; padding:.3rem .7rem; }
+    .sig-del { font-size:.78rem; padding:.15rem .4rem; line-height:1; }
+    .sf-clearall:hover, .sig-del:hover { background:rgba(239,83,80,.28); }
+
+    .sf-toolbar { display:flex; gap:.5rem; max-width:1100px; margin:0 auto .6rem; flex-wrap:wrap; align-items:center; }
+    .sf-search, .sf-sel { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:10px;
+      padding:.45rem .7rem; font-size:.8rem; font-family:Heebo,sans-serif; outline:none; }
+    .sf-search { flex:1; min-width:140px; }
+    .sf-search:focus, .sf-sel:focus { border-color:var(--accent); }
+    .sf-viewtog { display:inline-flex; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+    .sf-viewtog button { background:var(--surface2); border:none; color:var(--text-muted); padding:.42rem .75rem; cursor:pointer; font-size:.95rem; }
+    .sf-viewtog button.active { background:var(--accent); color:#fff; }
+
+    .sf-chips { display:flex; gap:.4rem; max-width:1100px; margin:0 auto .8rem; overflow-x:auto; padding-bottom:.2rem; -webkit-overflow-scrolling:touch; }
+    .sf-chip { flex:0 0 auto; background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); border-radius:999px;
+      padding:.4rem .85rem; font-size:.78rem; font-weight:800; cursor:pointer; font-family:Heebo,sans-serif; white-space:nowrap; transition:all .15s; }
+    .sf-chip b { margin-inline-start:.25rem; background:rgba(255,255,255,.08); border-radius:999px; padding:0 .4rem; font-size:.7rem; color:#fff; }
+    .sf-chip:hover { color:#fff; }
+    .sf-chip.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+    .sf-chip.long.active { background:var(--green); border-color:var(--green); }
+    .sf-chip.short.active { background:var(--red); border-color:var(--red); }
+    .sf-chip.ready.active { background:var(--gold); border-color:var(--gold); color:#1a1200; }
+    .sf-chip.ready.active b { color:#1a1200; background:rgba(0,0,0,.15); }
+
+    .sig-group { display:flex; align-items:center; gap:.5rem; max-width:1100px; margin:1rem auto .5rem; font-size:.8rem; font-weight:900;
+      color:var(--text-muted); letter-spacing:.3px; }
+    .sig-group::after { content:''; flex:1; height:1px; background:linear-gradient(90deg, var(--border), transparent); }
+    .sig-group b { background:var(--surface2); border:1px solid var(--border); border-radius:999px; padding:0 .5rem; font-size:.7rem; color:#fff; }
+    .sig-group.ready { color:#ffd27a; }
+    .sig-group.done { opacity:.7; }
+
+    .sig-rows { display:flex; flex-direction:column; gap:.4rem; max-width:1100px; margin:0 auto; }
+    .sig-row { background:var(--surface); border:1px solid var(--border); border-radius:12px; border-right:4px solid var(--border);
+      overflow:hidden; transition:border-color .15s, box-shadow .15s, background .15s; }
+    .sig-row.long { border-right-color:var(--green); }
+    .sig-row.short { border-right-color:var(--red); }
+    .sig-row:hover { background:var(--surface2); }
+    .sig-row.done { opacity:.6; }
+    .sig-row.ready { box-shadow:0 0 0 1px rgba(245,166,35,.35), 0 0 18px rgba(245,166,35,.12); animation:sfGlow 2.8s ease-in-out infinite; }
+    @keyframes sfGlow { 0%,100%{box-shadow:0 0 0 1px rgba(245,166,35,.3), 0 0 10px rgba(245,166,35,.08);} 50%{box-shadow:0 0 0 1px rgba(245,166,35,.6), 0 0 22px rgba(245,166,35,.22);} }
+    .sig-card.ready { box-shadow:0 0 0 1px rgba(245,166,35,.4), 0 4px 22px rgba(245,166,35,.12); }
+    .sr-main { display:grid; align-items:center; gap:.6rem; padding:.55rem .75rem; cursor:pointer;
+      grid-template-columns:26px minmax(90px,1.2fr) 70px repeat(3,minmax(64px,.8fr)) minmax(90px,1fr) 48px auto 80px auto; }
+    .sr-sym b { display:block; font-size:.98rem; font-weight:900; color:#fff; line-height:1.1; }
+    .sr-sym small { display:block; font-size:.66rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px; }
+    .sr-new { display:inline-block; margin-inline-start:.35rem; font-size:.58rem; font-weight:900; color:#fff; background:linear-gradient(135deg,#2962ff,#7c4dff);
+      border-radius:6px; padding:.05rem .35rem; vertical-align:middle; animation:sfBlink 2s ease-in-out infinite; }
+    @keyframes sfBlink { 0%,100%{opacity:1;} 50%{opacity:.55;} }
+    .sr-dir { font-size:.72rem; font-weight:900; padding:.2rem .5rem; border-radius:8px; text-align:center; white-space:nowrap; }
+    .sr-dir.long { background:rgba(38,166,154,.16); color:var(--green); }
+    .sr-dir.short { background:rgba(239,83,80,.16); color:var(--red); }
+    .sr-lv { font-size:.85rem; font-weight:800; color:#fff; line-height:1.15; white-space:nowrap; }
+    .sr-lv small, .sr-rr small { display:block; font-size:.58rem; color:var(--text-muted); font-weight:700; }
+    .sr-lv.stop { color:var(--red); }
+    .sr-lv.tp { color:var(--green); }
+    .sr-rr { font-size:.8rem; font-weight:900; color:var(--gold); }
+    .sr-age { font-size:.68rem; color:var(--text-muted); white-space:nowrap; text-align:end; }
+    .sr-act { display:flex; align-items:center; gap:.4rem; justify-content:flex-end; }
+    .sr-chev { color:var(--text-muted); font-size:.8rem; }
+    .sr-fav { font-size:1.05rem; }
+    .sr-detail { padding:.2rem .85rem .85rem; display:flex; flex-direction:column; gap:.6rem; border-top:1px dashed var(--border); }
+    .sr-detail-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; margin-top:.6rem; }
+    .sr-chips { display:flex; gap:.35rem; flex-wrap:wrap; align-items:center; }
+
+    /* real stop / entry / target range bar */
+    .sig-rb { position:relative; height:8px; border-radius:6px; background:rgba(255,255,255,.06); min-width:70px; }
+    .sig-rb-risk, .sig-rb-rew { position:absolute; top:0; bottom:0; border-radius:6px; }
+    .sig-rb-risk { background:linear-gradient(90deg, rgba(239,83,80,.85), rgba(239,83,80,.35)); }
+    .sig-rb-rew { background:linear-gradient(90deg, rgba(38,166,154,.35), rgba(38,166,154,.9)); }
+    .sig-rb-entry { position:absolute; top:-3px; bottom:-3px; width:2px; background:#fff; transform:translateX(-1px); border-radius:2px; }
+    .sig-rb-live { position:absolute; top:50%; width:12px; height:12px; border-radius:50%; background:#f5a623; border:2px solid #0a0d16;
+      transform:translate(-50%,-50%); box-shadow:0 0 8px rgba(245,166,35,.9); animation:sfPulseDot 1.8s infinite; }
+    @keyframes sfPulseDot { 0%,100%{transform:translate(-50%,-50%) scale(1);} 50%{transform:translate(-50%,-50%) scale(1.25);} }
+    .sig-card .sig-rb { height:10px; }
+
+    @media (max-width:760px) {
+      .sr-main { display:flex; flex-wrap:wrap; align-items:center; gap:.45rem .6rem; }
+      .sr-main > .sr-fav { order:0; }
+      .sr-main > .sr-sym { order:1; flex:1; min-width:0; }
+      .sr-main > .sr-dir { order:2; }
+      .sr-main > .sr-act { order:3; }
+      .sr-main > .sr-lv { order:4; flex:1 1 26%; }
+      .sr-main > .sr-bar { order:5; flex:1 1 100%; }
+      .sr-main > .sr-rr, .sr-main > .sig-status, .sr-main > .sr-age { order:6; }
+      .sr-main > .sr-age { margin-inline-start:auto; }
+      .sr-sym small { max-width:200px; }
+    }
     .sig-btn.ghost { background:var(--surface2); color:var(--text); }
     .sig-btn.ghost:hover { background:var(--border); }
     .sig-thumb { width:100%; height:60px; border-radius:8px; background:var(--surface2); display:block; }
@@ -3201,13 +3298,13 @@
   </div>
 </div>
 
-<script src="scanner-symbols.js?v=20261018i"></script>
-<script src="scanner-engine.js?v=20261018i"></script>
-<script src="plan.js?v=20261018i"></script>
-<script src="main.js?v=20261018i"></script>
-<script src="drawing.js?v=20261018i"></script>
-<script src="features.js?v=20261018i"></script>
-<script src="signals.js?v=20261018i"></script>
+<script src="scanner-symbols.js?v=20261018j"></script>
+<script src="scanner-engine.js?v=20261018j"></script>
+<script src="plan.js?v=20261018j"></script>
+<script src="main.js?v=20261018j"></script>
+<script src="drawing.js?v=20261018j"></script>
+<script src="features.js?v=20261018j"></script>
+<script src="signals.js?v=20261018j"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
@@ -3879,8 +3976,14 @@ function renderBellAlerts() {
   var body = document.getElementById('bellAlertsList');
   if (!body) return;
   var alerts = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
+  var adminBar = '';
+  try {
+    if (window.NTSignals && window.NTSignals.isAdmin && window.NTSignals.isAdmin()) {
+      adminBar = '<button class="btn btn-sm" style="width:100%;margin-bottom:.5rem;background:rgba(239,83,80,.14);border-color:rgba(239,83,80,.45);color:#ff8a87" onclick="clearBellAlertsAdmin()">🗑 מחק את כל האיתותים מהסורק (מנהל)</button>';
+    }
+  } catch (e) {}
   if (!alerts.length) {
-    body.innerHTML = '<div class="bell-popup-empty">🔕 אין איתותי מסחר כרגע</div>';
+    body.innerHTML = adminBar + '<div class="bell-popup-empty">🔕 אין איתותי מסחר כרגע</div>';
     return;
   }
 
@@ -3932,7 +4035,13 @@ function renderBellAlerts() {
       + '<button class="bell-a-del" onclick="return deleteBellAlert(event,' + i + ')" title="מחק">✕</button>'
       + '</div>';
   });
-  body.innerHTML = html;
+  body.innerHTML = adminBar + html;
+}
+function clearBellAlertsAdmin() {
+  if (!confirm('למחוק את כל האיתותים מהסורק (בשרת ובמכשיר)? הפעולה חלה על כל המשתמשים.')) return;
+  try { localStorage.setItem('ib_alerts2', '[]'); } catch (e) {}
+  try { window.NTSignals.clearAllSignals(true); } catch (e) {}
+  renderBellAlerts();
 }
 function deleteBellAlert(ev, idx) {
   if (ev) {
