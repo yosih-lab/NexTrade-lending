@@ -164,6 +164,23 @@
       .catch(function () {});
   }
 
+  // Index / commodity / forex tickers are shown with readable names (e.g. ^GSPC → S&P 500).
+  var SPECIAL_SYM = {
+    '^GSPC': { disp: 'S&P 500', name: 'מדד S&P 500' },
+    'GC=F': { disp: 'GOLD', name: 'זהב (חוזה עתידי)' },
+    'SI=F': { disp: 'SILVER', name: 'כסף (חוזה עתידי)' },
+    'CL=F': { disp: 'OIL', name: 'נפט WTI (חוזה עתידי)' },
+    'EURUSD=X': { disp: 'EUR/USD', name: 'אירו/דולר' }
+  };
+  function dispSym(sym) {
+    var sp = SPECIAL_SYM[sym];
+    return sp ? sp.disp : (sym || '').replace('.TA', '');
+  }
+  function friendlyName(sym, name) {
+    var sp = SPECIAL_SYM[sym];
+    return sp ? sp.name : (name || (sym || '').replace('.TA', ''));
+  }
+
   // Read scanner signals and normalize into a rich signal object. Prefers the
   // server feed (authoritative) and falls back to the local scanner (ib_alerts2).
   function loadSignals() {
@@ -185,9 +202,9 @@
       var dir = isBuy ? 'long' : 'short';
       var levels = computeLevels(a, dir);
       out.push({
-        sym: a.sym, name: a.name || (a.sym || '').replace('.TA', ''),
+        sym: a.sym, name: friendlyName(a.sym, a.name),
         key: a.key || (a.sym + '_' + dir),
-        dir: dir, curr: a.curr || '',
+        dir: dir, curr: (a.sym && a.sym.charAt(0) === '^') ? '' : (a.curr || ''),
         price: a.price,
         entry: levels.entry, stop: levels.stop, tp: levels.tp, rr: levels.rr,
         ts: a.ts || 0, date: a.date || '', time: a.time || '',
@@ -351,7 +368,7 @@
     return '<div class="sig-row ' + s.dir + (ready ? ' ready' : '') + (st === 'hit' || st === 'stopped' ? ' done' : '') + (open ? ' open' : '') + '">' +
       '<div class="sr-main" data-k="' + esc(s.key) + '" onclick="NTSignals.toggleRow(this.getAttribute(\'data-k\'))">' +
         '<button class="sig-fav sr-fav ' + (fav ? 'on' : '') + '" title="מעקב" onclick="event.stopPropagation();NTSignals.toggleFav(\'' + s.sym + '\')">' + (fav ? '★' : '☆') + '</button>' +
-        '<div class="sr-sym"><b>' + esc((s.sym || '').replace('.TA', '')) + '</b>' +
+        '<div class="sr-sym" dir="auto"><b>' + esc(dispSym(s.sym)) + '</b>' +
           (isNewSig(s) ? '<span class="sr-new">חדש</span>' : '') +
           '<small>' + esc(s.name) + '</small></div>' +
         '<span class="sr-dir ' + s.dir + '">' + (isLong ? '▲ לונג' : '▼ שורט') + '</span>' +
@@ -397,7 +414,7 @@
 
     return '<div class="sig-card ' + s.dir + ((st === 'armed' || st === 'active') ? ' ready' : '') + '">' +
       '<div class="sig-head">' +
-        '<div><div class="sig-sym">' + (s.sym || '').replace('.TA', '') +
+        '<div><div class="sig-sym">' + esc(dispSym(s.sym)) +
           (isNewSig(s) ? ' <span class="sr-new">חדש</span>' : '') +
           (setupTxt ? ' <span class="sig-setup">' + setupTxt + '</span>' : '') + '</div>' +
         '<div class="sig-name">' + s.name + ' · ' + ageTxt(s.ts) + '</div></div>' +
@@ -443,7 +460,7 @@
       : 'המחיר קרוב מאוד לכניסה — היכון וקבע התראה';
     return '<div class="sf-hero ' + s.dir + '">' +
       '<div class="sf-hero-tag">⚡ מה עושים עכשיו</div>' +
-      '<div class="sf-hero-sym">' + (s.sym || '').replace('.TA', '') + ' · ' + (s.dir === 'long' ? 'לונג' : 'שורט') + '</div>' +
+      '<div class="sf-hero-sym">' + esc(dispSym(s.sym)) + ' · ' + (s.dir === 'long' ? 'לונג' : 'שורט') + '</div>' +
       '<div class="sf-hero-action">' + action + '</div>' +
       '<div class="sf-hero-levels">כניסה ' + fmt(s.entry, s.curr) + ' · סטופ ' + fmt(s.stop, s.curr) + ' · יעד ' + fmt(s.tp, s.curr) + '</div>' +
       '<div class="sf-hero-foot">' +
@@ -671,7 +688,7 @@
     var dirTxt = t.dir === 'long' ? 'לונג' : 'שורט';
     var pnlTxt = (pnl.abs == null) ? '--' : (fmt(pnl.abs, t.curr) + ' (' + pct(pnl.pct) + ')');
     return '<div class="trade-row">' +
-      '<div><span class="tr-sym">' + (t.sym || '').replace('.TA', '') + '</span>' +
+      '<div><span class="tr-sym">' + esc(dispSym(t.sym)) + '</span>' +
         '<br><span class="tr-dir ' + t.dir + '">' + dirTxt + '</span></div>' +
       '<div><div class="tr-cell-label">כניסה</div>' + fmt(t.entry, t.curr) + '</div>' +
       '<div><div class="tr-cell-label">' + (isOpen ? 'מחיר נוכחי' : 'מחיר סגירה') + '</div>' + fmt(live, t.curr) + '</div>' +
@@ -758,7 +775,7 @@
     var rows = raw.slice(0, 80).map(function (a) {
       var isShort = a.direction === 'short' || a.direction === 'bearish' || a.condition === 'sell_signal';
       var icon = isShort ? '🔴' : '🟢';
-      var sym = (a.sym || '').replace('.TA', '');
+      var sym = dispSym(a.sym);
       var when = (a.date || '') + (a.time ? ' · ' + a.time : '');
       var line = a.msg || (icon + ' ' + sym);
       return '<div class="sf-log-row">' +
