@@ -705,7 +705,11 @@
       '</div>' +
     '</div>';
 
-    return perf + hero + live + toolbar + '<div id="sigDyn">' + renderSigDyn() + '</div>';
+    var riskBanner = '<button class="rk-banner" onclick="NTSignals.switchTab(\'risk\')">' +
+      '<span class="rk-banner-ic">🛡️</span>' +
+      '<span class="rk-banner-txt"><b>לפני שנכנסים לעסקה - נהל סיכונים</b><small>כלל ה-1%, סטופ לוס ויחס סיכוי/סיכון · לחץ לקריאה</small></span>' +
+      '<span class="rk-banner-go">←</span></button>';
+    return riskBanner + perf + hero + live + toolbar + '<div id="sigDyn">' + renderSigDyn() + '</div>';
   }
 
   function tradePnl(t, live) {
@@ -826,9 +830,124 @@
     return '<div class="sf-log">' + rows + '</div>';
   }
 
+  // ---------- legal disclaimer + risk-management education ----------
+  var DISC_ITEMS = [
+    'המידע והאיתותים שיפורסמו כאן אינם מהווים ייעוץ השקעות, המלצה לקנייה או מכירה של ניירות ערך, או תחליף לייעוץ מקצועי מורשה.',
+    'השירות אינו מורשה על ידי רשות ניירות ערך הישראלית כיועץ השקעות.',
+    'כל החלטת השקעה היא באחריות המשתמש בלבד ואין לראות בו תחליף לבדיקה עצמאית או לייעוץ מקצועי.',
+    'אני לא יועץ מוסמך וכל הנאמר משקף את דעתנו האישית בלבד.',
+    'הביצועים שהוצגו בעבר אינם מבטיחים תוצאות דומות בעתיד.',
+    'שוק ההון הינו שוק תנודתי ומסוכן - לא מתאים לכל אחד.',
+    'הציבור מתבקש לבצע בדיקה מעמיקה והתייעצות עם גורמים מוסמכים לפני קבלת החלטת קנייה.'
+  ];
+  function disclaimerHtml() {
+    return '<div class="rk-disc"><div class="rk-disc-h">⚖️ דיסקליימר - הסתייגות משפטית*</div><ul>' +
+      DISC_ITEMS.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>';
+  }
+  // Persistent one-line bar under every tab; click to expand the full text.
+  function renderDiscBar() {
+    var el = document.getElementById('sfDisc');
+    if (!el || el.getAttribute('data-ready')) return;
+    el.setAttribute('data-ready', '1');
+    el.innerHTML = '<button class="sf-disc-btn" onclick="NTSignals.toggleDisc()">⚠️ אין באיתותים ייעוץ השקעות · הסתייגות משפטית מלאה <span id="sfDiscArrow">▲</span></button>' +
+      '<div class="sf-disc-full" id="sfDiscFull">' + disclaimerHtml() + '</div>';
+  }
+  function toggleDisc() {
+    var f = document.getElementById('sfDiscFull');
+    var a = document.getElementById('sfDiscArrow');
+    if (!f) return;
+    var open = !f.classList.contains('open');
+    f.classList.toggle('open', open);
+    if (a) a.textContent = open ? '▼' : '▲';
+  }
+
+  function riskCalc() {
+    var out = document.getElementById('rkOut');
+    if (!out) return;
+    var g = function (id) { var e = document.getElementById(id); return e ? parseFloat(e.value) : NaN; };
+    var port = g('rkPort'), pc = g('rkPct'), entry = g('rkEntry'), stop = g('rkStop');
+    if (!(port > 0) || !(pc > 0) || !(entry > 0) || !(stop > 0) || entry === stop) {
+      out.innerHTML = '<div class="rk-out-empty">מלא את כל השדות (מחיר כניסה וסטופ חייבים להיות שונים) כדי לחשב.</div>';
+      return;
+    }
+    var riskAmt = port * pc / 100;
+    var perShare = Math.abs(entry - stop);
+    var shares = Math.floor(riskAmt / perShare);
+    var posVal = shares * entry;
+    var posPct = posVal / port * 100;
+    var target = entry + 2 * (entry - stop);
+    var nf = function (n, d) { return Number(n).toLocaleString('he-IL', { maximumFractionDigits: d == null ? 0 : d }); };
+    var warn = posVal > port ? '<div class="rk-warn">⚠️ שווי הפוזיציה גדול מהתיק - נדרשת מינוף. מומלץ לצמצם או להרחיק סטופ.</div>' : '';
+    out.innerHTML =
+      '<div class="rk-out-grid">' +
+        '<div><span>סיכון מקסימלי לעסקה</span><b>' + nf(riskAmt, 2) + '</b></div>' +
+        '<div><span>סיכון למניה</span><b>' + nf(perShare, 2) + '</b></div>' +
+        '<div class="big"><span>כמות מניות מקסימלית</span><b>' + nf(shares) + '</b></div>' +
+        '<div><span>שווי הפוזיציה</span><b>' + nf(posVal) + ' (' + nf(posPct, 1) + '% מהתיק)</b></div>' +
+        '<div><span>יעד ביחס 1:2</span><b>' + nf(target, 2) + '</b></div>' +
+        '<div><span>רווח אפשרי ביעד 1:2</span><b class="pos">+' + nf(shares * perShare * 2) + '</b></div>' +
+      '</div>' + warn;
+  }
+
+  function renderRisk() {
+    var tbl = [['1%', '~22'], ['2%', '~11'], ['5%', '~4'], ['10%', '~2']].map(function (r, i) {
+      return '<tr' + (i === 0 ? ' class="best"' : '') + '><td>' + r[0] + '</td><td>' + r[1] + ' הפסדים רצופים</td></tr>';
+    }).join('');
+    return '<div class="rk" id="riskPanel">' +
+      '<div class="rk-hero"><div class="rk-shield">🛡️</div>' +
+        '<h2>ניהול סיכונים</h2>' +
+        '<p>ניהול סיכונים הוא הבסיס של כל מסחר מוצלח לטווח ארוך. רוב הסוחרים המתחילים מתמקדים בלמצוא "עסקאות מנצחות", אבל הסוחרים המקצועיים יודעים שהשרידות בשוק תלויה קודם כל בשמירה על ההון.</p>' +
+        '<div class="rk-quote">המטרה הראשונה של כל סוחר היא <b>לשמור על ההון</b>.<br>המטרה השנייה היא לצמוח אותו.</div>' +
+      '</div>' +
+
+      '<div class="rk-card rk-gold"><div class="rk-h"><span class="rk-ic">💡</span>למה ניהול סיכונים חשוב יותר מלמצוא עסקאות טובות?</div>' +
+        '<p>גם הסוחר הטוב ביותר מפסיד בחלק מהעסקאות. מי שמנהל סיכון נכון יכול <b>לטעות הרבה ועדיין לרוויח</b>, ומי שלא - מספיקות כמה עסקאות רעות כדי להיעלם מהשוק.</p></div>' +
+
+      '<div class="rk-card rk-rule"><div class="rk-bigpct">1%</div><div>' +
+        '<div class="rk-h">כלל ה-1% לעסקה</div>' +
+        '<p><b>בכל עסקה בודדת, לא מסכנים יותר מ-1% מסך התיק.</b></p></div></div>' +
+
+      '<div class="rk-card"><div class="rk-h"><span class="rk-ic">🧮</span>דוגמה מספרית</div>' +
+        '<ul class="rk-steps">' +
+          '<li>תיק של <b>100,000 ש"ח</b></li>' +
+          '<li>סיכון מקסימלי לעסקה: <b>1,000 ש"ח</b></li>' +
+          '<li>קניתם מניה ב-50 ש"ח, עם סטופ לוס ב-47 ש"ח (סיכון של 3 ש"ח למניה)</li>' +
+          '<li>כמות מניות מקסימלית: 1,000 ÷ 3 = <b>333 מניות</b></li>' +
+        '</ul></div>' +
+
+      '<div class="rk-card rk-calc"><div class="rk-h"><span class="rk-ic">⚙️</span>מחשבון גודל פוזיציה</div>' +
+        '<div class="rk-form">' +
+          '<label>גודל התיק<input id="rkPort" type="number" inputmode="decimal" value="100000" oninput="NTSignals.riskCalc()"></label>' +
+          '<label>סיכון לעסקה (%)<input id="rkPct" type="number" inputmode="decimal" step="0.1" value="1" oninput="NTSignals.riskCalc()"></label>' +
+          '<label>מחיר כניסה<input id="rkEntry" type="number" inputmode="decimal" step="any" value="50" oninput="NTSignals.riskCalc()"></label>' +
+          '<label>מחיר סטופ לוס<input id="rkStop" type="number" inputmode="decimal" step="any" value="47" oninput="NTSignals.riskCalc()"></label>' +
+        '</div><div id="rkOut"></div></div>' +
+
+      '<div class="rk-card"><div class="rk-h"><span class="rk-ic">📉</span>למה דווקא 1%? עמידות בפני רצף הפסדים</div>' +
+        '<table class="rk-tbl"><thead><tr><th>% סיכון לעסקה</th><th>הפסדים רצופים עד אובדן 20% מהתיק</th></tr></thead><tbody>' + tbl + '</tbody></table>' +
+        '<p>גם סוחר מעולה חווה רצפי הפסדים. עם כלל ה-1%, אפשר לשרוד אותם ולהישאר במשחק.</p></div>' +
+
+      '<div class="rk-title">⚔️ עקרונות ברזל</div>' +
+      '<div class="rk-iron">' +
+        '<div class="rk-card rk-i"><div class="rk-num">1</div><div class="rk-h">יחס סיכוי/סיכון</div>' +
+          '<p>לא כדאי להיכנס לעסקה שבה מסכנים 1,000 ש"ח כדי להרוויח 500. היחס המינימלי המומלץ הוא <b>1:2</b> (מסכנים 1, מצפים לרווח של 2).</p></div>' +
+        '<div class="rk-card rk-i"><div class="rk-num">2</div><div class="rk-h">סטופ לוס - חובה, לא אופציה</div>' +
+          '<p>הסטופ לוס הוא הכלי שמגדיר את ה-1%. בלי סטופ לוס, אין ניהול סיכונים - יש רק תקווה.</p></div>' +
+        '<div class="rk-card rk-i"><div class="rk-num">3</div><div class="rk-h">גודל פוזיציה</div>' +
+          '<p>ה-1% לא אומר להשקיע רק 1% מהתיק - אפשר לקנות הרבה מניות, כל עוד <b>ההפסד המקסימלי</b> (מחיר כניסה מינוס סטופ, כפול כמות) הוא 1%.</p></div>' +
+      '</div>' +
+
+      '<div class="rk-card rk-win"><div class="rk-h"><span class="rk-ic">🏆</span>הכוח של הניהול הנכון</div>' +
+        '<p>ניהול סיכון נכון מאפשר לך <b>לטעות הרבה ועדיין לרוויח</b>. אם שיעור ההצלחה שלך הוא 50% ויחס הסיכוי/סיכון הוא 1:2 - אתה רווחי לאורך זמן, גם אם חצי מהעסקאות שלך מפסידות.</p></div>' +
+
+      disclaimerHtml() +
+    '</div>';
+  }
+
   function render() {
     var body = document.getElementById('sfBody');
     if (!body) return;
+    renderDiscBar();
     if (activeTab === 'signals') {
       // While typing in the search box, only refresh the list (keeps focus/caret).
       var tfEl = document.getElementById('sigTextFilter');
@@ -839,6 +958,10 @@
     else if (activeTab === 'trades') body.innerHTML = renderTrades();
     else if (activeTab === 'history') body.innerHTML = renderHistory();
     else if (activeTab === 'alerts') body.innerHTML = renderAlertsLog();
+    else if (activeTab === 'risk') {
+      // Static content; never rebuild while the user is typing in the calculator.
+      if (!document.getElementById('riskPanel')) { body.innerHTML = renderRisk(); riskCalc(); }
+    }
     else if (activeTab === 'ai') {
       // Never rebuild the AI panel while the user is typing; only refresh the quota line.
       if (!document.getElementById('aiPanel')) { body.innerHTML = renderAI(); loadAiQuota(); }
@@ -921,6 +1044,8 @@
     activeTab = tab;
     var tabs = document.querySelectorAll('#signalFeed .sf-tab');
     tabs.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === tab); });
+    var sb = document.getElementById('sfBody');
+    if (sb) sb.scrollTop = 0;
     render();
   }
 
@@ -1420,6 +1545,7 @@
     onAppReady: onAppReady,
     show: show, hide: hide, setMode: setMode,
     switchTab: switchTab, addTrade: addTrade, closeTrade: closeTrade,
+    riskCalc: riskCalc, toggleDisc: toggleDisc,
     analyze: analyze, render: render,
     toggleFav: toggleFav, setFavFilter: setFavFilter, setAlert: setAlert,
     setFilter: setFilter, setSort: setSort, setMarket: setMarket, setView: setView,
