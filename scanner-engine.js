@@ -43,6 +43,7 @@
     volExpandRatio: 1.15,   // recent vol >= 1.15x = expanding
     volBreakoutRatio: 1.2,  // breakout week vol >= 1.2x Vol MA = quality
     slopeLookback: 4,       // weeks back to measure SMA30 slope
+    trendTol: 0.015,        // swings within 1.5% count as the SAME level (a re-test of support doesn't cancel a trend)
     alertBuffer: 0.01,      // fire alert ~1% before the entry level
     rrTarget: 2             // minimum 1:2 risk:reward
   };
@@ -93,15 +94,32 @@
     return out;
   }
 
+  // Collapse consecutive swings of the same type into the most extreme one, so the
+  // sequence alternates high/low (classic Dow zigzag) and minor wiggles don't count.
+  function zigzag(swings) {
+    var out = [];
+    for (var i = 0; i < swings.length; i++) {
+      var s = swings[i], last = out[out.length - 1];
+      if (last && last.type === s.type) {
+        if ((s.type === 'high' && s.price > last.price) || (s.type === 'low' && s.price < last.price)) out[out.length - 1] = s;
+      } else out.push(s);
+    }
+    return out;
+  }
+
   // ---- Trend classification (Dow structure from last swings) -----------------
+  // Down = lower highs AND lows that are lower OR equal (re-testing the same support);
+  // Up = higher lows AND highs that are higher OR equal. Equal = within CFG.trendTol.
   function classifyTrend(swings) {
-    var highs = swings.filter(function (s) { return s.type === 'high'; });
-    var lows = swings.filter(function (s) { return s.type === 'low'; });
+    var zz = zigzag(swings);
+    var highs = zz.filter(function (s) { return s.type === 'high'; });
+    var lows = zz.filter(function (s) { return s.type === 'low'; });
     if (highs.length < 2 || lows.length < 2) return 'range';
-    var h1 = highs[highs.length - 2], h2 = highs[highs.length - 1];
-    var l1 = lows[lows.length - 2], l2 = lows[lows.length - 1];
-    if (h2.price > h1.price && l2.price > l1.price) return 'up';
-    if (h2.price < h1.price && l2.price < l1.price) return 'down';
+    var h1 = highs[highs.length - 2].price, h2 = highs[highs.length - 1].price;
+    var l1 = lows[lows.length - 2].price, l2 = lows[lows.length - 1].price;
+    var t = CFG.trendTol;
+    if ((h2 < h1 * (1 - t) && l2 <= l1 * (1 + t)) || (l2 < l1 * (1 - t) && h2 <= h1 * (1 + t))) return 'down';
+    if ((h2 > h1 * (1 + t) && l2 >= l1 * (1 - t)) || (l2 > l1 * (1 + t) && h2 >= h1 * (1 - t))) return 'up';
     return 'range';
   }
 
