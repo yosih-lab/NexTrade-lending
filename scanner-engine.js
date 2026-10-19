@@ -468,6 +468,14 @@
 
     // ---- inner helpers (hoisted) --------------------------------------------
     function finalizeEntry(r, dir, entry, stopRef, a, px) {
+      // Hard rule: never a LONG entry while price is below SMA30 (any setup / trend class).
+      if (dir === 'long' && px < sma30) {
+        r.status = 'watch';
+        r.entry = r.stop = r.target = null; r.alertLevel = r.alertSide = null;
+        if (r.disq.indexOf('below_sma30') === -1) r.disq.push('below_sma30');
+        r.reasons.push('המחיר מתחת SMA30 — אין לונג עד שהמחיר חוזר מעל SMA30 ונבנה מבנה עולה');
+        return r;
+      }
       var ranAway = Math.abs(px - entry) / entry > CFG.ranAwayPct;
       var t = buildTrade(dir, entry, stopRef, a);
       r.entry = t.entry; r.stop = t.stop; r.target = t.target; r.rr = t.rr;

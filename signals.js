@@ -191,6 +191,12 @@
     var sp = SPECIAL_SYM[sym];
     return sp ? sp.name : (name || (sym || '').replace('.TA', ''));
   }
+  // Small "Tel Aviv listing" tag so a TASE line (prices in ₪) is never mistaken for the US listing.
+  function mktTag(sym) {
+    return (/\.TA$/i.test(sym || '') && !SPECIAL_SYM[sym])
+      ? ' <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;background:rgba(255,255,255,.1);color:#9fb3c8;vertical-align:middle">ת״א · ₪</span>'
+      : '';
+  }
 
   // Read scanner signals and normalize into a rich signal object. Prefers the
   // server feed (authoritative) and falls back to the local scanner (ib_alerts2).
@@ -396,7 +402,7 @@
     return '<div class="sig-row ' + s.dir + (ready ? ' ready' : '') + (st === 'hit' || st === 'stopped' ? ' done' : '') + (open ? ' open' : '') + '">' +
       '<div class="sr-main" data-k="' + esc(s.key) + '" onclick="NTSignals.toggleRow(this.getAttribute(\'data-k\'))">' +
         '<button class="sig-fav sr-fav ' + (fav ? 'on' : '') + '" title="מעקב" onclick="event.stopPropagation();NTSignals.toggleFav(\'' + s.sym + '\')">' + (fav ? '★' : '☆') + '</button>' +
-        '<div class="sr-sym" dir="auto"><b>' + esc(dispSym(s.sym)) + '</b>' +
+        '<div class="sr-sym" dir="auto"><b>' + esc(dispSym(s.sym)) + '</b>' + mktTag(s.sym) +
           (isNewSig(s) ? '<span class="sr-new">חדש</span>' : '') +
           '<small>' + esc(s.name) + '</small></div>' +
         '<span class="sr-dir ' + s.dir + '">' + (isLong ? '▲ לונג' : '▼ שורט') + '</span>' +
@@ -443,7 +449,7 @@
 
     return '<div class="sig-card ' + s.dir + ((st === 'armed' || st === 'active') ? ' ready' : '') + '">' +
       '<div class="sig-head">' +
-        '<div><div class="sig-sym">' + esc(dispSym(s.sym)) +
+        '<div><div class="sig-sym">' + esc(dispSym(s.sym)) + mktTag(s.sym) +
           (isNewSig(s) ? ' <span class="sr-new">חדש</span>' : '') +
           (setupTxt ? ' <span class="sig-setup">' + setupTxt + '</span>' : '') + '</div>' +
         '<div class="sig-name">' + s.name + ' · ' + ageTxt(s.ts) + '</div></div>' +
@@ -1189,6 +1195,7 @@
     ['SMCI', 'Super Micro Computer', 'סופר מיקרו'], ['MSTR', 'MicroStrategy', 'מיקרוסטרטגי'],
     ['CHKP', 'Check Point', 'צ׳ק פוינט'], ['MNDY', 'Monday.com', 'מאנדיי'], ['GLBE', 'Global-E', 'גלובל אי'], ['WIX', 'Wix', 'וויקס'],
     ['CYBR', 'CyberArk', 'סייברארק'],
+    ['ICL', 'ICL Group (NYSE)', 'כיל'], ['TEVA', 'Teva (NYSE)', 'טבע'], ['NICE', 'NICE (Nasdaq)', 'נייס'], ['ESLT', 'Elbit Systems (Nasdaq)', 'אלביט'],
     ['TEVA.TA', 'Teva', 'טבע'], ['ESLT.TA', 'Elbit Systems', 'אלביט'], ['LUMI.TA', 'Bank Leumi', 'לאומי'], ['POLI.TA', 'Bank Hapoalim', 'פועלים'],
     ['DSCT.TA', 'Discount Bank', 'דיסקונט'], ['BEZQ.TA', 'Bezeq', 'בזק'], ['ICL.TA', 'ICL', 'כיל'], ['NICE.TA', 'NICE', 'נייס']
   ];

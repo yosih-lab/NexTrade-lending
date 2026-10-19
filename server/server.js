@@ -1173,10 +1173,19 @@ async function scanSignalsChunk() {
             liq.lastWeekTurnover = lw ? lw.avgTurnover : null;
           }
           const a = NTScanner.analyze(bars, { symbol: sym, name: sym.replace('.TA', ''), curr: sym.endsWith('.TA') ? '₪' : '$' });
-          if (!a || !a.direction || a.entry == null) return;
-          if (a.direction === 'short' && isTaseStock(sym)) return;   // no TASE stock shorts
+          // Re-validate: a stored signal whose conditions no longer hold (e.g. price fell below
+          // SMA30, trend flipped) must disappear instead of lingering for days.
+          const dropStale = (keepDir) => {
+            Object.keys(_sigByKey).forEach(k => {
+              const o = _sigByKey[k];
+              if (o && o.sym === sym && o.direction !== keepDir) delete _sigByKey[k];
+            });
+          };
+          if (!a || !a.direction || a.entry == null) { dropStale(null); return; }
+          if (a.direction === 'short' && isTaseStock(sym)) { dropStale(null); return; }   // no TASE stock shorts
           const armed = a.alertLevel != null && Math.abs(a.price - a.alertLevel) / a.alertLevel <= 0.015;
-          if (a.status !== 'entry' && !armed) return;
+          if (a.status !== 'entry' && !armed) { dropStale(null); return; }
+          dropStale(a.direction);
           const sig = buildSignalObject(sym, a, liq);
           if (_sigDismissed.has(sig.key)) return;
           if (!_sigByKey[sig.key]) added++;
@@ -1292,6 +1301,9 @@ const NAME_ALIASES = {
 };
 
 let _symIndex = null;
+// Tickers listed BOTH on TASE and in the US: a bare ticker means the US listing (USD);
+// the TASE listing is reached via the Hebrew name or an explicit ".TA" suffix.
+const DUAL_LISTED_US = new Set(['ICL', 'TEVA', 'NICE', 'ESLT']);
 function symIndex() {
   if (_symIndex) return _symIndex;
   _symIndex = new Map();
@@ -1312,6 +1324,7 @@ function resolveAnalysisSymbol(q) {
   const alias = NAME_ALIASES[q.toLowerCase()];
   if (alias) return alias;
   const u = q.toUpperCase();
+  if (DUAL_LISTED_US.has(u)) return u;
   const hit = symIndex().get(u);
   if (hit) return hit;
   // Any other plausible ticker — Yahoo decides if it exists. Strictly charset-limited
