@@ -197,6 +197,7 @@ var US_SYMBOLS = [
   'IPG','OMC','WPP','MGNI','DV','PUBM','CRTO','QNST','DMS','ZETA',
   // Additional mid/small cap US stocks
   'SMCI','ARM','MRVL','ON','SWKS','QRVO','MCHP','TXN','ADI','MPWR',
+  'MU','NXPI','MBLY','SOXX','SMH',
   'WOLF','DIOD','SLAB','AMBA','CEVA','SYNA','SITM','POWI','ALGM','PI',
   'LSCC','LFUS','CUI','VSH','IXYS','HIMX','MXL','MTSI','SMTC','AOSL',
   'UBER','LYFT','ABNB','DASH','GRAB','CPNG','MELI','SE','GLBE','ETSY',
