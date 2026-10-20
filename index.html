@@ -2659,13 +2659,13 @@
     .sig-status.hit     { background:rgba(38,166,154,.16); color:var(--green); }
     .sig-status.stopped { background:rgba(239,83,80,.16); color:var(--red); }
     /* distance-to-entry chip */
-    .sig-dist { font-size:.72rem; font-weight:700; color:var(--text-muted); }
+    .sig-dist { font-size:calc(.72rem + 2px); font-weight:700; color:var(--text-muted); }
     .sig-dist.near { color:#ffd27a; }
     /* setup chip on the symbol line */
-    .sig-setup { display:inline-block; font-size:.62rem; font-weight:700; color:var(--accent); background:rgba(41,98,255,.12);
+    .sig-setup { display:inline-block; font-size:calc(.62rem + 2px); font-weight:700; color:var(--accent); background:rgba(41,98,255,.12);
       padding:.1rem .4rem; border-radius:6px; vertical-align:middle; white-space:nowrap; margin-top:.15rem; }
     /* why / explanation line */
-    .sig-why { font-size:.74rem; color:var(--text-muted); line-height:1.4; background:var(--surface2);
+    .sig-why { font-size:calc(.74rem + 2px); color:var(--text-muted); line-height:1.5; background:var(--surface2);
       border:1px dashed var(--border); border-radius:8px; padding:.4rem .55rem; }
     /* earnings warning */
     .sig-earn { font-size:.74rem; font-weight:700; color:var(--gold); }
@@ -2779,8 +2779,8 @@
     .sr-dir.short { background:rgba(239,83,80,.16); color:var(--red); }
     .sr-lv { font-size:.85rem; font-weight:800; color:#fff; line-height:1.15; white-space:nowrap; }
     .sr-lv small, .sr-rr small { display:block; font-size:.58rem; color:var(--text-muted); font-weight:700; }
-    .sr-vol { font-size:.8rem; font-weight:800; color:#9fb4d9; line-height:1.15; white-space:nowrap; }
-    .sr-vol small { display:block; font-size:.56rem; color:var(--text-muted); font-weight:700; white-space:normal; }
+    .sr-vol { font-size:calc(.8rem + 2px); font-weight:800; color:#9fb4d9; line-height:1.15; white-space:nowrap; }
+    .sr-vol small { display:block; font-size:calc(.56rem + 2px); color:var(--text-muted); font-weight:700; white-space:normal; }
     .sig-setup.vol { color:#9fb4d9; background:rgba(159,180,217,.1); }
     .sr-lv.stop { color:var(--red); }
     .sr-lv.tp { color:var(--green); }
