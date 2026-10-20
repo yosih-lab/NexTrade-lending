@@ -42,6 +42,7 @@
     volContractRatio: 0.9,  // recent vol <= 0.9x of pullback-start vol = contracting
     volExpandRatio: 1.15,   // recent vol >= 1.15x = expanding
     volBreakoutRatio: 1.2,  // breakout week vol >= 1.2x Vol MA = quality
+    volEntryRatio: 1.0,     // pullback entry candle needs volume >= Vol MA (aggressive entry)
     slopeLookback: 4,       // weeks back to measure SMA30 slope
     trendTol: 0.015,        // swings within 1.5% count as the SAME level (a re-test of support doesn't cancel a trend)
     alertBuffer: 0.01,      // fire alert ~1% before the entry level
@@ -412,8 +413,36 @@
         res.reasons.push('Pullback במגמת עלייה לקונפלואנס: ' + confText + (vol.contracting ? ' | נפח מתכווץ' : ''));
         if (rev) res.reasons.push('נר היפוך שורי בתמיכה');
         res.direction = 'long'; res.setup = 'pullback';
-        // Entry only with a reversal confirmation; otherwise watch.
-        if (rev) return finalizeEntry(res, 'long', price, stopRef, atrVal, price);
+        // Entry needs a reversal candle AND trading volume above the Vol MA (aggressive entry).
+        var volNow = bars[n - 1].volume || 0;
+        var volOk = vMA > 0 ? volNow >= vMA * CFG.volEntryRatio : true;
+        res.volVsMA = vMA > 0 ? +(volNow / vMA).toFixed(2) : null;
+        if (rev && !volOk) {
+          res.reasons.push('חסר מחזור מסחר גבוה מהממוצע (' + Math.round(volNow / vMA * 100) + '% מ-Vol MA) — כניסה רק עם מחזור מעל הממוצע');
+          res.disq.push('low_entry_volume');
+        }
+        if (rev && volOk) {
+          if (vMA > 0) res.reasons.push('מחזור מסחר מעל הממוצע (' + Math.round(volNow / vMA * 100) + '% מ-Vol MA)');
+          var r2 = finalizeEntry(res, 'long', price, stopRef, atrVal, price);
+          // Strong ceiling (>=3 touches) above price and inside the 1:2 target path?
+          var ceil = null;
+          levels.forEach(function (l) {
+            if (l.price > price && l.touches >= CFG.touchSignificant && (!ceil || l.price < ceil.price)) ceil = l;
+          });
+          if (r2.entry != null && ceil && ceil.price < r2.target) {
+            var riskPx = r2.entry - r2.stop;
+            var rrToCeil = riskPx > 0 ? (ceil.price - r2.entry) / riskPx : 0;
+            r2.ceiling = { price: ceil.price, touches: ceil.touches, rrToCeiling: +rrToCeil.toFixed(2) };
+            r2.reasons.push('התנגדות חזקה ' + fmt(ceil.price) + ' (' + ceil.touches + ' נגיעות) בדרך ליעד — רק ' + rrToCeil.toFixed(1) + 'R עד אליה. ' +
+              'כניסה אגרסיבית; סולידי: להמתין לפריצת ' + fmt(ceil.price) + ' + 5 נרות + ריטסט');
+            if (rrToCeil < 1) {
+              r2.status = 'watch';
+              r2.disq.push('ceiling_too_close');
+              r2.reasons.push('התנגדות קרובה מדי (פחות מ-1R) — ממתינים לפריצה');
+            }
+          }
+          return r2;
+        }
         res.status = 'watch';
         return finalizeWatch(res, res.level, price);
       }
