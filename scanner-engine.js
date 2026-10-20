@@ -107,6 +107,23 @@
     return out;
   }
 
+  // Confirmed swings + the swing currently FORMING after the last confirmed one.
+  // A fractal low/high needs `wing` bars on its right, so a fresh lower low (e.g. a sharp
+  // drop followed by a 1-2 week bounce) is invisible to findSwings. Dow theory counts it
+  // already, so the tail's most extreme bar is appended as a provisional opposite swing.
+  function structureSwings(bars) {
+    var sw = findSwings(bars.slice(0, bars.length - 1));
+    var last = sw[sw.length - 1];
+    if (!last || last.idx + 1 > bars.length - 1) return sw;
+    var best = null;
+    for (var i = last.idx + 1; i < bars.length; i++) {
+      if (last.type === 'high') { if (!best || bars[i].low < best.price) best = { idx: i, type: 'low', price: bars[i].low }; }
+      else { if (!best || bars[i].high > best.price) best = { idx: i, type: 'high', price: bars[i].high }; }
+    }
+    if (best) sw = sw.concat([best]);
+    return sw;
+  }
+
   // ---- Trend classification (Dow structure from last swings) -----------------
   // Down = lower highs AND lows that are lower OR equal (re-testing the same support);
   // Up = higher lows AND highs that are higher OR equal. Equal = within CFG.trendTol.
@@ -331,7 +348,7 @@
     // Use a confirmed-swing window (drop the still-forming last bar for structure)
     var swingBars = bars.slice(0, n - 1);
     var swings = findSwings(swingBars);
-    var trend = classifyTrend(swings);
+    var trend = classifyTrend(structureSwings(bars));
     res.trend = trend;
     var levels = buildLevels(swingBars, swings);
     var vol = volumeTrend(bars);
@@ -552,9 +569,8 @@
   function trendDuration(bars, swings, trend) {
     var n = bars.length, weeks = 1, capped = true;
     for (var end = n - 2; end >= CFG.minBars; end--) {
-      var limit = end - 1 - CFG.swingWing;
-      var sub = swings.filter(function (s) { return s.idx <= limit; });
-      if (classifyTrend(sub) !== trend) { capped = false; break; }
+      // trend as it was at that earlier week (same method as analyze(): confirmed + forming swing)
+      if (classifyTrend(structureSwings(bars.slice(0, end + 1))) !== trend) { capped = false; break; }
       weeks++;
     }
     return { weeks: weeks, capped: capped, since: bars[n - weeks] ? bars[n - weeks].time : null };
