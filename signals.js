@@ -131,6 +131,29 @@
   }
   function saveTrades(t) { localStorage.setItem(TRADES_KEY, JSON.stringify(t)); }
 
+  // Live quotes for open trades: the watchlist price cache only holds watchlist symbols, so
+  // every open trade symbol is fetched explicitly and pushed into the shared price cache.
+  var _tradePxTs = 0, _tradePxBusy = false;
+  function refreshTradePrices(force) {
+    if (_tradePxBusy || typeof window.fetchQuote !== 'function') return;
+    if (!force && Date.now() - _tradePxTs < 8000) return;
+    var syms = [];
+    loadTrades().forEach(function (t) {
+      if (t.status === 'open' && syms.indexOf(t.sym) === -1) syms.push(t.sym);
+    });
+    if (!syms.length) return;
+    _tradePxBusy = true;
+    Promise.all(syms.map(function (sym) {
+      return Promise.resolve(window.fetchQuote(sym)).then(function (d) {
+        if (d && d.price != null && window.priceCache) window.priceCache[sym] = d;
+      }).catch(function () {});
+    })).then(function () {
+      _tradePxBusy = false;
+      _tradePxTs = Date.now();
+      if (activeTab === 'trades') render();
+    }, function () { _tradePxBusy = false; });
+  }
+
   // ---------- server signal feed (authoritative, plan-enforced) ----------
   function apiBase() {
     try {
@@ -775,6 +798,7 @@
     } else {
       html += '<div class="sf-rows-head"><div>מניה</div><div>כניסה</div><div>מחיר נוכחי</div><div>סטופ / יעד</div><div>רווח/הפסד</div><div></div></div>';
       html += open.map(function (t) { return tradeRow(t, true); }).join('');
+      if (_tradePxTs) html += '<div class="tr-cell-label" style="text-align:center;margin-top:.6rem">🟢 מחירים בזמן אמת · עודכן ' + new Date(_tradePxTs).toLocaleTimeString('he-IL') + '</div>';
     }
     html += '</div>';
     return html;
@@ -1064,6 +1088,7 @@
     var sb = document.getElementById('sfBody');
     if (sb) sb.scrollTop = 0;
     render();
+    if (tab === 'trades') refreshTradePrices(true);
   }
 
   // ---------- AI stock analysis (tab + popup) ----------
@@ -2071,6 +2096,7 @@
       openDate: new Date().toLocaleDateString('he-IL')
     });
     saveTrades(trades);
+    refreshTradePrices(true);
     switchTab('trades');
   }
 
@@ -2234,7 +2260,7 @@
     syncServerSignals(true); // pull the authoritative feed immediately
     refreshTimer = setInterval(function () {
       var feed = document.getElementById('signalFeed');
-      if (feed && feed.style.display !== 'none') { syncServerSignals(); render(); }
+      if (feed && feed.style.display !== 'none') { syncServerSignals(); render(); refreshTradePrices(); }
     }, 20000);
   }
   function stopAutoRefresh() { if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; } }
