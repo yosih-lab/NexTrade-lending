@@ -2745,6 +2745,7 @@ async function loadChart(symbol, tf, preserveZoom) {
 
   currentSymbol = targetSymbol;
   currentTF     = tf;
+  try { if (window.NTStockPanel) window.NTStockPanel.show(targetSymbol); } catch (e) {}
 
   document.getElementById('chartTitle').textContent    = targetSymbol + '  ' + (NAMES[targetSymbol] || (priceCache[targetSymbol] && priceCache[targetSymbol].name) || targetSymbol);
   document.getElementById('chartSubtitle').innerHTML =

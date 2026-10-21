@@ -1720,6 +1720,282 @@ app.get('/yahoo/chart', async (req, res) => {
   }
 });
 
+// ── STOCK DETAILS PANEL ────────────────────────────────────────────
+// GET /api/stock/details?symbol=WGS  → everything the sidebar "stock card" shows:
+// live price/change/market state, volume vs 30D avg, news, key stats (market cap, P/E, dividend,
+// next earnings...), EPS/revenue charts, dividend history, performance, a TradingView-style
+// technical rating (computed here from daily bars) and the analyst rating.
+// Public + cached (5 min) + per-IP rate limit; Yahoo is best-effort so every section may be null.
+const _detCache = new Map();           // sym -> { ts, data }
+const DET_TTL = 5 * 60 * 1000;
+const _detRate = new Map();            // ip -> { n, t }
+
+function rw(o) { return (o && typeof o === 'object') ? (o.raw != null ? o.raw : null) : (o == null ? null : o); }
+function num(x) { return (typeof x === 'number' && isFinite(x)) ? x : null; }
+
+function yhGetJSON(host, pathStr, auth) {
+  const headers = { 'User-Agent': YH_UA, 'Accept': 'application/json' };
+  if (auth && auth.cookie) headers['Cookie'] = auth.cookie;
+  return httpsGetRaw(host, pathStr, headers, 9000).then(r => {
+    if (r.status === 401 || r.status === 403) { const e = new Error('auth'); e.auth = true; throw e; }
+    if (r.status !== 200) throw new Error('http-' + r.status);
+    return JSON.parse(r.body);
+  });
+}
+
+async function yhQuoteSummary(sym, modules) {
+  let auth = await yahooAuth(false);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const p = '/v10/finance/quoteSummary/' + encodeURIComponent(sym) + '?modules=' + modules + '&crumb=' + encodeURIComponent(auth.crumb);
+      const j = await yhGetJSON('query2.finance.yahoo.com', p, auth);
+      return (j.quoteSummary && j.quoteSummary.result && j.quoteSummary.result[0]) || null;
+    } catch (e) {
+      if (e.auth && attempt === 0) { auth = await yahooAuth(true); continue; }
+      throw e;
+    }
+  }
+  return null;
+}
+
+// ---- indicators (daily closes) ----
+function emaArr(v, p) {
+  const k = 2 / (p + 1), out = [];
+  let prev = null;
+  for (let i = 0; i < v.length; i++) {
+    if (i < p - 1) { out.push(null); continue; }
+    if (prev == null) { let s = 0; for (let j = i - p + 1; j <= i; j++) s += v[j]; prev = s / p; }
+    else prev = v[i] * k + prev * (1 - k);
+    out.push(prev);
+  }
+  return out;
+}
+function smaAt(v, p) { if (v.length < p) return null; let s = 0; for (let i = v.length - p; i < v.length; i++) s += v[i]; return s / p; }
+function rsiAt(c, p) {
+  if (c.length < p + 1) return null;
+  let g = 0, l = 0;
+  for (let i = 1; i <= p; i++) { const d = c[i] - c[i - 1]; if (d >= 0) g += d; else l -= d; }
+  g /= p; l /= p;
+  for (let i = p + 1; i < c.length; i++) {
+    const d = c[i] - c[i - 1];
+    g = (g * (p - 1) + (d > 0 ? d : 0)) / p;
+    l = (l * (p - 1) + (d < 0 ? -d : 0)) / p;
+  }
+  return l === 0 ? 100 : 100 - 100 / (1 + g / l);
+}
+
+function technicalRating(bars) {
+  const c = bars.map(b => b.close), h = bars.map(b => b.high), lo = bars.map(b => b.low);
+  const n = c.length;
+  if (n < 30) return null;
+  const px = c[n - 1];
+  const vote = (name, v, buy, sell) => ({ name: name, value: v, v: buy ? 1 : (sell ? -1 : 0) });
+  const ma = [];
+  [10, 20, 30, 50, 100, 200].forEach(p => {
+    const s = smaAt(c, p);
+    if (s != null) ma.push(vote('SMA' + p, s, px > s, px < s));
+    const e = emaArr(c, p), ev = e[n - 1];
+    if (ev != null) ma.push(vote('EMA' + p, ev, px > ev, px < ev));
+  });
+  const osc = [];
+  const rsi = rsiAt(c, 14);
+  if (rsi != null) osc.push(vote('RSI(14)', rsi, rsi < 30, rsi > 70));
+  // Stochastic %K(14,3,3)
+  if (n >= 20) {
+    const k = [];
+    for (let i = 13; i < n; i++) {
+      let hh = -Infinity, ll = Infinity;
+      for (let j = i - 13; j <= i; j++) { if (h[j] > hh) hh = h[j]; if (lo[j] < ll) ll = lo[j]; }
+      k.push(hh === ll ? 50 : (c[i] - ll) / (hh - ll) * 100);
+    }
+    const sm = (a, p) => a.map((_, i) => i < p - 1 ? null : a.slice(i - p + 1, i + 1).reduce((s, x) => s + x, 0) / p).filter(x => x != null);
+    const kk = sm(sm(k, 3), 3);
+    if (kk.length) { const sv = kk[kk.length - 1]; osc.push(vote('Stoch', sv, sv < 20, sv > 80)); }
+  }
+  // CCI(20)
+  if (n >= 20) {
+    const tp = bars.map(b => (b.high + b.low + b.close) / 3);
+    const w = tp.slice(-20), m = w.reduce((s, x) => s + x, 0) / 20;
+    const md = w.reduce((s, x) => s + Math.abs(x - m), 0) / 20;
+    if (md > 0) { const cci = (tp[n - 1] - m) / (0.015 * md); osc.push(vote('CCI(20)', cci, cci < -100, cci > 100)); }
+  }
+  // MACD(12,26,9)
+  const e12 = emaArr(c, 12), e26 = emaArr(c, 26);
+  const macd = c.map((_, i) => (e12[i] != null && e26[i] != null) ? e12[i] - e26[i] : null).filter(x => x != null);
+  if (macd.length >= 10) {
+    const sig = emaArr(macd, 9), m1 = macd[macd.length - 1], s1 = sig[sig.length - 1];
+    if (s1 != null) osc.push(vote('MACD', m1, m1 > s1, m1 < s1));
+  }
+  // Momentum(10)
+  if (n > 10) { const mom = c[n - 1] - c[n - 11]; osc.push(vote('Momentum', mom, mom > 0, mom < 0)); }
+  // Williams %R(14)
+  if (n >= 14) {
+    let hh = -Infinity, ll = Infinity;
+    for (let j = n - 14; j < n; j++) { if (h[j] > hh) hh = h[j]; if (lo[j] < ll) ll = lo[j]; }
+    if (hh !== ll) { const wr = (hh - c[n - 1]) / (hh - ll) * -100; osc.push(vote('Williams %R', wr, wr < -80, wr > -20)); }
+  }
+  const sum = a => a.reduce((s, x) => s + x.v, 0);
+  const rate = (a) => {
+    if (!a.length) return { score: 0, key: 'neutral' };
+    const sc = sum(a) / a.length;
+    return { score: +sc.toFixed(2), key: sc >= 0.5 ? 'strong_buy' : (sc >= 0.1 ? 'buy' : (sc > -0.1 ? 'neutral' : (sc > -0.5 ? 'sell' : 'strong_sell'))) };
+  };
+  const cnt = (a, s) => a.filter(x => x.v === s).length;
+  const all = ma.concat(osc);
+  return {
+    overall: rate(all), ma: rate(ma), osc: rate(osc),
+    counts: {
+      ma: { buy: cnt(ma, 1), neutral: cnt(ma, 0), sell: cnt(ma, -1) },
+      osc: { buy: cnt(osc, 1), neutral: cnt(osc, 0), sell: cnt(osc, -1) }
+    }
+  };
+}
+
+function perfFromBars(bars) {
+  const n = bars.length;
+  if (n < 6) return null;
+  const px = bars[n - 1].close;
+  const back = (k) => (n > k ? (px / bars[n - 1 - k].close - 1) * 100 : null);
+  const yr = new Date().getUTCFullYear();
+  let ytd = null;
+  for (let i = 0; i < n; i++) { if (parseInt(bars[i].time.slice(0, 4), 10) === yr) { const base = i > 0 ? bars[i - 1].close : bars[i].open; ytd = (px / base - 1) * 100; break; } }
+  return { w1: back(5), m1: back(21), m3: back(63), m6: back(126), ytd: ytd, y1: n > 200 ? (px / bars[0].close - 1) * 100 : null };
+}
+
+async function fetchDividendHistory(sym, div) {
+  try {
+    const p = '/v8/finance/chart/' + encodeURIComponent(sym) + '?interval=1mo&range=5y&events=div';
+    const j = await yhGetJSON('query1.finance.yahoo.com', p, null);
+    const ev = j.chart && j.chart.result && j.chart.result[0] && j.chart.result[0].events && j.chart.result[0].events.dividends;
+    if (!ev) return [];
+    return Object.keys(ev).map(k => ({ date: new Date(ev[k].date * 1000).toISOString().slice(0, 10), amount: ev[k].amount / div }))
+      .sort((a, b) => a.date < b.date ? -1 : 1);
+  } catch (e) { return []; }
+}
+
+async function fetchStockNews(sym) {
+  try {
+    const p = '/v1/finance/search?q=' + encodeURIComponent(sym) + '&newsCount=6&quotesCount=0';
+    const j = await yhGetJSON('query2.finance.yahoo.com', p, null);
+    return (j.news || []).slice(0, 5).map(n => ({ title: n.title, publisher: n.publisher, link: n.link, ts: n.providerPublishTime ? n.providerPublishTime * 1000 : null }));
+  } catch (e) { return []; }
+}
+
+async function buildStockDetails(sym) {
+  const out = { symbol: sym, ts: Date.now() };
+  const [chartJ, qs, news] = await Promise.all([
+    fetchYahoo(sym, '1d', '1y').catch(() => null),
+    yhQuoteSummary(sym, 'price,summaryDetail,defaultKeyStatistics,financialData,assetProfile,calendarEvents,earnings,recommendationTrend').catch(() => null),
+    fetchStockNews(sym)
+  ]);
+  const meta = chartJ && chartJ.chart && chartJ.chart.result && chartJ.chart.result[0] && chartJ.chart.result[0].meta || {};
+  const bars = barsFromYahoo(chartJ);
+  const pr = (qs && qs.price) || {}, sd = (qs && qs.summaryDetail) || {}, ks = (qs && qs.defaultKeyStatistics) || {};
+  const fd = (qs && qs.financialData) || {}, ap = (qs && qs.assetProfile) || {}, ce = (qs && qs.calendarEvents) || {};
+  const cur = pr.currency || meta.currency || (sym.endsWith('.TA') ? 'ILA' : 'USD');
+  // TASE is quoted in agorot (ILA) — kept as-is, exactly like the app's chart and TradingView.
+  const div = 1;
+  const cs = cur === 'ILA' ? '' : (CURR_SYMBOL[cur] || (cur + ' '));
+  const P = (x) => { const v = num(rw(x)); return v == null ? null : v / div; };
+
+  const last = bars.length ? bars[bars.length - 1] : null;
+  const price = P(pr.regularMarketPrice) != null ? P(pr.regularMarketPrice) : (num(meta.regularMarketPrice) != null ? meta.regularMarketPrice / div : (last ? last.close / div : null));
+  const prev = P(pr.regularMarketPreviousClose) != null ? P(pr.regularMarketPreviousClose) : (num(meta.chartPreviousClose) != null ? meta.chartPreviousClose / div : (bars.length > 1 ? bars[bars.length - 2].close / div : null));
+  out.currency = cs;
+  out.currencyCode = cur;
+  out.name = pr.longName || pr.shortName || meta.longName || meta.shortName || sym;
+  out.exchange = pr.exchangeName || meta.fullExchangeName || meta.exchangeName || '';
+  out.sector = ap.sector || null; out.industry = ap.industry || null;
+  out.website = ap.website || null; out.employees = num(ap.fullTimeEmployees);
+  out.summary = ap.longBusinessSummary ? String(ap.longBusinessSummary).slice(0, 420) : null;
+  out.price = price;
+  out.prevClose = prev;
+  out.change = (price != null && prev != null) ? price - prev : null;
+  out.changePct = (price != null && prev) ? (price / prev - 1) * 100 : null;
+  out.marketState = pr.marketState || null;      // REGULAR / PRE / POST / CLOSED ...
+  const pm = P(pr.preMarketPrice), po = P(pr.postMarketPrice);
+  out.extPrice = out.marketState === 'PRE' ? pm : (out.marketState === 'POST' || out.marketState === 'POSTPOST' ? po : null);
+  out.extChangePct = out.marketState === 'PRE' ? num(rw(pr.preMarketChangePercent)) : (po != null ? num(rw(pr.postMarketChangePercent)) : null);
+  if (out.extChangePct != null) out.extChangePct *= 100;
+
+  // volume vs 30-day average (computed from daily bars so the label is honest)
+  const vToday = num(rw(pr.regularMarketVolume)) != null ? rw(pr.regularMarketVolume) : (last ? last.volume : null);
+  let vAvg = null;
+  if (bars.length > 31) { let s = 0; for (let i = bars.length - 31; i < bars.length - 1; i++) s += bars[i].volume || 0; vAvg = s / 30; }
+  out.volume = vToday; out.avgVolume30 = vAvg;
+
+  out.stats = {
+    marketCap: num(rw(pr.marketCap)) != null ? rw(pr.marketCap) : num(rw(sd.marketCap)),
+    pe: num(rw(sd.trailingPE)), forwardPE: num(rw(sd.forwardPE)) != null ? rw(sd.forwardPE) : num(rw(ks.forwardPE)),
+    eps: num(rw(ks.trailingEps)), beta: num(rw(sd.beta)) != null ? rw(sd.beta) : num(rw(ks.beta)),
+    dividendYield: num(rw(sd.dividendYield)) != null ? rw(sd.dividendYield) * 100 : null,
+    dividendRate: P(sd.dividendRate), payoutRatio: num(rw(sd.payoutRatio)) != null ? rw(sd.payoutRatio) * 100 : null,
+    exDividend: rw(ce.exDividendDate) ? new Date(rw(ce.exDividendDate) * 1000).toISOString().slice(0, 10) : null,
+    hi52: P(sd.fiftyTwoWeekHigh), lo52: P(sd.fiftyTwoWeekLow),
+    priceToBook: num(rw(ks.priceToBook)), sharesOut: num(rw(ks.sharesOutstanding)), floatShares: num(rw(ks.floatShares)),
+    revenue: num(rw(fd.totalRevenue)), netIncome: num(rw(ks.netIncomeToCommon)),
+    profitMargin: num(rw(fd.profitMargins)) != null ? rw(fd.profitMargins) * 100 : null,
+    roe: num(rw(fd.returnOnEquity)) != null ? rw(fd.returnOnEquity) * 100 : null,
+    debtToEquity: num(rw(fd.debtToEquity)),
+    currentRatio: num(rw(fd.currentRatio)),
+    shortPercent: num(rw(ks.shortPercentOfFloat)) != null ? rw(ks.shortPercentOfFloat) * 100 : null
+  };
+  if (out.stats.hi52 == null && bars.length) { out.stats.hi52 = Math.max.apply(null, bars.map(b => b.high)) / div; out.stats.lo52 = Math.min.apply(null, bars.map(b => b.low)) / div; }
+
+  const ed = ce.earnings && ce.earnings.earningsDate && ce.earnings.earningsDate[0];
+  out.nextEarnings = ed && rw(ed) ? new Date(rw(ed) * 1000).toISOString().slice(0, 10) : null;
+
+  // earnings charts
+  const er = qs && qs.earnings;
+  out.epsQuarterly = [];
+  out.financialsYearly = [];
+  if (er && er.earningsChart && Array.isArray(er.earningsChart.quarterly)) {
+    out.epsQuarterly = er.earningsChart.quarterly.map(q => ({ q: q.date, actual: num(rw(q.actual)), estimate: num(rw(q.estimate)) }));
+  }
+  if (er && er.financialsChart && Array.isArray(er.financialsChart.yearly)) {
+    out.financialsYearly = er.financialsChart.yearly.map(y => ({ y: y.date, revenue: num(rw(y.revenue)), earnings: num(rw(y.earnings)) }));
+  }
+
+  // analysts
+  const rt = qs && qs.recommendationTrend && qs.recommendationTrend.trend && qs.recommendationTrend.trend[0];
+  out.analysts = {
+    key: fd.recommendationKey || null,            // strong_buy | buy | hold | sell | strong_sell
+    mean: num(rw(fd.recommendationMean)),         // 1 (strong buy) .. 5 (strong sell)
+    count: num(rw(fd.numberOfAnalystOpinions)),
+    targetMean: P(fd.targetMeanPrice), targetHigh: P(fd.targetHighPrice), targetLow: P(fd.targetLowPrice),
+    trend: rt ? { strongBuy: rt.strongBuy || 0, buy: rt.buy || 0, hold: rt.hold || 0, sell: rt.sell || 0, strongSell: rt.strongSell || 0 } : null
+  };
+
+  out.perf = perfFromBars(bars);
+  out.technical = bars.length ? technicalRating(bars) : null;
+  out.dividends = (out.stats.dividendYield || out.stats.dividendRate) ? await fetchDividendHistory(sym, div) : [];
+  out.news = news;
+  return out;
+}
+
+app.get('/api/stock/details', async (req, res) => {
+  const ip = req.ip || (req.connection && req.connection.remoteAddress) || 'x';
+  const now = Date.now(), rl = _detRate.get(ip);
+  if (rl && now - rl.t < 60000) { if (++rl.n > 40) return res.status(429).json({ error: 'rate' }); }
+  else _detRate.set(ip, { n: 1, t: now });
+  if (_detRate.size > 5000) { for (const k of Array.from(_detRate.keys())) { if (now - _detRate.get(k).t > 60000) _detRate.delete(k); } }
+
+  const sym = String(req.query.symbol || '').trim().toUpperCase();
+  if (!/^[A-Z0-9.\-^=]{1,15}$/.test(sym)) return res.status(400).json({ error: 'bad symbol' });
+  res.setHeader('Cache-Control', 'no-store');
+  const c = _detCache.get(sym);
+  if (c && now - c.ts < DET_TTL) return res.json(c.data);
+  try {
+    const data = await buildStockDetails(sym);
+    _detCache.set(sym, { ts: now, data: data });
+    if (_detCache.size > 400) _detCache.delete(_detCache.keys().next().value);
+    res.json(data);
+  } catch (e) {
+    console.error('[Details] error', sym, e.message);
+    res.status(502).json({ error: 'upstream error' });
+  }
+});
+
 // ── START ──────────────────────────────────────────────────────────
 seedAndStart().catch(err => {
   console.error('[NexTrade] FATAL startup error:', err);
