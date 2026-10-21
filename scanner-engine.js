@@ -142,6 +142,21 @@
     return 'range';
   }
 
+  // Trend used everywhere (analyze + trendDuration). The still-forming swing may flag a
+  // downtrend, but while price holds ABOVE SMA30 that provisional read is ignored and only
+  // confirmed swings count (a 1-2 week bounce after a sharp dip must not flip an uptrend).
+  function trendOf(bars) {
+    var t = classifyTrend(structureSwings(bars));
+    if (t === 'down') {
+      var s = sma(bars, CFG.smaPeriod);
+      if (s != null && bars[bars.length - 1].close >= s) {
+        var conf = classifyTrend(findSwings(bars.slice(0, bars.length - 1)));
+        if (conf !== 'down') return conf;
+      }
+    }
+    return t;
+  }
+
   // Fresh micro-structure after a deep pullback: >=2 higher highs AND 2 higher lows.
   function hasRebuildStructure(swings, dir) {
     var highs = swings.filter(function (s) { return s.type === 'high'; });
@@ -365,7 +380,7 @@
     // Use a confirmed-swing window (drop the still-forming last bar for structure)
     var swingBars = bars.slice(0, n - 1);
     var swings = findSwings(swingBars);
-    var trend = classifyTrend(structureSwings(bars));
+    var trend = trendOf(bars);
     res.trend = trend;
     var levels = buildLevels(swingBars, swings);
     var vol = volumeTrend(bars);
@@ -473,10 +488,11 @@
     // ===================== SHORT side (only if trend down) ==================
     if (trend === 'down') {
       if (aboveSMA) {
+        // Hard rule: never a short while price is above SMA30 - no direction, no alert.
         res.disq.push('above_sma30');
-        res.reasons.push('מגמת ירידה אך המחיר מעל SMA30 — להמתין');
-        res.direction = 'short'; res.setup = 'sma30_rejection'; res.status = 'watch';
-        return finalizeWatch(res, sma30, price);
+        res.reasons.push('המחיר מעל SMA30 — אין שורט עד שהמחיר נשבר מתחתיו');
+        res.status = 'reject';
+        return res;
       }
       if (smaFalling) res.reasons.push('SMA30 יורד ומשמש התנגדות דינמית');
 
@@ -559,6 +575,14 @@
 
     // ---- inner helpers (hoisted) --------------------------------------------
     function finalizeEntry(r, dir, entry, stopRef, a, px) {
+      // Hard rule: never a SHORT entry while price is at/above SMA30.
+      if (dir === 'short' && px >= sma30) {
+        r.status = 'reject'; r.direction = null; r.setup = null;
+        r.entry = r.stop = r.target = null; r.alertLevel = r.alertSide = null;
+        if (r.disq.indexOf('above_sma30') === -1) r.disq.push('above_sma30');
+        r.reasons.push('המחיר מעל SMA30 — אין שורט');
+        return r;
+      }
       // Hard rule: never a LONG entry while price is below SMA30 (any setup / trend class).
       if (dir === 'long' && px < sma30) {
         r.status = 'watch';
@@ -626,7 +650,7 @@
     var n = bars.length, weeks = 1, capped = true;
     for (var end = n - 2; end >= CFG.minBars; end--) {
       // trend as it was at that earlier week (same method as analyze(): confirmed + forming swing)
-      if (classifyTrend(structureSwings(bars.slice(0, end + 1))) !== trend) { capped = false; break; }
+      if (trendOf(bars.slice(0, end + 1)) !== trend) { capped = false; break; }
       weeks++;
     }
     return { weeks: weeks, capped: capped, since: bars[n - weeks] ? bars[n - weeks].time : null };
