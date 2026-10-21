@@ -744,27 +744,38 @@
     return trialStripHtml() + earnBannerHtml() + riskBanner + perf + hero + live + toolbar + '<div id="sigDyn">' + renderSigDyn() + '</div>';
   }
 
+  // TASE stocks are quoted in agorot by Yahoo: show/compute everything in shekels (÷100).
+  function tDiv(t) { return (/\.TA$/i.test(t.sym) && t.curr === '₪') ? 100 : 1; }
+  function tGroup(t) { return /\.TA$/i.test(t.sym) ? 'il' : 'us'; }
+  function tClosedPnl(t) { return t.pnl == null ? 0 : (t.pnlV2 ? t.pnl : t.pnl / tDiv(t)); }
+  // Signed money, e.g. -$5.96 / +₪562.50 (forced LTR so the sign stays attached to the amount).
+  function fmtM(n, cur, plus) {
+    if (n == null || isNaN(n)) return '--';
+    return '<span dir="ltr">' + (n < 0 ? '-' : (plus ? '+' : '')) + (cur || '') + Math.abs(n).toFixed(2) + '</span>';
+  }
+  function fmtP(n, t) { return n == null ? '--' : fmt(n / tDiv(t), t.curr); }
+
   function tradePnl(t, live) {
     if (live == null) return { abs: null, pct: null };
     var sign = t.dir === 'long' ? 1 : -1;
     var shares = t.shares || 1;
-    var abs = (live - t.entry) * sign * shares;
+    var abs = (live - t.entry) * sign * shares / tDiv(t);
     var p = ((live - t.entry) / t.entry) * 100 * sign;
     return { abs: abs, pct: p };
   }
 
   function tradeRow(t, isOpen) {
     var live = isOpen ? livePrice(t.sym) : t.closePrice;
-    var pnl = isOpen ? tradePnl(t, live) : { abs: t.pnl, pct: t.pnlPct };
+    var pnl = isOpen ? tradePnl(t, live) : { abs: t.pnl == null ? null : tClosedPnl(t), pct: t.pnlPct };
     var cls = (pnl.abs == null) ? '' : (pnl.abs >= 0 ? 'pos' : 'neg');
     var dirTxt = t.dir === 'long' ? 'לונג' : 'שורט';
-    var pnlTxt = (pnl.abs == null) ? '--' : (fmt(pnl.abs, t.curr) + ' (' + pct(pnl.pct) + ')');
+    var pnlTxt = (pnl.abs == null) ? '--' : (fmtM(pnl.abs, t.curr, true) + ' (' + pct(pnl.pct) + ')');
     return '<div class="trade-row">' +
       '<div><span class="tr-sym">' + esc(dispSym(t.sym)) + '</span>' +
         '<br><span class="tr-dir ' + t.dir + '">' + dirTxt + '</span></div>' +
-      '<div><div class="tr-cell-label">כניסה</div>' + fmt(t.entry, t.curr) + '</div>' +
-      '<div><div class="tr-cell-label">' + (isOpen ? 'מחיר נוכחי' : 'מחיר סגירה') + '</div>' + fmt(live, t.curr) + '</div>' +
-      '<div><div class="tr-cell-label">סטופ / יעד</div>' + fmt(t.stop, t.curr) + ' / ' + fmt(t.tp, t.curr) + '</div>' +
+      '<div><div class="tr-cell-label">כניסה</div>' + fmtP(t.entry, t) + '</div>' +
+      '<div><div class="tr-cell-label">' + (isOpen ? 'מחיר נוכחי' : 'מחיר סגירה') + '</div>' + fmtP(live, t) + '</div>' +
+      '<div><div class="tr-cell-label">סטופ / יעד</div>' + fmtP(t.stop, t) + ' / ' + fmtP(t.tp, t) + '</div>' +
       '<div><div class="tr-cell-label">רווח/הפסד</div><span class="tr-pnl ' + cls + '">' + pnlTxt + '</span></div>' +
       '<div>' + (isOpen
           ? '<button class="tr-close-btn" onclick="NTSignals.closeTrade(\'' + t.id + '\')">סגור עסקה</button>'
@@ -773,33 +784,42 @@
     '</div>';
   }
 
+  var T_GROUPS = [
+    { k: 'us', cur: '$', title: 'מניות ארה״ב ($ דולר)' },
+    { k: 'il', cur: '₪', title: 'מניות ישראל (₪ שקל)' }
+  ];
+  function statBox(label, val, cls) {
+    return '<div class="sf-stat"><div class="sf-stat-label">' + label + '</div><div class="sf-stat-val ' + (cls || '') + '">' + val + '</div></div>';
+  }
+
   function renderTrades() {
     var trades = loadTrades();
     var open = trades.filter(function (t) { return t.status === 'open'; });
-    var closed = trades.filter(function (t) { return t.status === 'closed'; });
-
-    // live totals
-    var openPnl = 0, haveLive = false;
-    open.forEach(function (t) { var l = livePrice(t.sym); var p = tradePnl(t, l); if (p.abs != null) { openPnl += p.abs; haveLive = true; } });
-    var realized = closed.reduce(function (s, t) { return s + (t.pnl || 0); }, 0);
-    var wins = closed.filter(function (t) { return (t.pnl || 0) >= 0; }).length;
-    var winRate = closed.length ? Math.round(wins / closed.length * 100) : 0;
-
     var html = '<div class="sf-trades">';
-    html += '<div class="sf-stats">' +
-      '<div class="sf-stat"><div class="sf-stat-label">עסקאות פתוחות</div><div class="sf-stat-val">' + open.length + '</div></div>' +
-      '<div class="sf-stat"><div class="sf-stat-label">רווח/הפסד פתוח</div><div class="sf-stat-val ' + (openPnl >= 0 ? 'pos' : 'neg') + '">' + (haveLive ? fmt(openPnl) : '--') + '</div></div>' +
-      '<div class="sf-stat"><div class="sf-stat-label">רווח/הפסד ממומש</div><div class="sf-stat-val ' + (realized >= 0 ? 'pos' : 'neg') + '">' + fmt(realized) + '</div></div>' +
-      '<div class="sf-stat"><div class="sf-stat-label">אחוז הצלחה</div><div class="sf-stat-val">' + winRate + '%</div></div>' +
-    '</div>';
-
     if (!open.length) {
-      html += '<div class="sf-empty">אין עסקאות פתוחות. הוסף עסקה מלוח האיתותים.</div>';
-    } else {
-      html += '<div class="sf-rows-head"><div>מניה</div><div>כניסה</div><div>מחיר נוכחי</div><div>סטופ / יעד</div><div>רווח/הפסד</div><div></div></div>';
-      html += open.map(function (t) { return tradeRow(t, true); }).join('');
-      if (_tradePxTs) html += '<div class="tr-cell-label" style="text-align:center;margin-top:.6rem">🟢 מחירים בזמן אמת · עודכן ' + new Date(_tradePxTs).toLocaleTimeString('he-IL') + '</div>';
+      html += '<div class="sf-empty">אין עסקאות פתוחות. הוסף עסקה מלוח האיתותים.</div></div>';
+      return html;
     }
+    T_GROUPS.forEach(function (g) {
+      var gOpen = open.filter(function (t) { return tGroup(t) === g.k; });
+      if (!gOpen.length) return;
+      var gClosed = trades.filter(function (t) { return t.status === 'closed' && tGroup(t) === g.k; });
+      var openPnl = 0, haveLive = false;
+      gOpen.forEach(function (t) { var p = tradePnl(t, livePrice(t.sym)); if (p.abs != null) { openPnl += p.abs; haveLive = true; } });
+      var realized = gClosed.reduce(function (s, t) { return s + tClosedPnl(t); }, 0);
+      var wins = gClosed.filter(function (t) { return tClosedPnl(t) >= 0; }).length;
+      var winRate = gClosed.length ? Math.round(wins / gClosed.length * 100) + '%' : '--';
+      html += '<div class="sf-sec-title">' + g.title + '</div>';
+      html += '<div class="sf-stats">' +
+        statBox('עסקאות פתוחות', gOpen.length) +
+        statBox('רווח/הפסד פתוח', haveLive ? fmtM(openPnl, g.cur, true) : '--', haveLive ? (openPnl >= 0 ? 'pos' : 'neg') : '') +
+        statBox('רווח/הפסד ממומש', fmtM(realized, g.cur, true), realized >= 0 ? 'pos' : 'neg') +
+        statBox('אחוז הצלחה', winRate) +
+      '</div>';
+      html += '<div class="sf-rows-head"><div>מניה</div><div>כניסה</div><div>מחיר נוכחי</div><div>סטופ / יעד</div><div>רווח/הפסד</div><div></div></div>';
+      html += gOpen.map(function (t) { return tradeRow(t, true); }).join('');
+    });
+    if (_tradePxTs) html += '<div class="tr-cell-label" style="text-align:center;margin-top:.6rem">🟢 מחירים בזמן אמת · עודכן ' + new Date(_tradePxTs).toLocaleTimeString('he-IL') + '</div>';
     html += '</div>';
     return html;
   }
@@ -811,17 +831,22 @@
     if (!closed.length) {
       return '<div class="sf-empty">אין היסטוריית עסקאות עדיין.<br>עסקאות שתסגור יתועדו כאן למעקב.</div>';
     }
-    var realized = closed.reduce(function (s, t) { return s + (t.pnl || 0); }, 0);
-    var wins = closed.filter(function (t) { return (t.pnl || 0) >= 0; }).length;
     var html = '<div class="sf-trades">';
-    html += '<div class="sf-stats">' +
-      '<div class="sf-stat"><div class="sf-stat-label">סה״כ עסקאות</div><div class="sf-stat-val">' + closed.length + '</div></div>' +
-      '<div class="sf-stat"><div class="sf-stat-label">מנצחות</div><div class="sf-stat-val pos">' + wins + '</div></div>' +
-      '<div class="sf-stat"><div class="sf-stat-label">מפסידות</div><div class="sf-stat-val neg">' + (closed.length - wins) + '</div></div>' +
-      '<div class="sf-stat"><div class="sf-stat-label">רווח/הפסד כולל</div><div class="sf-stat-val ' + (realized >= 0 ? 'pos' : 'neg') + '">' + fmt(realized) + '</div></div>' +
-    '</div>';
-    html += '<div class="sf-rows-head"><div>מניה</div><div>כניסה</div><div>מחיר סגירה</div><div>סטופ / יעד</div><div>רווח/הפסד</div><div>תאריך</div></div>';
-    html += closed.map(function (t) { return tradeRow(t, false); }).join('');
+    T_GROUPS.forEach(function (g) {
+      var gc = closed.filter(function (t) { return tGroup(t) === g.k; });
+      if (!gc.length) return;
+      var realized = gc.reduce(function (s, t) { return s + tClosedPnl(t); }, 0);
+      var wins = gc.filter(function (t) { return tClosedPnl(t) >= 0; }).length;
+      html += '<div class="sf-sec-title">' + g.title + '</div>';
+      html += '<div class="sf-stats">' +
+        statBox('סה״כ עסקאות', gc.length) +
+        statBox('מנצחות', wins, 'pos') +
+        statBox('מפסידות', gc.length - wins, 'neg') +
+        statBox('רווח/הפסד כולל', fmtM(realized, g.cur, true), realized >= 0 ? 'pos' : 'neg') +
+      '</div>';
+      html += '<div class="sf-rows-head"><div>מניה</div><div>כניסה</div><div>מחיר סגירה</div><div>סטופ / יעד</div><div>רווח/הפסד</div><div>תאריך</div></div>';
+      html += gc.map(function (t) { return tradeRow(t, false); }).join('');
+    });
     html += '</div>';
     return html;
   }
@@ -2114,6 +2139,7 @@
     t.closeTs = Date.now();
     t.closeDate = new Date().toLocaleDateString('he-IL');
     t.pnl = pnl.abs;
+    t.pnlV2 = true;   // pnl stored in main currency units (shekels for TASE)
     t.pnlPct = pnl.pct;
     saveTrades(trades);
     render();

@@ -2920,6 +2920,8 @@
     .sig-thumb { width:100%; height:60px; border-radius:8px; background:var(--surface2); display:block; }
     /* Trades table */
     .sf-trades { max-width:1000px; margin:0 auto; }
+    .sf-sec-title { font-size:1.05rem; font-weight:900; color:#fff; margin:1.4rem 0 .7rem; padding-bottom:.4rem; border-bottom:1px solid var(--border); }
+    .sf-sec-title:first-child { margin-top:.2rem; }
     .sf-stats { display:flex; gap:1rem; margin-bottom:1rem; flex-wrap:wrap; }
     .sf-stat { flex:1; min-width:140px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:.9rem 1rem; }
     .sf-stat-label { font-size:.72rem; color:var(--text-muted); font-weight:700; margin-bottom:.3rem; }
@@ -3619,7 +3621,7 @@
 <script src="stockpanel.js?v=20261021a"></script>
 <script src="drawing.js?v=20261019b"></script>
 <script src="features.js?v=20261018j"></script>
-<script src="signals.js?v=20261021b"></script>
+<script src="signals.js?v=20261021c"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
