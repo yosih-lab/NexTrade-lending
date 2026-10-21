@@ -38,7 +38,7 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg:#04060c; --surface:#0a0d16; --surface2:#0f1420; --border:#1e2637;
+      --bg:#131722; --surface:#1e222d; --surface2:#262b38; --border:#2a2e39;
       --accent:#2962ff; --green:#26a69a; --red:#ef5350; --text:#ffffff;
       --text-muted:#8b9ab5; --gold:#f5a623; --sidebar-w:334px;
     }
@@ -208,7 +208,7 @@
     .sidebar {
       width:var(--sidebar-w);
       flex:0 0 var(--sidebar-w);
-      background:#010204; border-left:1px solid var(--border);
+      background:#131722; border-left:1px solid var(--border);
       overflow:visible; display:flex; flex-direction:column;
       min-width:0; z-index:2;
       box-shadow:none;
@@ -230,11 +230,11 @@
     /* ===== Watchlist + stock details panel (NTStockPanel) ===== */
     #sview-watchlist { padding:0; gap:0; overflow:hidden; }
     .wl-top { flex:0 0 auto; height:42%; min-height:90px; overflow-y:auto; padding:.3rem .4rem; display:flex; flex-direction:column; gap:.5rem; }
-    .sp-split { flex:0 0 9px; cursor:row-resize; background:#0b0f19; border-top:1px solid var(--border); border-bottom:1px solid var(--border); position:relative; touch-action:none; }
+    .sp-split { flex:0 0 9px; cursor:row-resize; background:#1e222d; border-top:1px solid var(--border); border-bottom:1px solid var(--border); position:relative; touch-action:none; }
     .sp-split::after { content:''; position:absolute; left:50%; top:3px; width:34px; height:3px; margin-left:-17px; border-radius:3px; background:#3a4560; }
     .sp-split:hover::after { background:var(--accent); }
     body.sp-dragging { user-select:none; cursor:row-resize; }
-    .sp-panel { flex:1 1 0; min-height:0; overflow-y:auto; overflow-x:hidden; padding:.2rem 0 1rem; background:#05070d; scrollbar-width:thin; }
+    .sp-panel { flex:1 1 0; min-height:0; overflow-y:auto; overflow-x:hidden; padding:.2rem 0 1rem; background:#131722; scrollbar-width:thin; }
     .sp-panel::-webkit-scrollbar { width:5px; }
     .sp-panel::-webkit-scrollbar-thumb { background:#2a3348; border-radius:5px; }
     .sp-top { padding:.7rem .8rem .5rem; }
@@ -620,7 +620,7 @@
       position:absolute; bottom:2px; right:4px; z-index:12;
       font-size:.82rem; font-weight:700; color:#fff;
       font-family:'Heebo',sans-serif; pointer-events:none;
-      background:rgba(4,6,12,.9); padding:1px 5px; border-radius:3px;
+      background:rgba(19,23,34,.92); padding:1px 5px; border-radius:3px;
     }
     .tv-lightweight-charts .tv-lightweight-charts-attribution,
     .tv-lightweight-charts a[href*="tradingview.com"] { display:none !important; }
@@ -647,8 +647,8 @@
       position:absolute;
       display:none;
       z-index:200;
-      background:#050810;
-      border:1px solid #1e2637;
+      background:#1e222d;
+      border:1px solid #2a2e39;
       border-radius:10px;
       padding:.4rem;
       box-shadow:0 8px 28px rgba(0,0,0,.9);
@@ -674,15 +674,15 @@
     .cm-sell { color:#ef5350; }
     .cm-txt { flex:1; line-height:1.3; }
     .cm-key { font-size:.58rem; color:#5b6577; flex-shrink:0; white-space:nowrap; }
-    .cm-sep { height:1px; background:#1e2637; margin:.3rem .2rem; }
+    .cm-sep { height:1px; background:#2a2e39; margin:.3rem .2rem; }
     .cm-check { color:#2962ff; }
     /* ===== CHART CONTEXT MENU (canvas color picker — reused inside Settings > Canvas) ===== */
-    .ctxm-header { padding:.45rem .75rem .3rem; font-size:.68rem; font-weight:800; color:#8b9ab5; text-transform:uppercase; letter-spacing:.8px; border-bottom:1px solid #1e2637; }
+    .ctxm-header { padding:.45rem .75rem .3rem; font-size:.68rem; font-weight:800; color:#8b9ab5; text-transform:uppercase; letter-spacing:.8px; border-bottom:1px solid #2a2e39; }
     .ctxm-label { display:flex; align-items:center; gap:.5rem; padding:.35rem .75rem; font-size:.78rem; font-weight:700; color:#fff; cursor:pointer; transition:background .12s; }
-    .ctxm-label:hover { background:#0f1420; }
-    .ctxm-sub { border-top:1px solid #1e2637; padding:.3rem 0; }
+    .ctxm-label:hover { background:#2a2e39; }
+    .ctxm-sub { border-top:1px solid #2a2e39; padding:.3rem 0; }
     .ctxm-tabs { display:flex; margin:.2rem 0 .3rem; gap:.3rem; }
-    .ctxm-tab { flex:1; padding:.24rem .3rem; font-size:.68rem; font-weight:700; border-radius:5px; border:1px solid #1e2637; background:#0a0d16; color:#8b9ab5; cursor:pointer; font-family:'Heebo',sans-serif; transition:all .15s; }
+    .ctxm-tab { flex:1; padding:.24rem .3rem; font-size:.68rem; font-weight:700; border-radius:5px; border:1px solid #2a2e39; background:#131722; color:#8b9ab5; cursor:pointer; font-family:'Heebo',sans-serif; transition:all .15s; }
     .ctxm-tab.active { background:#2962ff; border-color:#2962ff; color:#fff; }
     .ctxm-colors { display:flex; flex-wrap:wrap; gap:3px; padding:.15rem 0 .4rem; }
     .ctxm-swatch { width:18px; height:18px; border-radius:3px; border:1px solid rgba(255,255,255,.1); cursor:pointer; transition:transform .1s,box-shadow .1s; }
@@ -737,7 +737,7 @@
     .cst-inline-ctrl { display:flex; align-items:center; gap:.6rem; margin-top:.4rem; }
     .cst-inline-ctrl input[type="range"] { width:100px; accent-color:#2962ff; }
     .cst-select {
-      background:#0e1015; border:1px solid #3a3e4a; color:#d1d4dc; border-radius:5px;
+      background:#131722; border:1px solid #2a2e39; color:#d1d4dc; border-radius:5px;
       padding:.28rem .5rem; font-size:.74rem; font-family:'Heebo',sans-serif; cursor:pointer;
     }
     .cst-sub-row { display:flex; align-items:center; justify-content:space-between; margin-inline-start:1.7rem; padding:.3rem 0; }
@@ -1170,7 +1170,7 @@
     #pwaInstallClose {
       display:none; position:fixed; bottom:40px; left:40px; z-index:9998;
       width:18px; height:18px; border-radius:50%; padding:0;
-      background:#0a0d16; border:1px solid var(--border); color:var(--text-muted);
+      background:#131722; border:1px solid var(--border); color:var(--text-muted);
       font-size:.65rem; line-height:1; cursor:pointer; align-items:center; justify-content:center;
     }
     #pwaInstallClose:hover { color:#ef5350; border-color:#ef5350; }
@@ -1243,7 +1243,7 @@
     #bellAlertsPopup {
       position:fixed; top:46px; right:120px; z-index:9998;
       width:360px; max-height:70vh;
-      background:#0a0d16; border:1px solid var(--border);
+      background:#1e222d; border:1px solid var(--border);
       border-radius:12px; box-shadow:0 8px 40px rgba(0,0,0,.7);
       display:none; flex-direction:column; direction:rtl;
       font-family:'Heebo',sans-serif;
@@ -2898,7 +2898,7 @@
     .sig-rb-risk { background:linear-gradient(90deg, rgba(239,83,80,.85), rgba(239,83,80,.35)); }
     .sig-rb-rew { background:linear-gradient(90deg, rgba(38,166,154,.35), rgba(38,166,154,.9)); }
     .sig-rb-entry { position:absolute; top:-3px; bottom:-3px; width:2px; background:#fff; transform:translateX(-1px); border-radius:2px; }
-    .sig-rb-live { position:absolute; top:50%; width:12px; height:12px; border-radius:50%; background:#f5a623; border:2px solid #0a0d16;
+    .sig-rb-live { position:absolute; top:50%; width:12px; height:12px; border-radius:50%; background:#f5a623; border:2px solid #131722;
       transform:translate(-50%,-50%); box-shadow:0 0 8px rgba(245,166,35,.9); animation:sfPulseDot 1.8s infinite; }
     @keyframes sfPulseDot { 0%,100%{transform:translate(-50%,-50%) scale(1);} 50%{transform:translate(-50%,-50%) scale(1.25);} }
     .sig-card .sig-rb { height:10px; }
@@ -3512,16 +3512,16 @@
               </div>
               <div style="font-size:.7rem;color:#f5a623;font-weight:700;margin-bottom:.35rem" id="crosshairAlertPriceLabel"></div>
               <div style="display:flex;gap:.3rem;margin-bottom:.3rem">
-                <select id="crosshairAlertCond" style="flex:1;background:#0a0d16;border:1px solid #1e2637;border-radius:5px;color:#fff;font-size:.7rem;padding:.22rem .3rem;font-family:'Heebo',sans-serif;">
+                <select id="crosshairAlertCond" style="flex:1;background:#131722;border:1px solid #2a2e39;border-radius:5px;color:#fff;font-size:.7rem;padding:.22rem .3rem;font-family:'Heebo',sans-serif;">
                   <option value="above">מעל</option>
                   <option value="below">מתחת</option>
                 </select>
-                <input id="crosshairAlertPriceInp" type="number" step="any" placeholder="מחיר" style="flex:1.2;background:#0a0d16;border:1px solid #1e2637;border-radius:5px;color:#fff;font-size:.7rem;padding:.22rem .35rem;font-family:'Heebo',sans-serif;" />
+                <input id="crosshairAlertPriceInp" type="number" step="any" placeholder="מחיר" style="flex:1.2;background:#131722;border:1px solid #2a2e39;border-radius:5px;color:#fff;font-size:.7rem;padding:.22rem .35rem;font-family:'Heebo',sans-serif;" />
               </div>
-              <input id="crosshairAlertEmail" type="email" placeholder="מייל (אופציונלי)" style="width:100%;background:#0a0d16;border:1px solid #1e2637;border-radius:5px;color:#fff;font-size:.68rem;padding:.22rem .35rem;margin-bottom:.35rem;box-sizing:border-box;font-family:'Heebo',sans-serif;" />
+              <input id="crosshairAlertEmail" type="email" placeholder="מייל (אופציונלי)" style="width:100%;background:#131722;border:1px solid #2a2e39;border-radius:5px;color:#fff;font-size:.68rem;padding:.22rem .35rem;margin-bottom:.35rem;box-sizing:border-box;font-family:'Heebo',sans-serif;" />
               <div style="display:flex;gap:.3rem">
                 <button onclick="crosshairAddAlert()" style="flex:1;background:#2962ff;border:none;border-radius:5px;color:#fff;font-size:.72rem;font-weight:700;padding:.3rem;cursor:pointer;font-family:'Heebo',sans-serif;">הוסף</button>
-                <button onclick="closeCrosshairAlertPopup()" style="background:#1e2637;border:none;border-radius:5px;color:#8b9ab5;font-size:.72rem;padding:.3rem .5rem;cursor:pointer;font-family:'Heebo',sans-serif;">ביטול</button>
+                <button onclick="closeCrosshairAlertPopup()" style="background:#2a2e39;border:none;border-radius:5px;color:#8b9ab5;font-size:.72rem;padding:.3rem .5rem;cursor:pointer;font-family:'Heebo',sans-serif;">ביטול</button>
               </div>
             </div>
           </div>
@@ -3617,7 +3617,7 @@
 <script src="scanner-symbols.js?v=20261019g"></script>
 <script src="scanner-engine.js?v=20261021b"></script>
 <script src="plan.js?v=20261019g"></script>
-<script src="main.js?v=20261021a"></script>
+<script src="main.js?v=20261021b"></script>
 <script src="stockpanel.js?v=20261021a"></script>
 <script src="drawing.js?v=20261019b"></script>
 <script src="features.js?v=20261018j"></script>
@@ -3663,7 +3663,7 @@
           </div>
 
           <!-- WATERMARK — symbol name behind the chart -->
-          <div class="ctxm-header" style="padding:1rem 0 .4rem;border-bottom:none;border-top:1px solid #1e2637;margin-top:.8rem">סימן מים (שם הנייר ברקע)</div>
+          <div class="ctxm-header" style="padding:1rem 0 .4rem;border-bottom:none;border-top:1px solid #2a2e39;margin-top:.8rem">סימן מים (שם הנייר ברקע)</div>
           <div class="cst-row" id="wmToggleRow" onclick="wmToggle()" style="padding:.4rem .2rem">
             <div class="cst-chk"></div>
             <div class="cst-row-txt">

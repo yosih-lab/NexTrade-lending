@@ -1830,11 +1830,11 @@ function initChart() {
 
   chartInstance = LightweightCharts.createChart(mainEl, {
     autoSize: true,
-    layout: { background: { color: '#05070a' }, textColor: '#8899aa', fontSize: 11.5 },
+    layout: { background: { color: '#131722' }, textColor: '#8899aa', fontSize: 11.5 },
     grid:   { vertLines: { color: 'transparent' }, horzLines: { color: 'transparent' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-    rightPriceScale: { borderColor: '#1e2533', autoScale: true, entireTextOnly: true, minimumWidth: 66 },
-    timeScale: { borderColor: '#1e2533', timeVisible: true, secondsVisible: false },
+    rightPriceScale: { borderColor: '#2a2e39', autoScale: true, entireTextOnly: true, minimumWidth: 66 },
+    timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false },
     handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
     handleScale: { mouseWheel: false, pinch: true, axisPressedMouseMove: { time: true, price: true } },
   });
@@ -2099,17 +2099,18 @@ var CTX_COLORS = [
   '#0891b2','#06b6d4','#67e8f9','#a5f3fc','#164e63','#155e75','#083344','#cffafe',
   '#059669','#10b981','#6ee7b7','#a7f3d0','#064e3b','#065f46','#022c22','#d1fae5'
 ];
-var _ctxBgSolid = '#05070a';
-var _ctxBgGradTop = '#05070a', _ctxBgGradBot = '#12161f';
+var _ctxBgSolid = '#131722';
+var _ctxBgGradTop = '#131722', _ctxBgGradBot = '#1e222d';
 var _ctxBgMode = 'solid';
 (function loadBgPref() {
   try {
     var s = JSON.parse(localStorage.getItem('nt_chartBg'));
-    if (s) { _ctxBgMode = s.mode || 'solid'; _ctxBgSolid = s.solid || '#05070a'; _ctxBgGradTop = s.top || '#05070a'; _ctxBgGradBot = s.bot || '#12161f'; }
-    // Migrate the previous lighter default to the new darker near-black
-    if (_ctxBgSolid === '#0f1117') _ctxBgSolid = '#05070a';
-    if (_ctxBgGradTop === '#0f1117') _ctxBgGradTop = '#05070a';
-    if (_ctxBgGradBot === '#1a1f2e') _ctxBgGradBot = '#12161f';
+    if (s) { _ctxBgMode = s.mode || 'solid'; _ctxBgSolid = s.solid || '#131722'; _ctxBgGradTop = s.top || '#131722'; _ctxBgGradBot = s.bot || '#1e222d'; }
+    // Migrate the previous near-black defaults to the TradingView-style matte dark
+    var _old = { '#0f1117': 1, '#05070a': 1, '#000000': 1, '#000': 1 };
+    if (_old[_ctxBgSolid]) _ctxBgSolid = '#131722';
+    if (_old[_ctxBgGradTop]) _ctxBgGradTop = '#131722';
+    if (_ctxBgGradBot === '#1a1f2e' || _ctxBgGradBot === '#12161f') _ctxBgGradBot = '#1e222d';
   } catch(e) {}
 })();
 function _saveBgPref() {
