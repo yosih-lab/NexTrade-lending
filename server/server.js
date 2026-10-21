@@ -1047,6 +1047,19 @@ const SIG_CHUNK      = parseInt(process.env.SCAN_CHUNK || '60', 10);   // symbol
 const SIG_CONCURRENCY= parseInt(process.env.SCAN_CONCURRENCY || '6', 10);
 const SIG_CYCLE_MS   = parseInt(process.env.SCAN_CYCLE_MS || String(5 * 60 * 1000), 10);
 const SIG_MAX_AGE_MS = parseInt(process.env.SIGNAL_MAX_AGE_MS || String(7 * 24 * 3600 * 1000), 10);
+// No entry alerts from 7 days before earnings through earnings day (no open positions into a report).
+const EARN_BLACKOUT_DAYS = parseInt(process.env.EARN_BLACKOUT_DAYS || '7', 10);
+function daysUntilISO(iso) {
+  if (!iso) return null;
+  const d = new Date(iso + 'T00:00:00Z');
+  if (isNaN(d.getTime())) return null;
+  const t = new Date();
+  return Math.round((d.getTime() - Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate())) / 86400000);
+}
+function inEarnBlackout(iso) {
+  const dd = daysUntilISO(iso);
+  return dd != null && dd >= 0 && dd <= EARN_BLACKOUT_DAYS;
+}
 
 let _sigStore   = [];   // authoritative signals, newest-first
 let _sigByKey   = {};   // key -> signal (dedupe one per symbol/day)
@@ -1109,7 +1122,7 @@ function buildSignalObject(sym, a, liq) {
 function pruneSignals() {
   const cutoff = Date.now() - SIG_MAX_AGE_MS;
   _sigStore = _sigStore.filter(s => s.ts >= cutoff && !_sigDismissed.has(s.key) && !/=[FX]$|-USD$/i.test(s.sym || '') &&
-    !(s.direction === 'short' && isTaseStock(s.sym || '')) &&
+    !(s.direction === 'short' && isTaseStock(s.sym || '')) && !inEarnBlackout(s.earnDate) &&
     (isIndexSym(s.sym || '') || (s.avgTurnover != null && s.avgTurnover >= minTurnoverFor(s.sym || ''))));
   _sigByKey = {};
   _sigStore.forEach(s => { _sigByKey[s.key] = s; });
@@ -1185,8 +1198,12 @@ async function scanSignalsChunk() {
           if (a.direction === 'short' && isTaseStock(sym)) { dropStale(null); return; }   // no TASE stock shorts
           const armed = a.alertLevel != null && Math.abs(a.price - a.alertLevel) / a.alertLevel <= 0.015;
           if (a.status !== 'entry' && !armed) { dropStale(null); return; }
+          let earnDate = null;
+          try { earnDate = await fetchEarningsDate(sym); } catch (e) { earnDate = null; }
+          if (inEarnBlackout(earnDate)) { dropStale(null); return; }
           dropStale(a.direction);
           const sig = buildSignalObject(sym, a, liq);
+          sig.earnDate = earnDate || null;
           if (_sigDismissed.has(sig.key)) return;
           if (!_sigByKey[sig.key]) added++;
           _sigByKey[sig.key] = sig;
@@ -1528,6 +1545,9 @@ async function buildAnalysis(sym) {
     days = Math.round((new Date(edate + 'T00:00:00') - t) / 86400000);
   }
   d.earnings = { date: edate, days: days, available: !!edate };
+  if (days != null && days >= 0 && days <= EARN_BLACKOUT_DAYS && d.verdict && d.verdict.key === 'enter') {
+    d.verdict = { key: 'wait', text: 'דוחות בעוד ' + (days === 0 ? 'היום' : days + ' ימים') + ' — לא נכנסים לפוזיציה לפני דוחות, ממתינים לאחריהם' };
+  }
   d.liquidity = await fetchLiquidity(sym, meta.currency, curr);
   // compact weekly series (last ~80 weeks) + SMA30 for the client's mini chart
   try {

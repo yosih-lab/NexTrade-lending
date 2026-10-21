@@ -38,6 +38,7 @@
     atStop: 0.012,          // "at entry" window (1.2%) => status entry vs watch
     ranAwayPct: 0.06,       // >6% past the entry level => don't chase (watch)
     holdCandles: 5,         // 5 weekly candles must hold past a broken level
+    retestStopAtr: 0.75,    // retest setups: the flipped level is strong, so the stop sits only 0.75 ATR beyond it
     pullbackLookback: 8,    // weeks to inspect a pullback leg
     volContractRatio: 0.9,  // recent vol <= 0.9x of pullback-start vol = contracting
     volExpandRatio: 1.15,   // recent vol >= 1.15x = expanding
@@ -279,6 +280,21 @@
     };
   }
 
+  // A significant support (>=3 touches) near price that has NOT yet been broken, i.e. the last
+  // holdCandles weekly closes were not all below it. No short is allowed while this exists.
+  function unbrokenSupport(bars, levels, price) {
+    var n = bars.length, best = null;
+    levels.forEach(function (l) {
+      if (l.touches < CFG.touchSignificant) return;
+      if (Math.abs(price - l.price) / l.price > CFG.nearLevel * 2) return;
+      var below = 0;
+      for (var i = n - 2; i >= 0; i--) { if (bars[i].close < l.price) below++; else break; }
+      if (below >= CFG.holdCandles) return;   // broken for 5+ candles -> confirmed
+      if (!best || Math.abs(price - l.price) < Math.abs(price - best.price)) best = l;
+    });
+    return best;
+  }
+
   // ---- Fibonacci of the most recent up/down leg ------------------------------
   function fibZone(bars, swings, dir) {
     var highs = swings.filter(function (s) { return s.type === 'high'; });
@@ -381,7 +397,7 @@
           res.direction = 'long'; res.setup = 'breakout_retest';
           res.level = resLvl.price; res.levelTouches = resLvl.touches;
           res.reasons.push('פריצה' + (bo.qualityBreakout ? ' איכותית' : '') + ' מעל ' + fmt(resLvl.price) + ' + ' + bo.heldCount + ' נרות מעל + ריטסט');
-          return finalizeEntry(res, 'long', resLvl.price, resLvl.price, atrVal, price);
+          return finalizeEntry(res, 'long', resLvl.price, resLvl.price, atrVal * CFG.retestStopAtr, price);
         }
         if (bo.held && !bo.retesting) {
           res.direction = 'long'; res.setup = 'breakout_retest'; res.status = 'watch';
@@ -472,7 +488,7 @@
           res.direction = 'short'; res.setup = 'breakdown_retest';
           res.level = supLvl.price; res.levelTouches = supLvl.touches;
           res.reasons.push('שבירה מתחת ' + fmt(supLvl.price) + ' + ' + bd.heldCount + ' נרות מתחת + ריטסט מלמטה' + (vol.expanding ? ' | נפח מתרחב מחזק שורט' : ''));
-          return finalizeEntry(res, 'short', supLvl.price, supLvl.price, atrVal, price);
+          return finalizeEntry(res, 'short', supLvl.price, supLvl.price, atrVal * CFG.retestStopAtr, price);
         }
         if (bd.held && !bd.retesting) {
           res.direction = 'short'; res.setup = 'breakdown_retest'; res.status = 'watch';
@@ -480,6 +496,17 @@
           res.reasons.push('שבירה אושרה (' + bd.heldCount + ' נרות) — להמתין לריטסט מלמטה של ' + fmt(supLvl.price));
           return finalizeWatch(res, supLvl.price, price);
         }
+      }
+
+      // Hard rule: no short while a significant support under/at price has NOT been broken
+      // (break + 5 weekly closes below + retest from below is the only way in).
+      var unb = unbrokenSupport(bars, levels, price);
+      if (unb) {
+        res.direction = 'short'; res.setup = 'breakdown_retest'; res.status = 'watch';
+        res.level = unb.price; res.levelTouches = unb.touches;
+        res.disq.push('support_not_broken');
+        res.reasons.push('התמיכה ' + fmt(unb.price) + ' (' + unb.touches + ' נגיעות) עדיין לא נשברה — אין שורט עד שבירה + ' + CFG.holdCandles + ' נרות מתחתיה + ריטסט מלמטה');
+        return finalizeWatch(res, unb.price, price);
       }
 
       // (B) SMA30 rejection: relief rally up to a falling SMA30 in a downtrend.
@@ -513,7 +540,7 @@
         res.direction = 'long'; res.setup = 'range_breakout';
         res.level = upper.price; res.levelTouches = upper.touches;
         res.reasons.push('פריצת גבול עליון ' + fmt(upper.price) + ' + 5 נרות + ריטסט = לונג');
-        return finalizeEntry(res, 'long', upper.price, upper.price, atrVal, price);
+        return finalizeEntry(res, 'long', upper.price, upper.price, atrVal * CFG.retestStopAtr, price);
       }
     }
     if (lower) {
@@ -522,7 +549,7 @@
         res.direction = 'short'; res.setup = 'range_breakout';
         res.level = lower.price; res.levelTouches = lower.touches;
         res.reasons.push('שבירת גבול תחתון ' + fmt(lower.price) + ' + 5 נרות + ריטסט = שורט');
-        return finalizeEntry(res, 'short', lower.price, lower.price, atrVal, price);
+        return finalizeEntry(res, 'short', lower.price, lower.price, atrVal * CFG.retestStopAtr, price);
       }
     }
     res.status = 'watch';
