@@ -557,12 +557,12 @@ function renderColorBar() {
   });
   var html = '';
   html += '<button class="wlcb-chip' + (wlColorFilter === '' ? ' active' : '') + '" onclick="setFavFilter(\'\')" title="הצג הכל" aria-label="הצג הכל">'
-    + '<span class="wlcb-bm all"></span>'
+    + '<span class="wlcb-ring"><span class="wlcb-bm all"></span></span>'
     + '<span class="wlcb-count">' + (watchlist ? watchlist.length : 0) + '</span>'
     + '</button>';
   WL_COLORS.forEach(function(c) {
     html += '<button class="wlcb-chip' + (wlColorFilter === c.key ? ' active' : '') + '" onclick="setFavFilter(\'' + c.key + '\')" title="' + wlColorLabel(c.key) + '" aria-label="' + wlColorLabel(c.key) + '">'
-      + '<span class="wlcb-bm" style="background:' + c.hex + '"></span>'
+      + '<span class="wlcb-ring"><span class="wlcb-bm" style="background:' + c.hex + '"></span></span>'
       + '<span class="wlcb-count">' + (counts[c.key] || 0) + '</span>'
       + '</button>';
   });

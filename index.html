@@ -361,8 +361,14 @@
       transition:background .12s, transform .1s;
     }
     .wlcb-chip:hover { background:var(--surface2); }
-    .wlcb-chip.active { background:rgba(41,98,255,.14); }
+    .wlcb-chip.active { background:transparent; }
     .wlcb-chip.active .wlcb-bm { transform:scale(1.12); }
+    /* white ring behind each list bookmark: fills white on hover and when the list is selected */
+    .wlcb-ring {
+      width:30px; height:30px; border-radius:50%; border:2px solid #fff; background:transparent;
+      display:flex; align-items:center; justify-content:center; transition:background .15s;
+    }
+    .wlcb-chip:hover .wlcb-ring, .wlcb-chip.active .wlcb-ring { background:#fff; }
     .wlcb-bm {
       width:19px; height:13px; flex-shrink:0; display:block;
       background:#5b6472; transition:transform .12s;
@@ -423,10 +429,10 @@
       text-overflow:ellipsis;
       max-width:100%;
     }
-    .watch-sym { font-size:.6rem; font-weight:800; white-space:nowrap; color:var(--text); direction:ltr; }
+    .watch-sym { font-size:.72rem; font-weight:800; white-space:nowrap; color:var(--text); direction:ltr; }
     .watch-price-wrap { display:flex; flex-direction:column; align-items:flex-end; gap:0; flex-shrink:0; }
-    .watch-price { font-size:.59rem; font-weight:700; color:var(--text); direction:ltr; }
-    .watch-chg { font-size:.53rem; white-space:nowrap; font-weight:700; flex-shrink:0; direction:ltr; }
+    .watch-price { font-size:.71rem; font-weight:700; color:var(--text); direction:ltr; }
+    .watch-chg { font-size:.64rem; white-space:nowrap; font-weight:700; flex-shrink:0; direction:ltr; }
     .watch-chg.up { color:var(--green); }
     .watch-chg.down { color:var(--red); }
     .watch-remove-btn {
@@ -458,10 +464,10 @@
       .watch-icon-wrap { width:24px; height:24px; }
       .watch-icon { width:24px; height:24px; font-size:.63rem; }
       .watch-dot { width:9px; height:9px; }
-      .watch-sym { font-size:.76rem; }
-      .watch-name { font-size:.64rem; line-height:1.02; }
-      .watch-price { font-size:.78rem; }
-      .watch-chg { font-size:.69rem; }
+      .watch-sym { font-size:.91rem; }
+      .watch-name { font-size:.77rem; line-height:1.02; }
+      .watch-price { font-size:.94rem; }
+      .watch-chg { font-size:.83rem; }
       .watch-remove-btn { width:24px; height:24px; font-size:.96rem; }
     }
     /* PORTFOLIO FULL PAGE */
@@ -3617,7 +3623,7 @@
 <script src="scanner-symbols.js?v=20261019g"></script>
 <script src="scanner-engine.js?v=20261021c"></script>
 <script src="plan.js?v=20261019g"></script>
-<script src="main.js?v=20261021b"></script>
+<script src="main.js?v=20261021c"></script>
 <script src="stockpanel.js?v=20261021a"></script>
 <script src="drawing.js?v=20261019b"></script>
 <script src="features.js?v=20261018j"></script>
