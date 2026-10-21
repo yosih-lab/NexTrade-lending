@@ -2879,3 +2879,1804 @@
     .sr-vol { font-size:calc(.8rem + 2px); font-weight:800; color:#9fb4d9; line-height:1.15; white-space:nowrap; }
     .sr-vol small { display:block; font-size:calc(.56rem + 2px); color:var(--text-muted); font-weight:700; white-space:normal; }
     .sig-setup.vol { color:#9fb4d9; background:rgba(159,180,217,.1); }
+    .sig-setup.earn { color:#cbd5e1; background:rgba(148,163,184,.14); }
+    .sig-setup.earn.soon { color:#fbbf24; background:rgba(251,191,36,.14); }
+    .sr-lv.stop { color:var(--red); }
+    .sr-lv.tp { color:var(--green); }
+    .sr-rr { font-size:.8rem; font-weight:900; color:var(--gold); }
+    .sr-age { font-size:.68rem; color:var(--text-muted); white-space:nowrap; text-align:end; }
+    .sr-act { display:flex; align-items:center; gap:.4rem; justify-content:flex-end; }
+    .sr-chev { color:var(--text-muted); font-size:.8rem; }
+    .sr-fav { font-size:1.05rem; }
+    .sr-detail { padding:.2rem .85rem .85rem; display:flex; flex-direction:column; gap:.6rem; border-top:1px dashed var(--border); }
+    .sr-detail-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; margin-top:.6rem; }
+    .sr-chips { display:flex; gap:.35rem; flex-wrap:wrap; align-items:center; }
+
+    /* real stop / entry / target range bar */
+    .sig-rb { position:relative; height:8px; border-radius:6px; background:rgba(255,255,255,.06); min-width:70px; }
+    .sig-rb-risk, .sig-rb-rew { position:absolute; top:0; bottom:0; border-radius:6px; }
+    .sig-rb-risk { background:linear-gradient(90deg, rgba(239,83,80,.85), rgba(239,83,80,.35)); }
+    .sig-rb-rew { background:linear-gradient(90deg, rgba(38,166,154,.35), rgba(38,166,154,.9)); }
+    .sig-rb-entry { position:absolute; top:-3px; bottom:-3px; width:2px; background:#fff; transform:translateX(-1px); border-radius:2px; }
+    .sig-rb-live { position:absolute; top:50%; width:12px; height:12px; border-radius:50%; background:#f5a623; border:2px solid #0a0d16;
+      transform:translate(-50%,-50%); box-shadow:0 0 8px rgba(245,166,35,.9); animation:sfPulseDot 1.8s infinite; }
+    @keyframes sfPulseDot { 0%,100%{transform:translate(-50%,-50%) scale(1);} 50%{transform:translate(-50%,-50%) scale(1.25);} }
+    .sig-card .sig-rb { height:10px; }
+
+    @media (max-width:760px) {
+      .sr-main { display:flex; flex-wrap:wrap; align-items:center; gap:.45rem .6rem; }
+      .sr-main > .sr-fav { order:0; }
+      .sr-main > .sr-sym { order:1; flex:1; min-width:0; }
+      .sr-main > .sr-dir { order:2; }
+      .sr-main > .sr-act { order:3; }
+      .sr-main > .sr-lv { order:4; flex:1 1 26%; }
+      .sr-main > .sr-bar { order:5; flex:1 1 100%; }
+      .sr-main > .sr-rr, .sr-main > .sr-vol, .sr-main > .sig-status, .sr-main > .sr-age { order:6; }
+      .sr-main > .sr-age { margin-inline-start:auto; }
+      .sr-sym small { max-width:200px; }
+    }
+    .sig-btn.ghost { background:var(--surface2); color:var(--text); }
+    .sig-btn.ghost:hover { background:var(--border); }
+    .sig-thumb { width:100%; height:60px; border-radius:8px; background:var(--surface2); display:block; }
+    /* Trades table */
+    .sf-trades { max-width:1000px; margin:0 auto; }
+    .sf-stats { display:flex; gap:1rem; margin-bottom:1rem; flex-wrap:wrap; }
+    .sf-stat { flex:1; min-width:140px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:.9rem 1rem; }
+    .sf-stat-label { font-size:.72rem; color:var(--text-muted); font-weight:700; margin-bottom:.3rem; }
+    .sf-stat-val { font-size:1.4rem; font-weight:900; color:#fff; }
+    .sf-stat-val.pos { color:var(--green); }
+    .sf-stat-val.neg { color:var(--red); }
+    .trade-row {
+      display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr 1fr auto; gap:.6rem; align-items:center;
+      background:var(--surface); border:1px solid var(--border); border-radius:11px;
+      padding:.7rem .9rem; margin-bottom:.6rem; font-size:.84rem;
+    }
+    .trade-row .tr-sym { font-weight:900; color:#fff; }
+    .trade-row .tr-dir { font-size:.7rem; font-weight:800; padding:.15rem .5rem; border-radius:12px; display:inline-block; margin-top:.2rem; }
+    .trade-row .tr-dir.long { background:rgba(38,166,154,.16); color:var(--green); }
+    .trade-row .tr-dir.short { background:rgba(239,83,80,.16); color:var(--red); }
+    .trade-row .tr-cell-label { font-size:.62rem; color:var(--text-muted); font-weight:700; }
+    .trade-row .tr-pnl.pos { color:var(--green); font-weight:900; }
+    .trade-row .tr-pnl.neg { color:var(--red); font-weight:900; }
+    .tr-close-btn { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:.35rem .6rem; font-size:.74rem; font-weight:700; cursor:pointer; font-family:Heebo,sans-serif; }
+    .tr-close-btn:hover { border-color:var(--red); color:var(--red); }
+    .sf-rows-head { display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr 1fr auto; gap:.6rem; padding:0 .9rem .4rem; font-size:.68rem; color:var(--text-muted); font-weight:700; }
+    /* ---- Paywall: upgrade banner + locked panels ---- */
+    .sf-upsell { max-width:1000px; margin:0 auto 1rem; display:flex; align-items:center; gap:.8rem;
+      background:linear-gradient(135deg, rgba(245,166,35,.16), rgba(245,166,35,.04));
+      border:1px solid rgba(245,166,35,.45); border-radius:14px; padding:.9rem 1.1rem; }
+    .sf-upsell-txt { flex:1; min-width:0; }
+    .sf-upsell-title { font-size:.95rem; font-weight:900; color:#fff; }
+    .sf-upsell-sub { font-size:.78rem; color:var(--text-muted); margin-top:.15rem; }
+    .sf-upsell-btn { background:linear-gradient(135deg,#f5a623,#f7c76b); color:#1a1205; border:none;
+      border-radius:999px; padding:.55rem 1rem; font-size:.82rem; font-weight:900; cursor:pointer;
+      font-family:Heebo,sans-serif; white-space:nowrap; }
+    .sf-locked { max-width:1000px; margin:0 auto; text-align:center; padding:2.4rem 1.2rem;
+      background:var(--surface); border:1px dashed var(--border); border-radius:16px; }
+    .sf-locked-ic { font-size:2.2rem; margin-bottom:.5rem; }
+    .sf-locked-title { font-size:1.05rem; font-weight:900; color:#fff; margin-bottom:.3rem; }
+    .sf-locked-sub { font-size:.85rem; color:var(--text-muted); line-height:1.5; margin-bottom:1rem; }
+    .sf-locked-btn { background:linear-gradient(135deg,#f5a623,#f7c76b); color:#1a1205; border:none;
+      border-radius:999px; padding:.6rem 1.3rem; font-size:.88rem; font-weight:900; cursor:pointer;
+      font-family:Heebo,sans-serif; }
+    /* ---- Upgrade modal ---- */
+    body.nt-modal-open { overflow:hidden; }
+    .nt-upgrade-modal { position:fixed; inset:0; z-index:9000; display:none; align-items:center; justify-content:center;
+      background:rgba(0,0,0,.72); backdrop-filter:blur(4px); direction:rtl; padding:1rem; }
+    .nt-upgrade-modal.open { display:flex; }
+    .nt-upgrade-card { position:relative; width:100%; max-width:440px; background:var(--surface);
+      border:1px solid var(--border); border-radius:20px; padding:1.6rem 1.5rem; text-align:center;
+      box-shadow:0 20px 60px rgba(0,0,0,.5); max-height:92vh; overflow-y:auto; }
+    .nt-upgrade-x { position:absolute; top:.9rem; left:1rem; background:none; border:none; color:var(--text-muted);
+      font-size:1.1rem; cursor:pointer; }
+    .nt-upgrade-crown { font-size:2.6rem; }
+    .nt-upgrade-title { font-size:1.35rem; font-weight:900; color:#fff; margin:.3rem 0; }
+    .nt-upgrade-sub { font-size:.88rem; color:var(--text-muted); margin-bottom:1rem; }
+    .nt-upgrade-list { list-style:none; padding:0; margin:0 0 1.2rem; text-align:right; display:flex; flex-direction:column; gap:.5rem; }
+    .nt-upgrade-list li { font-size:.85rem; color:var(--text); }
+    .nt-plan-options { display:flex; gap:.7rem; }
+    .nt-plan-opt { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:14px;
+      padding:.9rem .7rem; cursor:pointer; font-family:Heebo,sans-serif; transition:border-color .15s,transform .1s; }
+    .nt-plan-opt:hover { transform:translateY(-2px); }
+    .nt-plan-opt.primary { border-color:var(--gold); background:rgba(245,166,35,.1); }
+    .nt-plan-opt-name { font-size:.82rem; font-weight:800; color:var(--text-muted); }
+    .nt-plan-opt-price { font-size:1.4rem; font-weight:900; color:#fff; margin:.2rem 0; }
+    .nt-plan-opt-price span { font-size:.7rem; font-weight:700; color:var(--text-muted); }
+    .nt-plan-opt-tag { font-size:.68rem; font-weight:800; color:var(--gold); }
+    .nt-upgrade-foot { font-size:.72rem; color:var(--text-muted); margin-top:1rem; }
+    .nt-upgrade-card.wide { max-width:680px; }
+    .nt-tiers { display:flex; gap:.8rem; text-align:right; }
+    .nt-tier { position:relative; flex:1; min-width:0; background:var(--surface2); border:1px solid var(--border);
+      border-radius:16px; padding:1rem .9rem; display:flex; flex-direction:column; gap:.45rem; }
+    .nt-tier.gold { border-color:rgba(245,166,35,.55); }
+    .nt-tier.premium { border-color:rgba(41,98,255,.6); background:linear-gradient(160deg, rgba(41,98,255,.14), var(--surface2)); }
+    .nt-tier-ribbon { position:absolute; top:-.6rem; left:50%; transform:translateX(-50%); background:var(--accent); color:#fff;
+      font-size:.66rem; font-weight:900; padding:.15rem .7rem; border-radius:999px; white-space:nowrap; }
+    .nt-tier-badge { font-size:1rem; font-weight:900; color:#fff; }
+    .nt-tier-price { font-size:1.6rem; font-weight:900; color:#fff; }
+    .nt-tier-price span { font-size:.72rem; font-weight:700; color:var(--text-muted); }
+    .nt-tier-list { list-style:none; padding:0; margin:.2rem 0 .5rem; display:flex; flex-direction:column; gap:.35rem; flex:1; }
+    .nt-tier-list li { font-size:.8rem; color:var(--text); line-height:1.4; }
+    .nt-tier-btn { background:linear-gradient(135deg,#f5a623,#f7c76b); color:#1a1205; border:none; border-radius:10px;
+      padding:.6rem; font-size:.85rem; font-weight:900; cursor:pointer; font-family:Heebo,sans-serif; }
+    .nt-tier-btn.primary { background:var(--accent); color:#fff; }
+    .nt-tier-btn.ghost { background:transparent; color:var(--text); border:1px solid var(--border); }
+    .nt-tier-btn.ghost:hover { border-color:var(--gold); }
+    @media (max-width:640px) { .nt-tiers { flex-direction:column; } .nt-tier-list { flex:none; } }
+    /* iOS safe-area insets (notch / home indicator) for the Signal Feed */
+    #signalFeed { padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
+    .sf-top { padding-right:calc(1.1rem + env(safe-area-inset-right)); padding-left:calc(1.1rem + env(safe-area-inset-left)); }
+    .sf-body { -webkit-overflow-scrolling:touch; overscroll-behavior:contain; padding-bottom:calc(1rem + env(safe-area-inset-bottom)); }
+    /* Tablets / small laptops */
+    @media (max-width:860px) {
+      .sf-grid { grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:.8rem; }
+    }
+    /* Phones (Android + iPhone) */
+    @media (max-width:640px) {
+      /* Compact the topbar "Signals" button to an icon so it doesn't crowd the bar */
+      .topbar-modebtn { font-size:0; padding:.32rem .5rem; margin-left:.25rem; }
+      .topbar-modebtn::before { content:'🔔'; font-size:.95rem; }
+      .sf-top { gap:.5rem; padding:.6rem .8rem; }
+      .sf-logo { font-size:1.1rem; }
+      .sf-avatar { width:30px; height:30px; font-size:.9rem; }
+      .sf-trial { padding:.35rem .6rem; font-size:.7rem; gap:.25rem; }
+      .sf-trial-ic { font-size:.8rem; }
+      .sf-modetoggle { display:none; }
+      .sf-backbtn { padding:.35rem .6rem; font-size:.72rem; }
+      .sf-mode { flex:1; text-align:center; padding:.5rem .4rem; font-size:.8rem; }
+      .aim-head { padding-left:1.8rem; }
+      .aim-sym { font-size:1.3rem; }
+      .ai-hero { padding:.9rem .9rem; }
+      .ai-go { padding:.65rem .8rem; }
+      .sf-tabs { padding:.5rem .6rem 0; gap:.15rem; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+      .sf-tab { padding:.55rem .7rem; font-size:.82rem; white-space:nowrap; }
+      .sf-body { padding:.7rem; }
+      .sf-grid { grid-template-columns:1fr; gap:.8rem; max-width:560px; }
+      /* Signal card tuned for touch */
+      .sig-card { padding:.9rem 1rem; gap:.7rem; border-radius:12px; }
+      .sig-sym { font-size:1.25rem; }
+      .sig-head { align-items:flex-start; }
+      .sig-setup { display:block; width:fit-content; }
+      .sig-meta { justify-content:flex-start; }
+      .sig-lvl { padding:.55rem .3rem; }
+      .sig-lvl-val { font-size:1.1rem; }
+      .sig-btn { padding:.7rem; font-size:.88rem; }
+      .sig-thumb { height:52px; }
+      /* Stats + trades stack */
+      .sf-stats { gap:.6rem; }
+      .sf-stat { min-width:calc(50% - .3rem); flex:1 1 calc(50% - .3rem); padding:.7rem .8rem; }
+      .sf-stat-val { font-size:1.2rem; }
+      .sf-rows-head { display:none; }
+      /* Card-style trade rows on phones */
+      .trade-row {
+        grid-template-columns:1fr 1fr; gap:.5rem .8rem; padding:.8rem .9rem;
+        position:relative;
+      }
+      .trade-row > div:first-child { grid-column:1 / -1; display:flex; align-items:center; gap:.5rem; }
+      .trade-row .tr-dir { margin-top:0; }
+      .trade-row > div:last-child { grid-column:1 / -1; }
+      .tr-close-btn { width:100%; padding:.55rem; font-size:.82rem; }
+    }
+    /* Very small phones (iPhone SE, older Android) */
+    @media (max-width:360px) {
+      .sig-levels { gap:.35rem; }
+      .sig-lvl-val { font-size:1rem; }
+      .sf-stat { min-width:100%; flex-basis:100%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="authOverlay">
+  <div class="auth-glow"></div>
+  <div class="auth-card">
+    <div class="auth-logo"><span class="lg-nex">Nex</span><span class="lg-trade">Trade</span></div>
+    <div class="auth-tagline">פלטפורמת איתותים ומסחר מקצועית בישראל וארצות הברית <span class="flag">&#127470;&#127473;</span> <span class="flag">&#127482;&#127480;</span></div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="tabLogin"  onclick="switchTab('login')">כניסה</div>
+      <div class="auth-tab"        id="tabSignup" onclick="switchTab('signup')">הרשמה</div>
+    </div>
+    <form class="auth-form" id="loginForm" onsubmit="handleLogin(event)">
+      <div class="field-group"><label for="loginEmail">אימייל</label><input id="loginEmail" type="email" placeholder="your@email.com" autocomplete="email" required /></div>
+      <div class="field-group">
+        <label for="loginPassword">סיסמה</label>
+        <div class="pw-wrap">
+          <input id="loginPassword" type="password" placeholder="הכנס סיסמה" autocomplete="current-password" required />
+          <button type="button" class="eye-btn" onclick="toggleEye('loginPassword',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
+      </div>
+      <div class="msg-error" id="loginError"></div>
+      <button type="submit" class="auth-btn">כניסה &#8594;</button>
+      <div class="forgot-link"><a onclick="switchTab('forgot')">&#128274; שכחתי סיסמה</a></div>
+      <div class="auth-divider">או</div>
+      <button type="button" class="demo-btn" onclick="demoLogin()">&#9889; כניסה כמשתמש Demo</button>
+    </form>
+    <form class="auth-form hidden" id="signupForm" onsubmit="handleSignup(event)">
+      <div class="field-group"><label for="signupName">שם מלא</label><input id="signupName" type="text" placeholder="ישראל ישראלי" autocomplete="name" required /></div>
+      <div class="field-group"><label for="signupEmail">אימייל</label><input id="signupEmail" type="email" placeholder="your@email.com" autocomplete="email" required /></div>
+      <div class="field-group">
+        <label for="signupPassword">סיסמה</label>
+        <div class="pw-wrap">
+          <input id="signupPassword" type="password" placeholder="לפחות 6 תווים" autocomplete="new-password" oninput="checkStrength(this.value)" required />
+          <button type="button" class="eye-btn" onclick="toggleEye('signupPassword',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
+        <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+        <div class="strength-text" id="strengthText"></div>
+      </div>
+      <div class="field-group">
+        <label for="signupConfirm">אימות סיסמה</label>
+        <div class="pw-wrap">
+          <input id="signupConfirm" type="password" placeholder="חזור על הסיסמה" autocomplete="new-password" required />
+          <button type="button" class="eye-btn" onclick="toggleEye('signupConfirm',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
+      </div>
+      <div class="msg-error" id="signupError"></div>
+      <div class="msg-ok"    id="signupSuccess"></div>
+      <button type="submit" class="auth-btn">הרשמה &#10003;</button>
+    </form>
+    <form class="auth-form hidden" id="forgotForm" onsubmit="handleForgot(event)">
+      <a class="back-link" onclick="switchTab('login')">&#8592; חזרה לכניסה</a>
+      <div class="field-group"><label for="forgotEmail">הכנס את האימייל שנרשמת איתו</label><input id="forgotEmail" type="email" placeholder="your@email.com" autocomplete="email" required /></div>
+      <div class="msg-error" id="forgotError"></div>
+      <div class="msg-ok"    id="forgotSuccess"></div>
+      <button type="submit" class="auth-btn">שחזר סיסמה &#128274;</button>
+    </form>
+    <div class="auth-footer">NexTrade &copy; 2026 &middot; כל הזכויות שמורות</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appContainer" style="display:none">
+  <div class="ticker-wrap"><div class="ticker-inner" id="tickerInner">טוען נתונים...</div></div>
+  <header class="topbar">
+    <div class="topbar-left">
+      <!-- Mobile-only: back to watchlist (shown only on the chart screen) -->
+      <button id="mobileBackBtn" onclick="mobileBackToList()" title="חזרה לרשימת המעקב">‹ מעקב</button>
+      <!-- Mobile-only HOME header (list screen): centered logo + big search -->
+      <div id="mHomeLogo"><span class="lg-nex">Nex</span><span class="lg-trade">Trade</span></div>
+      <button id="mHomeSearch" onclick="openSearchModal()" title="חפש מניה" aria-label="חפש מניה">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      </button>
+      <!-- Mobile-only HOME header: hamburger (favorites color lists) on the right -->
+      <button id="mHomeMenu" onclick="openFavLists()" title="רשימות מועדפים" aria-label="רשימות מועדפים">
+        <span></span><span></span><span></span>
+      </button>
+      <!-- TIMEFRAME TOOLBAR -->
+      <button class="tf-btn"        id="tf-1H" onclick="setTimeframe('1H',this)" title="Alt+1">1h</button>
+      <button class="tf-btn"        id="tf-4H" onclick="setTimeframe('4H',this)" title="Alt+2">4h</button>
+      <button class="tf-btn"        id="tf-1D" onclick="setTimeframe('1D',this)" title="Alt+3">D</button>
+      <div class="tf-sep"></div>
+      <button class="tf-btn active" id="tf-1W" onclick="setTimeframe('1W',this)" title="Alt+4">W</button>
+      <button class="tf-btn"        id="tf-1M" onclick="setTimeframe('1M',this)" title="Alt+5">M</button>
+      <div class="tf-sep"></div>
+      <button class="tf-btn"        id="tf-3M" onclick="setTimeframe('3M',this)" title="Alt+6">3M</button>
+      <button class="tf-btn"        id="tf-6M" onclick="setTimeframe('6M',this)" title="Alt+7">6M</button>
+      <div class="tf-sep"></div>
+      <button class="tf-btn" id="tf-trade" onclick="openPortPage()" style="background:rgba(41,98,255,.12);color:var(--accent);border-color:rgba(41,98,255,.4);font-weight:800">Trade</button>
+      <div class="tf-sep"></div>
+      <!-- Technical Tools launcher (next to Trade) -->
+      <button id="techToolsBtn" onclick="openTechTools()" aria-label="כלים טכניים" title="כלים טכניים">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="5.5" cy="18.5" r="1.7"/><circle cx="18.5" cy="5.5" r="1.7"/><path d="M6.9 17.1 17.1 6.9"/>
+          <path d="M4 4.5h4M6 2.5v4" opacity=".7"/>
+        </svg>
+        <span>כלים טכניים</span>
+        <span id="techToolsCaret" onclick="toggleTechDropdown(event)" title="מועדפים" aria-label="פתח רשימת כלים">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </span>
+      </button>
+      <div class="tf-sep"></div>
+      <span id="taseBadge" class="tase-dot" title="מצב שוק"></span>
+      <!-- SPACER -->
+      <div style="flex:1"></div>
+      <!-- SEARCH + USER -->
+      <button class="topbar-modebtn" id="toSignalsBtn" onclick="if(window.NTSignals)NTSignals.show()" title="עבור ללוח איתותים">🔔 איתותים</button>
+      <button class="topbar-bell" id="ib-alerts" onclick="toggleBellPopup()" title="איתותי מסחר" style="position:relative">
+        🔔
+        <span id="alertBadge" class="alert-badge" style="display:none">0</span>
+      </button>
+      <div class="search-box">
+        <input id="searchInput" placeholder="חפש מניה..." autocomplete="off" readonly onclick="openSearchModal()" />
+      </div>
+      <div class="user-menu">
+        <button class="user-btn" onclick="toggleUserMenu()">
+          <div class="user-avatar" id="userAvatar">?</div>
+          <span class="user-name" id="userNameDisplay"></span>
+        </button>
+        <div class="user-dropdown" id="userDropdown">
+          <button class="user-dd-btn" id="backOfficeBtn" style="display:none" onclick="window.location.href='admin.html'">⚙️ ניהול מערכת (Back Office)</button>
+          <button class="user-dd-btn" onclick="handleLogout()">יציאה מהמערכת</button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <!-- Mobile-only timeframe strip (shown below topbar, hidden on desktop) -->
+  <div id="mobileTfBar">
+    <button class="tf-btn" id="mtf-1H" onclick="setTimeframe('1H',this)">1H</button>
+    <button class="tf-btn" id="mtf-4H" onclick="setTimeframe('4H',this)">4H</button>
+    <button class="tf-btn" id="mtf-8H" onclick="setTimeframe('8H',this)">8H</button>
+    <span class="tf-sep"></span>
+    <button class="tf-btn active" id="mtf-1D" onclick="setTimeframe('1D',this)">1D</button>
+    <button class="tf-btn" id="mtf-1W" onclick="setTimeframe('1W',this)">1W</button>
+    <button class="tf-btn" id="mtf-1M" onclick="setTimeframe('1M',this)">1M</button>
+    <span class="tf-sep"></span>
+    <button class="tf-btn" id="mtf-1Q" onclick="setTimeframe('1Q',this)">1Q</button>
+    <button class="tf-btn" id="mtf-6M" onclick="setTimeframe('6M',this)">6M</button>
+  </div>
+  <!-- Mobile-only bottom SYMBOL SWITCHER (chart screen) — scroll the watchlist to flip charts -->
+  <div id="mSymSwitch">
+    <button class="m-sym-back" onclick="mobileBackToList()" title="חזרה לרשימה" aria-label="חזרה לרשימה">‹</button>
+    <span class="m-sym-ico" id="mSymSwitchIco" onclick="toggleMSymSheet()"></span>
+    <div class="m-sym-mid" onclick="toggleMSymSheet()">
+      <span class="m-sym-txt" id="mSymSwitchSym">—</span>
+      <span class="m-sym-tf" id="mSymSwitchTf"></span>
+    </div>
+    <button class="m-sym-caret" id="mSymCaret" onclick="toggleMSymSheet()" aria-label="פתח רשימת מניות">▴</button>
+  </div>
+  <div id="mSymSheet">
+    <div class="m-sym-sheet-hdr">
+      <span>רשימת המעקב</span>
+      <button class="m-sym-sheet-close" onclick="closeMSymSheet(event)">✕</button>
+    </div>
+    <div id="mSymSheetList"></div>
+  </div>
+
+  <!-- Mobile-only: floating user avatar (bottom-right of the home screen) -->
+  <button id="mHomeAvatar" onclick="openProfile()" title="הפרופיל שלי" aria-label="הפרופיל שלי">Y</button>
+
+  <!-- Mobile-only: floating ALERTS bell (bottom-left of home) — only for signal/alerts users -->
+  <button id="mHomeBell" onclick="toggleBellPopup()" title="התראות מניות" aria-label="התראות מניות">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <span id="mBellBadge" class="alert-badge" style="display:none">0</span>
+  </button>
+
+  <!-- Mobile-only: persistent BOTTOM BAR (three-dots · spacer · username + avatar) — home & chart -->
+  <div id="mBottomBar">
+    <button class="mbb-more" id="mbbMore" onclick="toggleBottomMore(event)" title="עוד אפשרויות" aria-label="עוד אפשרויות">⋯</button>
+    <div class="mbb-spacer"></div>
+  </div>
+  <div id="mbbMoreMenu">
+    <button class="mbb-menu-item" onclick="openProfile();closeBottomMore()"><span class="mbb-menu-ico">👤</span><span>הפרופיל שלי</span></button>
+    <button class="mbb-menu-item" onclick="openFavLists();closeBottomMore()"><span class="mbb-menu-ico">🔖</span><span>רשימות מועדפים</span></button>
+    <button class="mbb-menu-item" onclick="openSearchModal();closeBottomMore()"><span class="mbb-menu-ico">🔍</span><span>חיפוש מניה</span></button>
+  </div>
+
+  <!-- Mobile PROFILE screen (opens from the avatar) -->
+  <div id="mProfile">
+    <div class="mprof-top">
+      <button class="mprof-back" onclick="closeProfile()" aria-label="חזרה">‹</button>
+      <span class="mprof-title">הפרופיל שלי</span>
+    </div>
+    <div class="mprof-card">
+      <div class="mprof-avatar" id="mProfAvatar">Y</div>
+      <div class="mprof-info">
+        <div class="mprof-name" id="mProfName">משתמש</div>
+        <div class="mprof-sub" id="mProfSub"></div>
+      </div>
+    </div>
+    <div class="mprof-actions">
+      <button class="mprof-act" onclick="mProfAbout()"><span class="mprof-act-ico">ⓘ</span><span>אודות NexTrade</span><span class="mprof-act-chev">‹</span></button>
+      <button class="mprof-act" onclick="mProfHelp()"><span class="mprof-act-ico">?</span><span>מרכז עזרה</span><span class="mprof-act-chev">‹</span></button>
+      <button class="mprof-act danger" onclick="handleLogout()"><span class="mprof-act-ico">⎋</span><span>התנתקות מהחשבון</span><span class="mprof-act-chev">‹</span></button>
+    </div>
+  </div>
+
+  <!-- Colored FAVORITES lists window (opens from the hamburger) -->
+  <div id="mFavLists" onclick="favListsBackdrop(event)">
+    <div class="mfav-card">
+      <div class="mfav-hdr">
+        <span>רשימות מעקב — מועדפים</span>
+        <button class="mfav-close" onclick="closeFavLists()" aria-label="סגור">✕</button>
+      </div>
+      <div class="mfav-sub">סנן את רשימת המעקב לפי צבע מועדפים</div>
+      <div class="mfav-rows" id="mFavRows"></div>
+    </div>
+  </div>
+
+  <!-- Inline color palette popup (assign a color to a watched symbol) -->
+  <div id="wlColorPicker">
+    <button class="wlcp-dot" data-color="red"    style="background:#ef5350" onclick="setSymColor('red')"></button>
+    <button class="wlcp-dot" data-color="green"  style="background:#26a69a" onclick="setSymColor('green')"></button>
+    <button class="wlcp-dot" data-color="yellow" style="background:#f5a623" onclick="setSymColor('yellow')"></button>
+    <button class="wlcp-dot" data-color="purple" style="background:#a855f7" onclick="setSymColor('purple')"></button>
+    <button class="wlcp-dot" data-color="blue"   style="background:#2962ff" onclick="setSymColor('blue')"></button>
+    <button class="wlcp-clear" onclick="setSymColor('')" title="הסר צבע">✕</button>
+  </div>
+
+  <!-- Technical Tools window: all drawing tools as labeled category cards -->
+  <div id="techToolsModal" onclick="techToolsBackdrop(event)">
+    <div class="tt-card">
+      <div class="tt-hdr">
+        <span>כלים טכניים</span>
+        <button class="tt-close" onclick="closeTechTools()" aria-label="סגור">✕</button>
+      </div>
+      <div class="tt-body" id="ttBody"></div>
+    </div>
+  </div>
+
+  <!-- Technical Tools favorites dropdown (combo list with star toggles) -->
+  <div id="techToolsDropdown">
+    <div class="ttd-list" id="ttdList"></div>
+  </div>
+
+  <!-- Floating favorites bar (bottom) — favorited tools appear here -->
+  <div id="techFavBar"></div>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div id="sidebarTitle" style="display:none"></div>
+      <div class="sidebar-body">
+        <!-- VIEW: Watchlist (default) -->
+        <div class="sidebar-view active" id="sview-watchlist">
+          <div class="wl-top" id="wlTop">
+            <div class="wl-mgr">
+              <!-- Color favorites bookmark bar (replaces the old filter boxes) -->
+              <div class="wl-colorbar" id="wlColorBar"></div>
+            </div>
+            <ul id="watchlist" style="list-style:none;padding:0;margin:0;"></ul>
+          </div>
+          <div class="sp-split" id="spSplit" title="גרור לשינוי גודל"></div>
+          <div class="sp-panel" id="stockPanel"></div>
+        </div>
+
+        <!-- VIEW: Alerts -->
+        <!-- VIEW: Alerts (removed — signals via bell only) -->
+        <div class="sidebar-view" id="sview-alerts" style="display:none">
+          <div id="scannerList" style="display:none"></div>
+        </div>
+
+        <!-- VIEW: Indicators -->
+        <div class="sidebar-view" id="sview-indicators">
+          <div class="ma-list" id="maList"></div>
+        </div>
+
+        <!-- VIEW: Insights -->
+        <div class="sidebar-view" id="sview-insights">
+          <div id="insightsBody"></div>
+        </div>
+
+        <!-- VIEW: Risk -->
+        <div class="sidebar-view" id="sview-risk">
+          <div id="riskBody"></div>
+        </div>
+
+        <!-- VIEW: Calendar -->
+        <div class="sidebar-view" id="sview-calendar">
+          <div id="calBody"></div>
+        </div>
+
+        <!-- VIEW: Lab -->
+        <div class="sidebar-view" id="sview-lab">
+          <div id="labBody"></div>
+        </div>
+
+        <!-- VIEW: Chat -->
+        <div class="sidebar-view" id="sview-chat">
+          <div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:2rem 0">💬 צ'אט בקרוב</div>
+        </div>
+
+        <!-- VIEW: Clock -->
+        <div class="sidebar-view" id="sview-clock">
+          <div id="chartAlertsBody" class="ca-list"></div>
+        </div>
+
+        <!-- VIEW: Layers -->
+        <div class="sidebar-view" id="sview-layers">
+          <div id="layersBody" class="layers-list"></div>
+        </div>
+
+        <!-- VIEW: Tasks -->
+        <div class="sidebar-view" id="sview-tasks">
+          <div class="ib-panel-add-row"><input id="taskInput2" placeholder="משימה חדשה..." onkeydown="if(event.key==='Enter')ibAddTask2()" /><button class="btn btn-sm" onclick="ibAddTask2()">הוסף</button></div>
+          <ul id="taskList2" style="list-style:none;margin-top:.5rem"></ul>
+        </div>
+
+        <!-- VIEW: News -->
+        <div class="sidebar-view" id="sview-news">
+          <div id="sidebarNewsBody"></div>
+        </div>
+
+      </div>
+    </aside>
+    <main class="main-area" style="position:relative">
+
+      <!-- PORTFOLIO FULL PAGE OVERLAY -->
+      <div class="port-page" id="portPage">
+        <div class="port-page-header">
+          <span class="port-page-title">&#128188; תיק השקעות</span>
+          <button class="port-back-btn" onclick="closePortPage()">&#8592; חזור לגרף</button>
+        </div>
+        <div class="port-page-body">
+          <div class="port-total-card">
+            <div class="port-total-label">שווי תיק כולל</div>
+            <div class="port-total-val" id="portTotalVal">$0.00</div>
+          </div>
+          <div class="port-add-row">
+            <input class="port-add-inp sym-inp" id="portSymInput" placeholder="סמל (AAPL / TEVA)" autocomplete="off" />
+            <select class="port-add-inp" id="portDirInput" style="flex:.8"><option value="long">Long</option><option value="short">Short</option></select>
+            <input class="port-add-inp num-inp" id="portSharesInput" placeholder="כמות" type="number" min="0" step="any" />
+            <input class="port-add-inp num-inp" id="portPriceInput" placeholder="מחיר כניסה" type="number" min="0" step="any" />
+            <input class="port-add-inp num-inp" id="portTPInput" placeholder="TP" type="number" min="0" step="any" />
+            <input class="port-add-inp num-inp" id="portSLInput" placeholder="SL" type="number" min="0" step="any" />
+            <input class="port-add-inp num-inp" id="portFeeInput" placeholder="עמלה" type="number" min="0" step="any" />
+            <button class="btn btn-sm" onclick="portAddStock()" style="white-space:nowrap">+ הוסף</button>
+          </div>
+          <div class="port-table-wrap">
+            <table class="port-table" id="portTable">
+              <thead id="portTableHead">
+                <tr>
+                  <th data-col="num">#</th>
+                  <th data-col="sym">סמל</th>
+                  <th data-col="dir">כיוון</th>
+                  <th data-col="qty">כמות</th>
+                  <th data-col="entry">מחיר כניסה</th>
+                  <th data-col="tp">TP</th>
+                  <th data-col="sl">SL</th>
+                  <th data-col="pnl">רווח</th>
+                  <th data-col="fee">עמלה</th>
+                  <th data-col="net">Net P/L</th>
+                  <th data-col="actions">פעולות</th>
+                </tr>
+              </thead>
+              <tbody id="portTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="chart-panel">
+        <!-- kept in DOM for JS compat, hidden visually -->
+        <h2 id="chartTitle" style="display:none">בחר מניה</h2>
+        <div id="chartSubtitle" style="display:none"></div>
+        <div class="chart-wrap">
+          <!-- Position action bar (trash, lock, color pickers) -->
+          <div id="posActionBar">
+            <button class="pab-btn" id="pabTrash" title="מחק עסקה">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3.5 6h17M9 6V4a.75.75 0 01.75-.75h4.5A.75.75 0 0115 4v2"/>
+                <path d="M8 6l.75 14.25h6.5L16 6"/>
+                <line x1="10" y1="10" x2="10" y2="17"/><line x1="14" y1="10" x2="14" y2="17"/>
+              </svg>
+            </button>
+            <button class="pab-btn" id="pabLock" title="נעל על המסך">
+              <svg id="svgLocked" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round">
+                <rect x="5" y="11" width="14" height="10" rx="2"/>
+                <path d="M8 11V7a4 4 0 018 0v4"/>
+                <circle cx="12" cy="16" r="1.5" fill="#fff" stroke="none"/>
+              </svg>
+              <svg id="svgUnlocked" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" style="display:none">
+                <rect x="5" y="11" width="14" height="10" rx="2"/>
+                <path d="M8 11V7a4 4 0 018 0M16 7V5"/>
+                <circle cx="12" cy="16" r="1.5" fill="#fff" stroke="none"/>
+              </svg>
+            </button>
+            <span class="pab-sep"></span>
+            <button class="pab-btn" id="pabColorSL" title="צבע סטופ לוס" style="position:relative">
+              <svg viewBox="0 0 24 24" width="26" height="26">
+                <rect x="2" y="5" width="20" height="14" rx="3" fill="#ef5350" opacity="0.35"/>
+                <rect x="2" y="5" width="20" height="14" rx="3" stroke="#ef5350" stroke-width="1.8" fill="none"/>
+                <line x1="2" y1="12" x2="22" y2="12" stroke="#ef5350" stroke-width="2.5"/>
+              </svg>
+              <div class="pab-colors" id="pabColorsSL"></div>
+            </button>
+            <button class="pab-btn" id="pabColorTP" title="צבע יעד" style="position:relative">
+              <svg viewBox="0 0 24 24" width="26" height="26">
+                <rect x="2" y="5" width="20" height="14" rx="3" fill="#26a69a" opacity="0.35"/>
+                <rect x="2" y="5" width="20" height="14" rx="3" stroke="#26a69a" stroke-width="1.8" fill="none"/>
+                <line x1="2" y1="12" x2="22" y2="12" stroke="#26a69a" stroke-width="2.5"/>
+              </svg>
+              <div class="pab-colors" id="pabColorsTP"></div>
+            </button>
+          </div>
+          <!-- floating stock info — top-left of chart (single unified bar) -->
+          <div id="chartInfoBar">
+            <span class="ci-sym" id="ciSym"></span>
+            <span class="ci-name" id="ciName"></span>
+            <span class="ci-sep">|</span>
+            <span class="ci-change" id="ciChange"></span>
+            <span class="ci-sep">·</span>
+            <span class="ci-price" id="ciPrice"></span>
+            <span class="ci-sep ci-ohlcv-sep">|</span>
+            <div class="ci-ohlcv" id="ciOhlcv">
+              <span class="ohlcv-pair"><span class="ohlcv-lbl">O</span><span class="ohlcv-val" id="lgO"></span></span>
+              <span class="ohlcv-pair"><span class="ohlcv-lbl">H</span><span class="ohlcv-val" id="lgH"></span></span>
+              <span class="ohlcv-pair"><span class="ohlcv-lbl">L</span><span class="ohlcv-val" id="lgL"></span></span>
+              <span class="ohlcv-pair"><span class="ohlcv-lbl">C</span><span class="ohlcv-val" id="lgC"></span></span>
+              <span class="legend-sep">·</span>
+              <span class="ohlcv-pair"><span class="ohlcv-lbl">Vol</span><span class="ohlcv-val" id="lgV"></span></span>
+              <span class="legend-sep">·</span>
+              <span class="legend-pct" id="lgPct"></span>
+            </div>
+          </div>
+          <!-- kept hidden for any legacy refs -->
+          <div id="chartLegend" style="display:none"></div>
+          <span id="volLegendText" style="display:none"></span>
+          <div class="nextrade-watermark"><span class="nex">Nex</span><span class="trade">Trade</span></div>
+          <!-- Clock below price axis -->
+          <div id="chartClock"></div>
+          <!-- Crosshair alert button -->
+          <button id="crosshairAlertBtn" title="הגדר התראה" onclick="event.stopPropagation(); openCrosshairAlertPopup()">
+            <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round">
+              <line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/>
+            </svg>
+          </button>
+          <!-- Mini alert / order menu on crosshair -->
+          <div id="crosshairAlertPopup">
+            <div id="crosshairMenuList"></div>
+            <div id="crosshairOrderForm" style="display:none;padding:.2rem .35rem">
+              <div style="display:flex;align-items:center;gap:.35rem;margin-bottom:.45rem">
+                <span onclick="crosshairMenuBackToList()" style="cursor:pointer;color:#8b9ab5;font-size:.85rem;line-height:1">→</span>
+                <span style="font-size:.74rem;font-weight:800;color:#fff">✎ הוסף פקודה</span>
+              </div>
+              <div style="font-size:.7rem;color:#f5a623;font-weight:700;margin-bottom:.35rem" id="crosshairAlertPriceLabel"></div>
+              <div style="display:flex;gap:.3rem;margin-bottom:.3rem">
+                <select id="crosshairAlertCond" style="flex:1;background:#0a0d16;border:1px solid #1e2637;border-radius:5px;color:#fff;font-size:.7rem;padding:.22rem .3rem;font-family:'Heebo',sans-serif;">
+                  <option value="above">מעל</option>
+                  <option value="below">מתחת</option>
+                </select>
+                <input id="crosshairAlertPriceInp" type="number" step="any" placeholder="מחיר" style="flex:1.2;background:#0a0d16;border:1px solid #1e2637;border-radius:5px;color:#fff;font-size:.7rem;padding:.22rem .35rem;font-family:'Heebo',sans-serif;" />
+              </div>
+              <input id="crosshairAlertEmail" type="email" placeholder="מייל (אופציונלי)" style="width:100%;background:#0a0d16;border:1px solid #1e2637;border-radius:5px;color:#fff;font-size:.68rem;padding:.22rem .35rem;margin-bottom:.35rem;box-sizing:border-box;font-family:'Heebo',sans-serif;" />
+              <div style="display:flex;gap:.3rem">
+                <button onclick="crosshairAddAlert()" style="flex:1;background:#2962ff;border:none;border-radius:5px;color:#fff;font-size:.72rem;font-weight:700;padding:.3rem;cursor:pointer;font-family:'Heebo',sans-serif;">הוסף</button>
+                <button onclick="closeCrosshairAlertPopup()" style="background:#1e2637;border:none;border-radius:5px;color:#8b9ab5;font-size:.72rem;padding:.3rem .5rem;cursor:pointer;font-family:'Heebo',sans-serif;">ביטול</button>
+              </div>
+            </div>
+          </div>
+          <div id="chart"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- SIGNAL FEED (Mode A — clean signals board for signal-only users) -->
+<div id="signalFeed" style="display:none">
+  <header class="sf-top">
+    <!-- RIGHT (RTL start): green user avatar → logout menu, + admin back-to-site button -->
+    <div class="sf-right">
+      <div class="sf-user" id="sfUserWrap">
+        <button class="sf-avatar" id="sfAvatar" onclick="NTSignals.toggleUserMenu(event)" title="החשבון שלי">?</button>
+        <div class="sf-usermenu" id="sfUserMenu">
+          <div class="sf-usermenu-name" id="sfUserMenuName"></div>
+          <div class="sf-usermenu-plan" id="sfUserMenuPlan"></div>
+          <button class="sf-usermenu-logout" onclick="handleLogout()">🚪 התנתקות</button>
+        </div>
+      </div>
+      <button class="sf-backbtn" id="sfBackBtn" onclick="if(window.NTSignals)NTSignals.setMode('analysis')" title="חזרה לאתר הרגיל">📊 <span>לאתר הרגיל</span></button>
+    </div>
+    <!-- CENTER: brand logo in its standard colors -->
+    <div class="sf-logo"><span class="lg-nex">Nex</span><span class="lg-trade">Trade</span></div>
+    <!-- LEFT (RTL end): trial / upgrade banner -->
+    <button class="sf-trial" id="sfTrialBanner" onclick="if(window.NTPlan)NTPlan.openUpgrade()">
+      <span class="sf-trial-ic">🎁</span>
+      <span class="sf-trial-txt" id="sfTrialTxt">7 ימי ניסיון חינם</span>
+    </button>
+  </header>
+  <nav class="sf-tabs">
+    <button class="sf-tab active" data-tab="signals" onclick="NTSignals.switchTab('signals')">איתותים</button>
+    <button class="sf-tab" data-tab="risk" onclick="NTSignals.switchTab('risk')"><span class="sf-tab-risk">🛡️ ניהול סיכונים</span></button>
+    <button class="sf-tab" data-tab="ai" onclick="NTSignals.switchTab('ai')">🤖 ניתוח AI למניות</button>
+    <button class="sf-tab" data-tab="trades" onclick="NTSignals.switchTab('trades')">העסקאות שלי</button>
+    <button class="sf-tab" data-tab="history" onclick="NTSignals.switchTab('history')">היסטוריה</button>
+    <button class="sf-tab" data-tab="alerts" onclick="NTSignals.switchTab('alerts')">🔔 יומן</button>
+  </nav>
+  <div class="sf-body" id="sfBody"></div>
+  <div class="sf-disc" id="sfDisc"></div>
+</div>
+
+<!-- AI STOCK ANALYSIS POPUP -->
+<div id="aiModal" class="ai-modal" onclick="if(event.target===this&&window.NTSignals)NTSignals.closeAiModal()">
+  <div class="ai-modal-card">
+    <button class="nt-upgrade-x" onclick="if(window.NTSignals)NTSignals.closeAiModal()">✕</button>
+    <div class="ai-modal-body" id="aiModalBody"></div>
+  </div>
+</div>
+
+<!-- UPGRADE / PAYWALL MODAL -->
+<div id="ntUpgradeModal" class="nt-upgrade-modal" onclick="if(event.target===this&&window.NTPlan)NTPlan.closeUpgrade()">
+  <div class="nt-upgrade-card wide">
+    <button class="nt-upgrade-x" onclick="if(window.NTPlan)NTPlan.closeUpgrade()">✕</button>
+    <div class="nt-upgrade-crown">⭐</div>
+    <h2 class="nt-upgrade-title">שדרג ל‑NexTrade — בחר מסלול</h2>
+    <p class="nt-upgrade-sub" id="ntUpgradeSub">שדרג לקבל יותר ניתוחי AI, איתותים בזמן אמת ומעקב חופשי יותר.</p>
+    <div class="nt-tiers">
+      <div class="nt-tier gold">
+        <div class="nt-tier-badge">🥇 גולד</div>
+        <div class="nt-tier-price">₪39<span>/חודש</span></div>
+        <ul class="nt-tier-list">
+          <li>✓ 15 ניתוחי AI ביום</li>
+          <li>✓ איתותים בזמן אמת (עד 15)</li>
+          <li>✓ עד 15 מניות במעקב</li>
+          <li>✓ יומן התראות + סיכום ביצועים</li>
+        </ul>
+        <button class="nt-tier-btn" onclick="if(window.NTPlan)NTPlan.startCheckout('monthly','gold')">חודשי · ₪39</button>
+        <button class="nt-tier-btn ghost" onclick="if(window.NTPlan)NTPlan.startCheckout('yearly','gold')">שנתי · ₪390</button>
+      </div>
+      <div class="nt-tier premium">
+        <div class="nt-tier-ribbon">הכי משתלם</div>
+        <div class="nt-tier-badge">⭐ פרימיום</div>
+        <div class="nt-tier-price">₪69<span>/חודש</span></div>
+        <ul class="nt-tier-list">
+          <li>✓ ניתוחי AI ללא הגבלה</li>
+          <li>✓ כל האיתותים בזמן אמת</li>
+          <li>✓ מעקב ומועדפים ללא הגבלה</li>
+          <li>✓ התראת דוחות (earnings) לפני פרסום</li>
+          <li>✓ כל מה שבגולד</li>
+        </ul>
+        <button class="nt-tier-btn primary" onclick="if(window.NTPlan)NTPlan.startCheckout('monthly','premium')">חודשי · ₪69</button>
+        <button class="nt-tier-btn ghost" onclick="if(window.NTPlan)NTPlan.startCheckout('yearly','premium')">שנתי · ₪490</button>
+      </div>
+    </div>
+    <div class="nt-upgrade-foot">המסלול הבסיסי (חינם): 3 ניתוחי AI ביום, 3 מניות במעקב, 3 איתותים בעיכוב · ביטול בכל עת · תשלום מאובטח</div>
+  </div>
+</div>
+
+<script src="scanner-symbols.js?v=20261019g"></script>
+<script src="scanner-engine.js?v=20261021b"></script>
+<script src="plan.js?v=20261019g"></script>
+<script src="main.js?v=20261021a"></script>
+<script src="stockpanel.js?v=20261021a"></script>
+<script src="drawing.js?v=20261019b"></script>
+<script src="features.js?v=20261018j"></script>
+<script src="signals.js?v=20261021a"></script>
+
+<!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
+<div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">
+  <div class="cst-modal" onclick="event.stopPropagation()">
+    <div class="cst-header">
+      <span class="cst-title">Settings</span>
+      <button class="cst-close" onclick="closeChartSettings()">✕</button>
+    </div>
+    <div class="cst-body">
+      <div class="cst-nav">
+        <div class="cst-nav-item" data-tab="symbol" onclick="switchSettingsTab('symbol')"><span class="cst-nav-ic">📈</span>Symbol</div>
+        <div class="cst-nav-item" data-tab="statusline" onclick="switchSettingsTab('statusline')"><span class="cst-nav-ic">≡</span>Status line</div>
+        <div class="cst-nav-item" data-tab="scales" onclick="switchSettingsTab('scales')"><span class="cst-nav-ic">⤢</span>Scales and lines</div>
+        <div class="cst-nav-item" data-tab="canvas" onclick="switchSettingsTab('canvas')"><span class="cst-nav-ic">✏️</span>Canvas</div>
+        <div class="cst-nav-item" data-tab="trading" onclick="switchSettingsTab('trading')"><span class="cst-nav-ic">📶</span>Trading</div>
+        <div class="cst-nav-item" data-tab="alerts" onclick="switchSettingsTab('alerts')"><span class="cst-nav-ic">⏰</span>Alerts</div>
+        <div class="cst-nav-item" data-tab="events" onclick="switchSettingsTab('events')"><span class="cst-nav-ic">📅</span>Events</div>
+      </div>
+      <div class="cst-content">
+        <div class="cst-pane" data-pane="symbol"><div class="cst-empty">אין הגדרות זמינות כאן כרגע</div></div>
+        <div class="cst-pane" data-pane="statusline"><div class="cst-empty">אין הגדרות זמינות כאן כרגע</div></div>
+        <div class="cst-pane" data-pane="scales"><div class="cst-empty">אין הגדרות זמינות כאן כרגע</div></div>
+
+        <!-- CANVAS TAB — background color picker (moved from the old right-click menu) -->
+        <div class="cst-pane" data-pane="canvas">
+          <div class="ctxm-header" style="padding:0 0 .4rem;border-bottom:none">רקע גרף</div>
+          <div class="ctxm-tabs">
+            <button class="ctxm-tab active" id="ctxTabSolid">צבע אחיד</button>
+            <button class="ctxm-tab" id="ctxTabGrad">Gradient</button>
+          </div>
+          <div id="ctxSolidPanel">
+            <div class="ctxm-colors" id="ctxSolidColors"></div>
+          </div>
+          <div id="ctxGradPanel" style="display:none">
+            <div class="ctxm-grad-row"><div class="ctxm-grad-dot" id="ctxGradTopDot" style="background:#05070a"></div><span>צבע עליון</span></div>
+            <div class="ctxm-colors" id="ctxGradTopColors"></div>
+            <div class="ctxm-grad-row"><div class="ctxm-grad-dot" id="ctxGradBotDot" style="background:#12161f"></div><span>צבע תחתון</span></div>
+            <div class="ctxm-colors" id="ctxGradBotColors"></div>
+          </div>
+
+          <!-- WATERMARK — symbol name behind the chart -->
+          <div class="ctxm-header" style="padding:1rem 0 .4rem;border-bottom:none;border-top:1px solid #1e2637;margin-top:.8rem">סימן מים (שם הנייר ברקע)</div>
+          <div class="cst-row" id="wmToggleRow" onclick="wmToggle()" style="padding:.4rem .2rem">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">הצג סימן מים</div>
+              <div class="cst-row-desc">שם הנייר יופיע במרכז הגרף ברקע</div>
+            </div>
+          </div>
+          <div class="ctxm-grad-row" style="margin-top:.5rem"><span>חוזק תצוגה</span></div>
+          <div class="ctxm-tabs" id="wmStrengthTabs">
+            <button class="ctxm-tab" data-wm="weak" onclick="wmSetStrength('weak')">חלש</button>
+            <button class="ctxm-tab" data-wm="medium" onclick="wmSetStrength('medium')">בינוני</button>
+            <button class="ctxm-tab" data-wm="strong" onclick="wmSetStrength('strong')">חזק</button>
+          </div>
+        </div>
+
+        <!-- TRADING TAB — matches the TradingView "Settings > Trading" reference design -->
+        <div class="cst-pane active" data-pane="trading">
+          <div class="cst-section-hdr">General</div>
+          <div class="cst-row" id="cstRow_buySellBtns" onclick="cstToggle('buySellBtns')">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">Buy/sell buttons</div>
+              <div class="cst-row-desc">Displays buy and sell buttons directly on the chart</div>
+            </div>
+          </div>
+          <div class="cst-row" id="cstRow_oneTap" onclick="cstToggle('oneTap')">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">One-tap trading <span class="cst-info-ic" title="Instantly place, edit, cancel orders, or close positions without confirmation">ⓘ</span></div>
+              <div class="cst-row-desc">Instantly place, edit, cancel orders, or close positions without confirmation</div>
+            </div>
+          </div>
+          <div class="cst-row checked" id="cstRow_execSound" onclick="cstToggle('execSound')">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">Execution sound</div>
+              <div class="cst-inline-ctrl" onclick="event.stopPropagation()">
+                <span>🔊</span>
+                <input type="range" min="0" max="100" value="70" id="cstVolumeRange">
+                <select class="cst-select" id="cstSoundSelect">
+                  <option>Alarm Clock</option>
+                  <option>Bell</option>
+                  <option>Chime</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="cst-row" id="cstRow_rejectOnly" onclick="cstToggle('rejectOnly')">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">Show only rejection notifications</div>
+            </div>
+          </div>
+
+          <div class="cst-section-hdr">Appearance</div>
+          <div class="cst-row checked" id="cstRow_positionsOrders" onclick="cstToggle('positionsOrders')">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">Positions and orders <span class="cst-info-ic" title="Show open positions and orders on the chart">ⓘ</span></div>
+            </div>
+          </div>
+          <div class="cst-row checked cst-row-sub" id="cstRow_reversePos" onclick="cstToggle('reversePos')">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">Reverse position button</div>
+              <div class="cst-row-desc">Adds the reverse button next to the open position on the chart</div>
+            </div>
+          </div>
+          <div class="cst-row" id="cstRow_projectOrder" onclick="cstToggle('projectOrder')">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">Project order for market orders</div>
+              <div class="cst-row-desc">Shows a project order on the chart before sending a market order</div>
+            </div>
+          </div>
+          <div class="cst-row checked" id="cstRow_pnlValue" onclick="cstToggle('pnlValue')">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">Profit and loss value <span class="cst-info-ic" title="Show open P&L on positions and brackets">ⓘ</span></div>
+            </div>
+          </div>
+          <div class="cst-sub-row">
+            <div class="cst-row checked" style="padding:0" id="cstRow_pnlPositions" onclick="cstToggle('pnlPositions')">
+              <div class="cst-chk"></div>
+              <div class="cst-row-txt"><div class="cst-row-label">Positions</div></div>
+            </div>
+            <select class="cst-select"><option>Money</option><option>Percent</option><option>Pips</option></select>
+          </div>
+          <div class="cst-sub-row">
+            <div class="cst-row checked" style="padding:0" id="cstRow_pnlBrackets" onclick="cstToggle('pnlBrackets')">
+              <div class="cst-chk"></div>
+              <div class="cst-row-txt"><div class="cst-row-label">Brackets</div></div>
+            </div>
+            <select class="cst-select"><option>Money</option><option>Percent</option><option>Pips</option></select>
+          </div>
+          <div class="cst-row checked" id="cstRow_execMarks" onclick="cstToggle('execMarks')">
+            <div class="cst-chk"></div>
+            <div class="cst-row-txt">
+              <div class="cst-row-label">Execution marks <span class="cst-info-ic" title="Show buy/sell execution marks on the chart">ⓘ</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cst-pane" data-pane="alerts"><div class="cst-empty">אין הגדרות זמינות כאן כרגע</div></div>
+        <div class="cst-pane" data-pane="events"><div class="cst-empty">אין הגדרות זמינות כאן כרגע</div></div>
+      </div>
+    </div>
+    <div class="cst-footer">
+      <div class="cst-tpl">Template ▾</div>
+      <div class="cst-footer-btns">
+        <button class="cst-btn cst-btn-ghost" onclick="closeChartSettings()">Cancel</button>
+        <button class="cst-btn cst-btn-primary" onclick="closeChartSettings()">Ok</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- VERTICAL ICON TOOLBAR -->
+<div class="icon-toolbar" id="iconToolbar">
+  <button class="ib-hamburger active" id="ib-sidebar" onclick="ibToggleSidebar()" title="">
+    <span></span><span></span><span></span>
+    <span class="ib-tip">Watchlist</span>
+  </button>
+  <button class="ib" id="ib-clock" onclick="ibToggle('clock')" title="">
+    <svg class="ib-clock-ico" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.25" fill="#0b0d13" stroke="currentColor" stroke-width="1.8"/>
+      <path d="M12 7.2v4.6l3.1 1.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12 4.9v1.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+    </svg>
+    <span class="ib-tip">התראות גרף</span><span class="ib-badge" id="chartAlertBadge" style="display:none">0</span>
+  </button>
+  <button class="ib" id="ib-layers" onclick="ibToggle('layers')" title="">
+    ◫<span class="ib-tip">אובייקטים על הגרף</span>
+  </button>
+  <!-- All other tools drop to the bottom-right, leaving a gap below the hamburger -->
+  <div class="ib-bottom-group">
+    <button class="ib" id="ib-chat"    onclick="ibToggle('chat')"    title="">
+      💬<span class="ib-tip">צ'אטים</span>
+    </button>
+    <div class="ib-sep"></div>
+    <button class="ib" id="ib-insights" onclick="ibToggle('insights')" title="">
+      🧠<span class="ib-tip">תובנות AI</span>
+    </button>
+    <button class="ib" id="ib-risk" onclick="ibToggle('risk')" title="">
+      ⚖️<span class="ib-tip">סיכוני תיק</span>
+    </button>
+    <button class="ib" id="ib-calendar" onclick="ibToggle('calendar')" title="">
+      📅<span class="ib-tip">לוח אירועים</span>
+    </button>
+    <button class="ib" id="ib-lab" onclick="ibToggle('lab')" title="">
+      🧪<span class="ib-tip">מעבדה / דמו</span>
+    </button>
+    <div class="ib-sep"></div>
+    <button class="ib" id="ib-news" onclick="ibToggle('news')" title="">
+      📰<span class="ib-tip">חדשות שוק</span>
+    </button>
+  </div>
+</div>
+
+<!-- TOOLBAR PANELS (hidden — content moved to sidebar) -->
+<div style="display:none">
+<div id="ibPanel-tasks"   class="ib-panel"><div class="ib-panel-hdr"><span>🗒️ סרגל משימות</span></div><div class="ib-panel-body"><div class="ib-panel-add-row"><input id="taskInput" placeholder="משימה חדשה..." onkeydown="if(event.key==='Enter')ibAddTask()" /><button class="btn btn-sm" onclick="ibAddTask()">הוסף</button></div><ul id="taskList" style="list-style:none;margin-top:.5rem"></ul></div></div>
+<div id="ibPanel-clock"   class="ib-panel"><div class="ib-panel-hdr"><span>🕐 שעון התראות</span></div><div class="ib-panel-body" id="ibClockBody"></div></div>
+<div id="ibPanel-chat"    class="ib-panel"></div>
+<div id="ibPanel-scanner" class="ib-panel"><div class="ib-panel-body" id="_ibScannerBody_old"></div></div>
+<div id="ibPanel-indicators" class="ib-panel"><div class="ib-panel-body"><div class="ma-list" id="_maList_old"></div></div></div>
+<div id="ibPanel-insights" class="ib-panel"><div class="ib-panel-body" id="_insightsBody_old"></div></div>
+<div id="ibPanel-risk" class="ib-panel"><div class="ib-panel-body" id="_riskBody_old"></div></div>
+<div id="ibPanel-calendar" class="ib-panel"><div class="ib-panel-body" id="_calBody_old"></div></div>
+<div id="ibPanel-lab" class="ib-panel"><div class="ib-panel-body" id="_labBody_old"></div></div>
+<div id="ibPanel-alerts"  class="ib-panel"><div class="ib-panel-body">
+  <div id="_scannerList_old"></div>
+  <div class="ib-panel-add-row"><input id="ibAlertSym" placeholder="סמל" style="width:60px" /><input id="ibAlertPrice" placeholder="מחיר" type="number" style="width:70px" /><button class="btn btn-sm" onclick="ibAddAlert()">הוסף</button></div><ul id="ibAlertList" style="list-style:none;margin-top:.5rem"></ul></div></div>
+</div>
+
+<!-- BELL ALERTS POPUP -->
+<div id="bellAlertsPopup">
+  <div class="bell-popup-hdr">
+    <span>🔔 איתותי מסחר</span>
+    <button class="bell-popup-close" onclick="closeBellPopup()">✕</button>
+  </div>
+  <div class="bell-popup-body" id="bellAlertsList"></div>
+  <div class="bell-popup-ftr">
+    <button class="btn btn-sm" onclick="closeBellPopup()">סגור חלון</button>
+  </div>
+</div>
+
+<div id="bellAlertDetails">
+  <div class="bad-hdr">
+    <span class="bad-title">פרטי איתות</span>
+    <button class="bad-close" onclick="closeBellAlertDetails()">✕</button>
+  </div>
+  <div class="bad-body" id="bellAlertDetailsBody"></div>
+  <div class="bad-actions">
+    <button class="btn btn-sm" id="badOpenChartBtn" style="flex:1;background:var(--accent);border-color:var(--accent)">📈 פתח גרף</button>
+    <button class="btn btn-sm" onclick="closeBellAlertDetails()">סגור פרטים</button>
+  </div>
+</div>
+
+<!-- NEWS POPUP -->
+<div id="newsPopup">
+  <div class="news-popup-header">
+    <span>&#128240; חדשות שוק &nbsp;<span id="newsSymbol" style="color:var(--text-muted);font-weight:400"></span></span>
+    <button class="news-popup-close" onclick="toggleNewsPopup()">&times;</button>
+  </div>
+  <div id="newsPopupList"><div style="padding:1rem;color:var(--text-muted);font-size:.82rem">בחר מניה לחדשות</div></div>
+</div>
+
+<!-- PORTFOLIO POPUP -->
+<div id="portfolioPopup">
+  <div class="portfolio-popup-header">
+    <span>&#128188; תיק השקעות</span>
+    <button class="news-popup-close" onclick="togglePortfolioPopup()">&times;</button>
+  </div>
+  <div class="portfolio-popup-body">
+    <ul id="portfolioList" style="list-style:none;"></ul>
+    <div class="port-total" id="portfolioTotal"></div>
+    <div class="form-group"><label>סמל</label><input id="portSymbol" placeholder="TEVA" /></div>
+    <div class="form-group"><label>כמות מניות</label><input id="portShares" type="number" placeholder="100" /></div>
+    <div class="form-group"><label>מחיר קנייה</label><input id="portPrice" type="number" placeholder="50.00" /></div>
+    <button class="btn btn-sm" style="width:100%" onclick="addToPortfolio()">הוסף לתיק</button>
+  </div>
+</div>
+
+<!-- ALERTS POPUP -->
+<div id="alertPopup">
+  <div class="alert-popup-header">
+    <span>&#128276; התראות סורק יומי</span>
+    <button class="news-popup-close" onclick="toggleAlertPopup()">&times;</button>
+  </div>
+  <div class="alert-popup-body">
+    <ul id="alertsList" style="list-style:none;"></ul>
+    <!-- EmailJS setup button -->
+    <div id="alertEmailSetup" style="background:rgba(41,98,255,.08);border:1px solid rgba(41,98,255,.25);border-radius:8px;padding:.4rem .6rem;margin-bottom:.45rem;font-size:.72rem;color:#8b9ab5;">
+      <span id="ejsStatus">⚠️ EmailJS לא מוגדר — מיילים לא ישלחו</span>
+      <button onclick="toggleEmailJSForm()" style="float:left;padding:.15rem .4rem;font-size:.65rem;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer">⚙️ הגדר</button>
+    </div>
+    <div id="alertEmailJSForm" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.55rem .65rem;margin-bottom:.5rem;">
+      <div style="font-size:.72rem;font-weight:700;margin-bottom:.35rem;color:var(--text)">✉️ הגדרת EmailJS</div>
+      <div class="form-group"><label>Service ID</label><input id="ejsServiceId" placeholder="service_xxxxxxx" /></div>
+      <div class="form-group"><label>Template ID</label><input id="ejsTemplateId" placeholder="template_xxxxxxx" /></div>
+      <div class="form-group"><label>Public Key</label><input id="ejsPublicKey" placeholder="xxxxxxxxxxxx" /></div>
+      <button class="btn btn-sm" style="width:100%;margin-top:.15rem" onclick="saveEmailJSConfig()">שמור</button>
+      <div style="font-size:.63rem;color:var(--text-muted);margin-top:.3rem;line-height:1.5">
+        בחינם: <a href="https://emailjs.com" target="_blank" style="color:var(--accent)">emailjs.com</a><br>
+        Add Service → Create Template → Account → Public Key
+      </div>
+    </div>
+    <div class="form-group"><label>סמל</label><input id="alertSymbol" placeholder="TEVA.TA" /></div>
+    <div class="form-group"><label>תנאי</label>
+      <select id="alertCondition">
+        <option value="above">מעל המחיר</option>
+        <option value="below">מתחת למחיר</option>
+      </select>
+    </div>
+    <div class="form-group"><label>מחיר יעד</label><input id="alertPrice" type="number" placeholder="100" /></div>
+    <div class="form-group">
+      <label>מייל להתראה <span style="font-size:.65rem;color:var(--text-muted)">(אופציונלי)</span></label>
+      <input id="alertEmail" type="email" placeholder="your@email.com" autocomplete="email" />
+    </div>
+    <button class="btn btn-sm btn-ghost" style="width:100%" onclick="addAlert()">הוסף התראה</button>
+  </div>
+</div>
+
+<!-- SEARCH MODAL (centered, black bg) -->
+<div id="searchModal" onclick="if(event.target===this)closeSearchModal()">
+  <div class="sm-box">
+    <div class="sm-header">
+      <div class="sm-title">חיפוש סמל</div>
+      <button class="sm-close" onclick="closeSearchModal()" title="סגור">✕</button>
+      <div class="sm-input-wrap">
+        <span class="sm-search-ic">🔍</span>
+        <input class="sm-input" id="smInput" placeholder="הקלד שם מניה או סימול..." autocomplete="off" oninput="smOnInput()" />
+        <button class="sm-clear" id="smClearBtn" onclick="smClearInput()" title="נקה">✕</button>
+      </div>
+    </div>
+    <div class="sm-tabs">
+      <button class="sm-tab active" data-cat="all" onclick="smSetTab('all')">הכל</button>
+      <button class="sm-tab" data-cat="stocks" onclick="smSetTab('stocks')">🇮🇱 מניות ישראליות</button>
+      <button class="sm-tab" data-cat="us" onclick="smSetTab('us')">🇺🇸 מניות ארה"ב</button>
+      <button class="sm-tab" data-cat="indices" onclick="smSetTab('indices')">📊 מדדים</button>
+      <button class="sm-tab" data-cat="general" onclick="smSetTab('general')">🌐 כללי</button>
+    </div>
+    <div class="sm-body" id="smBody"></div>
+  </div>
+</div>
+
+<script>
+// ============================================
+//   ICON TOOLBAR JS
+// ============================================
+//   UNIFIED SIDEBAR — all icons open here
+// ============================================
+var ibTasks  = JSON.parse(localStorage.getItem('ib_tasks')  || '[]');
+var ibAlerts2 = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
+
+var _sidebarViews = {
+  watchlist:   { title: '📋 Watchlist' },
+  alerts:      { title: '🔔 התראות וסורק', render: function(){ if(typeof renderAlerts==='function') renderAlerts(); if(typeof runScanner==='function') runScanner(); clearAlertBadge(); } },
+  indicators:  { title: '📊 אינדיקטורים', render: function(){ if(typeof renderMAPanel==='function') renderMAPanel(); } },
+  insights:    { title: '🧠 תובנות AI', render: function(){ if(window.NTFeatures) NTFeatures.renderInsights(); } },
+  risk:        { title: '⚖️ סיכוני תיק', render: function(){ if(window.NTFeatures) NTFeatures.renderRisk(); } },
+  calendar:    { title: '📅 לוח אירועים', render: function(){ if(window.NTFeatures) NTFeatures.renderCalendar(); } },
+  lab:         { title: '🧪 מעבדה', render: function(){ if(window.NTFeatures) NTFeatures.renderLab(); } },
+  chat:        { title: '💬 צ\'אט' },
+  clock:       { title: '⏰ התראות גרף', render: function(){ renderChartAlertsSidebar(); } },
+  layers:      { title: '◫ אובייקטים על הגרף', render: function(){ renderLayersSidebar(); } },
+  tasks:       { title: '🗒️ משימות', render: function(){ ibRenderTasks2(); } },
+  news:        { title: '📰 חדשות', render: function(){ if(typeof loadNews==='function') loadNews(typeof currentSymbol!=='undefined'?currentSymbol:''); } }
+};
+
+// Alert badge counter
+var _alertBadgeCount = 0;
+function updateAlertBadge(count) {
+  _alertBadgeCount = count;
+  var badge = document.getElementById('alertBadge');
+  var mBadge = document.getElementById('mBellBadge');
+  [badge, mBadge].forEach(function(b) {
+    if (!b) return;
+    if (count > 0) { b.textContent = count; b.style.display = 'flex'; }
+    else { b.style.display = 'none'; }
+  });
+}
+function incrementAlertBadge() {
+  // Don't increment if alerts view is currently open
+  if (_currentSidebarView === 'alerts') return;
+  updateAlertBadge(_alertBadgeCount + 1);
+}
+function clearAlertBadge() {
+  updateAlertBadge(0);
+}
+var _currentSidebarView = 'watchlist';
+
+function sidebarOpen(viewName) {
+  var sidebar = document.querySelector('aside.sidebar');
+  var sideBtn = document.getElementById('ib-sidebar');
+  if (!sidebar) return;
+  // Open sidebar if collapsed
+  sidebar.classList.remove('collapsed');
+  if (sideBtn) sideBtn.classList.add('active');
+  // Switch sidebar view
+  var allKeys = Object.keys(_sidebarViews);
+  allKeys.forEach(function(k) {
+    var el = document.getElementById('sview-' + k);
+    if (el) el.classList.toggle('active', k === viewName);
+  });
+  var titleEl = document.getElementById('sidebarTitle');
+  if (titleEl && _sidebarViews[viewName]) titleEl.textContent = _sidebarViews[viewName].title;
+  _currentSidebarView = viewName;
+  // Activate icon button highlight
+  ['clock','layers','chat','alerts','indicators','insights','risk','calendar','lab','news'].forEach(function(p) {
+    var b = document.getElementById('ib-' + p);
+    if (b) b.classList.toggle('active', p === viewName);
+  });
+  // Render content if needed
+  if (_sidebarViews[viewName] && _sidebarViews[viewName].render) {
+    _sidebarViews[viewName].render();
+  }
+}
+
+function ibToggleSidebar() {
+  var sidebar = document.querySelector('aside.sidebar');
+  var btn = document.getElementById('ib-sidebar');
+  if (!sidebar || !btn) return;
+  var isOpen = !sidebar.classList.contains('collapsed');
+  if (isOpen && _currentSidebarView === 'watchlist') {
+    // Collapse sidebar
+    sidebar.classList.add('collapsed');
+    btn.classList.remove('active');
+  } else {
+    // Open/switch to watchlist
+    sidebarOpen('watchlist');
+  }
+}
+
+function ibToggle(name) {
+  var sidebar = document.querySelector('aside.sidebar');
+  if (!sidebar) return;
+  var isOpen = !sidebar.classList.contains('collapsed');
+  if (isOpen && _currentSidebarView === name) {
+    // Same icon clicked again → collapse sidebar
+    sidebar.classList.add('collapsed');
+    document.getElementById('ib-sidebar').classList.remove('active');
+    ['clock','layers','chat','alerts','indicators','insights','risk','calendar','lab','news'].forEach(function(p) {
+      var b = document.getElementById('ib-' + p);
+      if (b) b.classList.remove('active');
+    });
+  } else {
+    sidebarOpen(name);
+  }
+}
+
+function ibClose(name) {
+  // In unified mode, just switch back to watchlist
+  sidebarOpen('watchlist');
+}
+
+function sidebarAddAlert() {
+  var symEl   = document.getElementById('ibAlertSym2');
+  var priceEl = document.getElementById('ibAlertPrice2');
+  var sym     = symEl ? symEl.value.trim().toUpperCase() : '';
+  var price   = parseFloat(priceEl ? priceEl.value : 0);
+  if (!sym || !price) return;
+  if (typeof alerts !== 'undefined') {
+    alerts.push({ symbol: sym.indexOf('.') === -1 ? sym + '.TA' : sym, condition: 'above', price: price, email: null });
+    localStorage.setItem('ml_alerts', JSON.stringify(alerts));
+    if (typeof renderAlerts === 'function') renderAlerts();
+    incrementAlertBadge();
+  }
+  if (symEl) symEl.value = ''; if (priceEl) priceEl.value = '';
+}
+
+// TASKS
+function ibRenderTasks2() {
+  var ul = document.getElementById('taskList2'); if (!ul) return;
+  if (!ibTasks.length) { ul.innerHTML = '<li style="color:var(--text-muted);padding:.4rem 0">אין משימות</li>'; return; }
+  ul.innerHTML = ibTasks.map(function(t, i) {
+    return '<li class="ib-task-item' + (t.done ? ' done' : '') + '">'
+      + '<input type="checkbox" id="tc2_'+i+'"' + (t.done?' checked':'') + ' onchange="ibToggleTask2('+i+')" />'
+      + '<label for="tc2_'+i+'">'+t.text+'</label>'
+      + '<button class="ib-task-del" onclick="ibDelTask2('+i+')">✕</button>'
+      + '</li>';
+  }).join('');
+}
+function ibAddTask2() {
+  var inp = document.getElementById('taskInput2'); if (!inp) return;
+  var txt = inp.value.trim(); if (!txt) return;
+  ibTasks.push({ text: txt, done: false });
+  localStorage.setItem('ib_tasks', JSON.stringify(ibTasks));
+  inp.value = ''; ibRenderTasks2();
+}
+function ibToggleTask2(i) {
+  ibTasks[i].done = !ibTasks[i].done;
+  localStorage.setItem('ib_tasks', JSON.stringify(ibTasks));
+  ibRenderTasks2();
+}
+function ibDelTask2(i) {
+  ibTasks.splice(i, 1);
+  localStorage.setItem('ib_tasks', JSON.stringify(ibTasks));
+  ibRenderTasks2();
+}
+
+function syncChartAlertBadge() {
+  var badge = document.getElementById('chartAlertBadge');
+  var count = (typeof alerts !== 'undefined' && Array.isArray(alerts)) ? alerts.length : 0;
+  if (!badge) return;
+  if (count > 0) {
+    badge.textContent = count > 99 ? '99+' : String(count);
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function chartAlertIcon(sym) {
+  var t = (sym || '').replace('.TA', '').toUpperCase();
+  return t.slice(0, 2) || 'A';
+}
+
+function renderChartAlertsSidebar() {
+  var el = document.getElementById('chartAlertsBody');
+  if (!el) return;
+  syncChartAlertBadge();
+  if (typeof alerts === 'undefined' || !alerts.length) {
+    el.innerHTML = '<div class="ca-empty">אין התראות שהוגדרו על הגרף עדיין</div>';
+    return;
+  }
+  el.innerHTML = alerts.map(function(a, i) {
+    var cond = a.condition === 'above' ? 'מעל' : 'מתחת';
+    var kind = a.kind === 'sma' ? 'SMA' : 'מחיר';
+    return '<div class="ca-item">'
+      + '<div class="ca-dot">' + chartAlertIcon(a.symbol) + '</div>'
+      + '<div class="ca-main" onclick="selectSymbol(\'' + a.symbol + '\')">'
+      + '<div class="ca-title">' + a.symbol.replace('.TA', '') + ' ' + cond + ' ' + formatPrice(a.price) + '</div>'
+      + '<div class="ca-sub">' + kind + (a.email ? (' · ✉️ ' + a.email) : '') + '</div>'
+      + '</div>'
+      + '<button class="ca-del" onclick="removeAlert(' + i + ');renderChartAlertsSidebar();if(_currentSidebarView===\'layers\')renderLayersSidebar()" title="מחק">🗑</button>'
+      + '</div>';
+  }).join('');
+}
+
+function layersDrawingSummary() {
+  if (!window.NTDraw || typeof window.NTDraw.getObjectsSummary !== 'function') return [];
+  try { return window.NTDraw.getObjectsSummary(); } catch (e) { return []; }
+}
+
+function layerRowHtml(item) {
+  return '<div class="layer-row' + (item.muted ? ' muted' : '') + '">'
+    + '<div class="layer-dot">' + (item.dot || '◫') + '</div>'
+    + '<div class="layer-main"' + (item.onclick ? ' onclick="' + item.onclick + '"' : '') + '>'
+    + '<div class="layer-title">' + item.title + '</div>'
+    + '<div class="layer-sub">' + item.sub + '</div>'
+    + '</div>'
+    + (item.del ? '<button class="layer-del" onclick="' + item.del + '" title="הסר">🗑</button>' : '')
+    + '</div>';
+}
+
+function renderLayersSidebar() {
+  var el = document.getElementById('layersBody');
+  if (!el) return;
+  var html = '';
+  var sym = (typeof currentSymbol !== 'undefined' && currentSymbol) ? currentSymbol.replace('.TA', '') : '—';
+  html += '<div class="layers-head"><span>Chart</span><span>' + sym + '</span></div>';
+
+  var indicatorRows = [];
+  if (typeof volumeVisible !== 'undefined' && volumeVisible) {
+    indicatorRows.push(layerRowHtml({ title: 'Vol (60)', sub: 'נפח עסקאות', dot: '∿', del: 'toggleVolume();renderLayersSidebar()' }));
+  }
+  if (typeof maActive !== 'undefined') {
+    Object.keys(maActive).forEach(function(period) {
+      if (!maActive[period]) return;
+      indicatorRows.push(layerRowHtml({ title: 'SMA (' + period + ', close)', sub: 'ממוצע נע על הגרף', dot: '∿', del: 'toggleMA(' + period + ');renderLayersSidebar()' }));
+    });
+  }
+  if (typeof indActive !== 'undefined') {
+    Object.keys(indActive).forEach(function(id) {
+      if (!indActive[id]) return;
+      var cfg = (typeof indCfg === 'function') ? indCfg(id) : null;
+      indicatorRows.push(layerRowHtml({ title: cfg ? cfg.label : id.toUpperCase(), sub: cfg && cfg.kind === 'osc' ? 'אינדיקטור אוסצילטור' : 'אינדיקטור על הגרף', dot: '∿', del: 'toggleIndicator(\'' + id + '\');renderLayersSidebar()' }));
+    });
+  }
+  html += '<div class="layers-head"><span>Indicators</span><span>' + indicatorRows.length + '</span></div>';
+  html += indicatorRows.length ? indicatorRows.join('') : '<div class="layers-empty">אין אינדיקטורים פעילים כרגע</div>';
+
+  var drawRows = layersDrawingSummary().map(function(obj) {
+    return layerRowHtml({ title: obj.name, sub: obj.sub || 'אובייקט ציור על הגרף', dot: obj.dot || '✎', del: 'deleteLayerObject(' + obj.id + ')' });
+  });
+  html += '<div class="layers-head"><span>Drawings</span><span>' + drawRows.length + '</span></div>';
+  html += drawRows.length ? drawRows.join('') : '<div class="layers-empty">אין כלים טכניים/ציורים שהונחו על הגרף</div>';
+  el.innerHTML = html;
+}
+
+function deleteLayerObject(id) {
+  if (window.NTDraw && typeof window.NTDraw.deleteShapeById === 'function') {
+    window.NTDraw.deleteShapeById(id);
+  }
+  renderLayersSidebar();
+}
+
+if (typeof renderAlerts === 'function') {
+  var _origRenderAlerts = renderAlerts;
+  renderAlerts = function() {
+    _origRenderAlerts();
+    syncChartAlertBadge();
+    if (_currentSidebarView === 'clock') renderChartAlertsSidebar();
+    if (_currentSidebarView === 'layers') renderLayersSidebar();
+  };
+}
+
+// OBJECT TREE
+function ibRenderTree() {
+  var el = document.getElementById('ibTreeBody'); if (!el) return;
+  var wl = (typeof watchlist !== 'undefined') ? watchlist : [];
+  var ph = (typeof portHoldings !== 'undefined') ? portHoldings : [];
+  var lines = ['⭐ רשימת מעקב'].concat(wl.map(function(s){ return '  └ ' + s.replace('.TA',''); }));
+  if (ph.length) {
+    lines.push('📁 תיק השקעות');
+    ph.forEach(function(h){ lines.push('  └ ' + h.sym.replace('.TA','')); });
+  }
+  el.innerHTML = lines.map(function(t) {
+    var isChild = t.indexOf('└') !== -1;
+    var sym = t.trim().replace('└ ','');
+    return '<div class="ib-tree-node" style="' + (isChild?'padding-right:1rem':'font-weight:700') + '"'
+      + (isChild ? ' onclick="ibClose(\'tree\');selectSymbol(\''+sym+(sym.indexOf('.')===-1?'.TA':'')+'\')">':'>') 
+      + t + '</div>';
+  }).join('');
+}
+
+// SCANNER (standalone)
+async function ibRunScanner2() {
+  var body = document.getElementById('ibScannerBody'); if (!body) return;
+  body.innerHTML = '<div style="color:var(--text-muted);font-size:.75rem;text-align:center;padding:.8rem">🔍 סורק...</div>';
+  if (typeof SCANNER_SYMS === 'undefined') { body.innerHTML = '<div style="color:var(--text-muted);font-size:.75rem;padding:.5rem">טוען...</div>'; return; }
+  var results = [];
+  var syms = Array.from(new Set(SCANNER_SYMS.concat(typeof watchlist !== 'undefined' ? watchlist : [])));
+  await Promise.all(syms.map(async function(sym) {
+    try {
+      var bars = await fetchYahooChartDirect(sym, '1D');
+      if (!bars || bars.length < 5) return;
+      var last = bars[bars.length-1], prev = bars[bars.length-2], prev3 = bars[bars.length-4];
+      if (!last||!prev||!prev3) return;
+      var pct = (last.close - prev.close) / prev.close * 100;
+      if (last.close > last.open && last.close > prev3.close && pct > 0.2)
+        results.push({ sym: sym, pct: pct });
+    } catch(e){}
+  }));
+  body.innerHTML = '';
+  var btn = document.createElement('button');
+  btn.className = 'btn btn-sm'; btn.style.width='100%'; btn.style.marginBottom='.5rem';
+  btn.textContent = '🔄 רענן'; btn.onclick = ibRunScanner2;
+  body.appendChild(btn);
+  if (!results.length) {
+    var d = document.createElement('div');
+    d.style.cssText = 'color:var(--text-muted);font-size:.75rem;text-align:center;padding:.5rem';
+    d.textContent = 'אין התראות כרגע'; body.appendChild(d); return;
+  }
+  results.sort(function(a,b){return b.pct-a.pct;}).slice(0,8).forEach(function(r) {
+    var el = document.createElement('div');
+    el.className = 'ib-tree-node';
+    el.style.display = 'flex'; el.style.justifyContent = 'space-between';
+    el.innerHTML = '<span style="font-weight:700;color:var(--green)">' + r.sym.replace('.TA','') + '</span>'
+      + '<span style="color:var(--green)">+' + r.pct.toFixed(2) + '%</span>';
+    el.onclick = function() { ibClose('scanner'); selectSymbol(r.sym); };
+    body.appendChild(el);
+  });
+}
+
+// ===== BELL ALERTS POPUP =====
+function toggleBellPopup() {
+  var popup = document.getElementById('bellAlertsPopup');
+  if (!popup) return;
+  var isOpen = popup.classList.contains('open');
+  if (isOpen) {
+    closeBellPopup();
+  } else {
+    renderBellAlerts();
+    popup.classList.add('open');
+    clearAlertBadge();
+  }
+}
+function closeBellPopup() {
+  var popup = document.getElementById('bellAlertsPopup');
+  if (popup) popup.classList.remove('open');
+  closeBellAlertDetails();
+}
+function renderBellAlerts() {
+  var body = document.getElementById('bellAlertsList');
+  if (!body) return;
+  var alerts = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
+  var adminBar = '';
+  try {
+    if (window.NTSignals && window.NTSignals.isAdmin && window.NTSignals.isAdmin()) {
+      adminBar = '<button class="btn btn-sm" style="width:100%;margin-bottom:.5rem;background:rgba(239,83,80,.14);border-color:rgba(239,83,80,.45);color:#ff8a87" onclick="clearBellAlertsAdmin()">🗑 מחק את כל האיתותים מהסורק (מנהל)</button>';
+    }
+  } catch (e) {}
+  if (!alerts.length) {
+    body.innerHTML = adminBar + '<div class="bell-popup-empty">🔕 אין איתותי מסחר כרגע</div>';
+    return;
+  }
+
+  var normalized = alerts.map(function(a, sourceIdx) {
+    var parsedTs = typeof a.ts === 'number' ? a.ts : Date.now() - sourceIdx;
+    var parsedDate = a.date || new Date(parsedTs).toLocaleDateString('he-IL');
+    return {
+      a: a,
+      sourceIdx: sourceIdx,
+      ts: parsedTs,
+      date: parsedDate
+    };
+  }).sort(function(x, y) {
+    return y.ts - x.ts;
+  });
+
+  var html = '';
+  var currentDate = null;
+  normalized.forEach(function(row) {
+    var a = row.a;
+    var i = row.sourceIdx;
+    if (row.date !== currentDate) {
+      currentDate = row.date;
+      html += '<div class="bell-date-group">' + currentDate + '</div>';
+    }
+    var dotColor = a.severity === 'green' ? '#26a69a' : a.severity === 'red' ? '#ef5350' : '#f5a623';
+    var text;
+    if (a.condition === 'buy_signal') {
+      // Always rebuild the text on the fly (ignores any stale stored msg, e.g. old entries with MA16 text)
+      var symDisp = a.sym ? a.sym.replace('.TA','') : '';
+      var trendDisp = a.trendType || 'לא ידוע';
+      text = '🟢 קנייה: ' + symDisp + ' — מגמה ' + trendDisp + ' | חזרה לתמיכה שבועית';
+    } else if (a.condition === 'sell_signal') {
+      var symDispS = a.sym ? a.sym.replace('.TA','') : '';
+      var trendDispS = a.trendType || 'לא ידוע';
+      text = '🔴 מכירה (שורט): ' + symDispS + ' — מגמה ' + trendDispS + ' | חזרה להתנגדות שבועית';
+    } else if (a.condition === 'reversal_signal') {
+      var symDispR = a.sym ? a.sym.replace('.TA','') : '';
+      text = a.direction === 'bearish'
+        ? ('🔄🔴 היפוך מגמה: ' + symDispR + ' — מעלייה לירידה | שבירת שפל אחרון')
+        : ('🔄🟢 היפוך מגמה: ' + symDispR + ' — מירידה לעלייה | פריצת שיא אחרון');
+    } else {
+      text = a.msg || (a.sym ? a.sym.replace('.TA','') : 'איתות');
+    }
+    html += '<div class="bell-alert-card" onclick="openBellAlertDetails(' + i + ',event)">'
+      + '<div class="bell-a-dot" style="background:' + dotColor + '"></div>'
+      + '<div class="bell-a-text">' + text + '</div>'
+      + '<span class="bell-a-time">' + (a.time || '') + '</span>'
+      + '<button class="bell-a-del" onclick="return deleteBellAlert(event,' + i + ')" title="מחק">✕</button>'
+      + '</div>';
+  });
+  body.innerHTML = adminBar + html;
+}
+function clearBellAlertsAdmin() {
+  if (!confirm('למחוק את כל האיתותים מהסורק (בשרת ובמכשיר)? הפעולה חלה על כל המשתמשים.')) return;
+  try { localStorage.setItem('ib_alerts2', '[]'); } catch (e) {}
+  try { window.NTSignals.clearAllSignals(true); } catch (e) {}
+  renderBellAlerts();
+}
+function deleteBellAlert(ev, idx) {
+  if (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+  }
+  var alerts = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
+  alerts.splice(idx, 1);
+  localStorage.setItem('ib_alerts2', JSON.stringify(alerts));
+  renderBellAlerts();
+  return false;
+}
+function openBellAlertDetails(idx, ev) {
+  if (ev) { ev.stopPropagation(); }
+  var alerts = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
+  var a = alerts[idx];
+  if (!a) return;
+
+  var modal = document.getElementById('bellAlertDetails');
+  var body = document.getElementById('bellAlertDetailsBody');
+  if (!modal || !body) return;
+
+  if (a.condition === 'reversal_signal') {
+    var isBearishRev = (a.direction === 'bearish');
+    var revLabel = isBearishRev ? 'היפוך דובי (מעלייה לירידה)' : 'היפוך שורי (מירידה לעלייה)';
+    var revNote = isBearishRev
+      ? 'זוהו שני שיאים עולים (מבנה מגמת עלייה) ולאחריהם שבירה מתחת לשפל האחרון — איתות אפשרי להיפוך המגמה לירידה.'
+      : 'זוהו שני שפלים יורדים (מבנה מגמת ירידה) ולאחריהם פריצה מעל השיא האחרון — איתות אפשרי להיפוך המגמה לעלייה.';
+    body.innerHTML = ''
+      + '<div class="bad-row"><span class="bad-k">סימול</span><span class="bad-v">' + (a.sym || '') + '</span></div>'
+      + '<div class="bad-row"><span class="bad-k">סוג איתות</span><span class="bad-v">היפוך מגמה</span></div>'
+      + '<div class="bad-row"><span class="bad-k">כיוון ההיפוך</span><span class="bad-v">' + revLabel + '</span></div>'
+      + '<div class="bad-row"><span class="bad-k">תאריך איתות</span><span class="bad-v">' + (a.date || 'לא זמין') + '</span></div>'
+      + '<div class="bad-row"><span class="bad-k">מחיר נוכחי</span><span class="bad-v">' + ((a.curr || '') + (typeof a.price === 'number' ? a.price.toFixed(2) : a.price || '')) + '</span></div>'
+      + '<div class="bad-row"><span class="bad-k">רמת הפריצה</span><span class="bad-v">' + ((a.curr || '') + (typeof a.breakoutLevel === 'number' ? a.breakoutLevel.toFixed(2) : a.breakoutLevel || '')) + '</span></div>'
+      + '<div class="bad-row"><span class="bad-k">שעת איתות</span><span class="bad-v">' + (a.time || '') + '</span></div>'
+      + '<div class="bad-note">' + revNote + '</div>';
+
+    var openBtnR = document.getElementById('badOpenChartBtn');
+    if (openBtnR) {
+      if (a.sym) {
+        openBtnR.style.display = '';
+        openBtnR.textContent = '📈 פתח גרף של ' + a.sym.replace('.TA','');
+        openBtnR.onclick = function() { openChartFromAlert(a.sym); };
+      } else {
+        openBtnR.style.display = 'none';
+      }
+    }
+    modal.classList.add('open');
+    return;
+  }
+
+  var trend = a.trendType || (parseFloat(a.maGain || '0') > 0.5 ? 'עלייה' : (parseFloat(a.maGain || '0') < -0.5 ? 'ירידה' : 'דישדוש'));
+  var isShortAlert = (a.direction === 'short');
+  var levelLabel = isShortAlert ? 'התנגדות שבועית' : 'תמיכה שבועית';
+  var levelDistLabel = isShortAlert ? 'מרחק מההתנגדות' : 'מרחק מהתמיכה';
+  var pullbackLabel = isShortAlert ? 'חזרה להתנגדות שבועית' : 'חזרה לתמיכה שבועית';
+  var levelNote = isShortAlert
+    ? 'הגדרת ההתנגדות השבועית מחושבת לפי השיא הגבוה מתוך 5 השבועות האחרונים.'
+    : 'הגדרת התמיכה השבועית מחושבת לפי השפל הנמוך מתוך 5 השבועות האחרונים.';
+  var supportText = (typeof a.support5 === 'number')
+    ? (a.curr || '') + a.support5.toFixed(2)
+    : 'לא זמין';
+  var supportDistText = (a.supportDistPct != null)
+    ? ((parseFloat(a.supportDistPct) >= 0 ? '+' : '') + parseFloat(a.supportDistPct).toFixed(2) + '%')
+    : 'לא זמין';
+  var pullbackStatus = (a.supportDistPct != null && parseFloat(a.supportDistPct) <= 3.0 && parseFloat(a.supportDistPct) >= -1.0)
+    ? 'כן (בטווח)'
+    : (isShortAlert ? 'לא (רחוק מההתנגדות)' : 'לא (רחוק מהתמיכה)');
+  var dateText = a.date || 'לא זמין';
+
+  body.innerHTML = ''
+    + '<div class="bad-row"><span class="bad-k">סימול</span><span class="bad-v">' + (a.sym || '') + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">סוג איתות</span><span class="bad-v">' + (isShortAlert ? 'שורט' : 'לונג') + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">תאריך איתות</span><span class="bad-v">' + dateText + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">סוג מגמה</span><span class="bad-v">' + trend + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">מחיר נוכחי</span><span class="bad-v">' + ((a.curr || '') + (typeof a.price === 'number' ? a.price.toFixed(2) : a.price || '')) + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">' + levelLabel + '</span><span class="bad-v">' + supportText + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">' + levelDistLabel + '</span><span class="bad-v">' + supportDistText + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">' + pullbackLabel + '</span><span class="bad-v">' + pullbackStatus + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">שעת איתות</span><span class="bad-v">' + (a.time || '') + '</span></div>'
+    + '<div class="bad-note">' + levelNote + '</div>';
+
+  var openBtn = document.getElementById('badOpenChartBtn');
+  if (openBtn) {
+    if (a.sym) {
+      openBtn.style.display = '';
+      openBtn.textContent = '📈 פתח גרף של ' + a.sym.replace('.TA','');
+      openBtn.onclick = function() { openChartFromAlert(a.sym); };
+    } else {
+      openBtn.style.display = 'none';
+    }
+  }
+
+  modal.classList.add('open');
+}
+function closeBellAlertDetails() {
+  var modal = document.getElementById('bellAlertDetails');
+  if (modal) modal.classList.remove('open');
+}
+function openChartFromAlert(sym) {
+  closeBellAlertDetails();
+  closeBellPopup();
+  if (typeof selectSymbol === 'function') selectSymbol(sym);
+}
+
+// Close bell popup / details / legacy alert popup when clicking anywhere outside them
+document.addEventListener('click', function(e) {
+  var badModal   = document.getElementById('bellAlertDetails');
+  var bellPopup  = document.getElementById('bellAlertsPopup');
+  var bellBtn    = document.getElementById('ib-alerts');
+  var alertPopup = document.getElementById('alertPopup');
+
+  if (badModal && badModal.classList.contains('open') && !badModal.contains(e.target)) {
+    closeBellAlertDetails();
+  }
+  if (bellPopup && bellPopup.classList.contains('open')
+      && !bellPopup.contains(e.target)
+      && !(bellBtn && bellBtn.contains(e.target))
+      && !(badModal && badModal.contains(e.target))) {
+    closeBellPopup();
+  }
+  if (alertPopup && alertPopup.classList.contains('open') && !alertPopup.contains(e.target)) {
+    alertPopup.classList.remove('open');
+  }
+});
+
+// ALERTS 2
+function ibRenderAlerts2() {
+  var ul = document.getElementById('ibAlertList'); if (!ul) return;
+  var ibAlerts2 = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
+  if (!ibAlerts2.length) { ul.innerHTML = '<li style="color:var(--text-muted);padding:.4rem 0;font-size:.78rem">אין התראות</li>'; return; }
+  ul.innerHTML = ibAlerts2.map(function(a, i) {
+    var isScanner = a.condition === 'scanner';
+    var sevColor  = a.severity === 'green' ? 'var(--green)' : a.severity === 'red' ? '#ef5350' : '#f5a623';
+    var mainText  = isScanner
+      ? (a.msg || a.sym)
+      : (a.sym ? a.sym.replace('.TA','') + ' ' + (a.condition === 'above' ? '▲ מעל' : '▼ מתחת') + ' ' + (typeof formatPrice==='function'? formatPrice(a.price):a.price) : '');
+    return '<li class="ib-alert-item triggered" style="border-right:3px solid ' + sevColor + ';padding-right:.4rem">'
+      + '<span style="flex:1;font-size:.78rem">' + mainText + '</span>'
+      + '<span style="font-size:.65rem;color:var(--text-muted);white-space:nowrap;margin-right:.3rem">' + (a.time || '') + '</span>'
+      + '<button class="ib-task-del" onclick="ibDelAlert2('+i+')">✕</button>'
+      + '</li>';
+  }).join('');
+}
+function ibAddAlert() {
+  var symEl   = document.getElementById('ibAlertSym');
+  var priceEl = document.getElementById('ibAlertPrice');
+  var sym     = symEl ? symEl.value.trim().toUpperCase() : '';
+  var price   = parseFloat(priceEl ? priceEl.value : 0);
+  if (!sym || !price) return;
+  ibAlerts2.push({ sym: sym, price: price });
+  localStorage.setItem('ib_alerts2', JSON.stringify(ibAlerts2));
+  if (symEl) symEl.value = ''; if (priceEl) priceEl.value = '';
+  ibRenderAlerts2();
+}
+function ibDelAlert2(i) {
+  var ibAlerts2 = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
+  ibAlerts2.splice(i, 1);
+  localStorage.setItem('ib_alerts2', JSON.stringify(ibAlerts2));
+  ibRenderAlerts2();
+}
+</script>
+
+<button id="pwaInstallBtn" onclick="pwaInstall()" title="התקן את NexTrade כאפליקציה">📲 התקן אפליקציה</button>
+<button id="pwaInstallClose" onclick="pwaDismiss(event)" title="לא עכשיו">✕</button>
+
+<!-- PWA install instructions modal -->
+<div id="pwaHelp" onclick="pwaHelpBackdrop(event)">
+  <div class="pwa-help-card">
+    <button class="pwa-help-x" onclick="pwaHelpClose()" aria-label="סגור">✕</button>
+    <div class="pwa-help-logo"><span class="lg-nex">Nex</span><span class="lg-trade">Trade</span></div>
+    <h3>התקנת האפליקציה במכשיר</h3>
+    <div class="pwa-help-tabs">
+      <div class="pwa-help-tab" id="pwaTabIos"     onclick="pwaHelpShow('ios')">אייפון</div>
+      <div class="pwa-help-tab" id="pwaTabAndroid" onclick="pwaHelpShow('android')">אנדרואיד</div>
+      <div class="pwa-help-tab" id="pwaTabDesktop" onclick="pwaHelpShow('desktop')">מחשב</div>
+    </div>
+    <div class="pwa-help-steps" id="pwaHelpSteps"></div>
+    <button class="pwa-help-primary" id="pwaHelpInstallBtn" style="display:none" onclick="pwaInstall()">התקן עכשיו</button>
+    <div class="pwa-help-note">לאחר ההתקנה האפליקציה תיפתח במסך מלא, עם אייקון משלה, ותעבוד גם ללא אינטרנט.</div>
+  </div>
+</div>
+<script>
+// Register Service Worker (PWA)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js')
+      .then(function(reg) { console.log('[PWA] SW registered:', reg.scope); })
+      .catch(function(err) { console.warn('[PWA] SW failed:', err); });
+  });
+}
+
+// PWA Install prompt
+var _pwaPrompt = null;
+var PWA_DISMISS_KEY = 'nt_pwa_dismiss_until';
+function pwaWasDismissedRecently() {
+  var until = parseInt(localStorage.getItem(PWA_DISMISS_KEY) || '0', 10);
+  return Date.now() < until;
+}
+// --- platform detection ---
+function pwaIsStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.navigator.standalone === true;
+}
+function pwaIsIOS() {
+  var ua = navigator.userAgent || '';
+  var iOS = /iPad|iPhone|iPod/.test(ua) ||
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return iOS;
+}
+function pwaDefaultPlatform() {
+  if (pwaIsIOS()) return 'ios';
+  if (/Android/i.test(navigator.userAgent || '')) return 'android';
+  return 'desktop';
+}
+// Show the floating "Install app" button (unless already installed or dismissed)
+function pwaMaybeShowButton() {
+  if (pwaIsStandalone()) return;            // already installed → nothing to do
+  if (pwaWasDismissedRecently()) return;    // user asked to hide it
+  var btn = document.getElementById('pwaInstallBtn');
+  var close = document.getElementById('pwaInstallClose');
+  if (btn) btn.style.display = 'inline-flex';
+  if (close) close.style.display = 'flex';
+}
+window.addEventListener('load', pwaMaybeShowButton);
+
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  _pwaPrompt = e;                  // native install is available (Chrome/Edge/Android)
+  pwaMaybeShowButton();
+});
+window.addEventListener('appinstalled', function() {
+  var btn = document.getElementById('pwaInstallBtn');
+  var close = document.getElementById('pwaInstallClose');
+  if (btn) btn.style.display = 'none';
+  if (close) close.style.display = 'none';
+  pwaHelpClose();
+  _pwaPrompt = null;
+});
+function pwaDismiss(ev) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  // Remember the dismissal for 14 days so the button doesn't keep reappearing
+  localStorage.setItem(PWA_DISMISS_KEY, String(Date.now() + 14 * 24 * 60 * 60 * 1000));
+  var btn = document.getElementById('pwaInstallBtn');
+  var close = document.getElementById('pwaInstallClose');
+  if (btn) btn.style.display = 'none';
+  if (close) close.style.display = 'none';
+}
+// Main action: use native prompt if available, otherwise show instructions
+function pwaInstall() {
+  if (_pwaPrompt) {
+    _pwaPrompt.prompt();
+    _pwaPrompt.userChoice.then(function(r) {
+      if (r.outcome === 'accepted') {
+        var btn = document.getElementById('pwaInstallBtn');
+        var close = document.getElementById('pwaInstallClose');
+        if (btn) btn.style.display = 'none';
+        if (close) close.style.display = 'none';
+        pwaHelpClose();
+      }
+      _pwaPrompt = null;
+    });
+    return;
+  }
+  // No native prompt (iOS Safari, or not yet eligible) → show manual instructions
+  pwaHelpOpen();
+}
+// --- instructions modal ---
+var PWA_STEPS = {
+  ios:
+    '<ol>' +
+    '<li>ודא שהאתר פתוח בדפדפן <b>Safari</b> (לא כרום).</li>' +
+    '<li>הקש על כפתור <b>השיתוף</b> <span class="pk">⬆︎</span> בתחתית המסך.</li>' +
+    '<li>גלול ובחר <b>"הוסף למסך הבית"</b> <span class="pk">➕</span>.</li>' +
+    '<li>הקש <b>"הוסף"</b> בפינה העליונה.</li>' +
+    '</ol>',
+  android:
+    '<ol>' +
+    '<li>פתח את האתר בדפדפן <b>Chrome</b>.</li>' +
+    '<li>הקש על <b>שלוש הנקודות</b> <span class="pk">⋮</span> בפינה הימנית למעלה.</li>' +
+    '<li>בחר <b>"התקן אפליקציה"</b> או <b>"הוסף למסך הבית"</b>.</li>' +
+    '<li>אשר את ההתקנה.</li>' +
+    '</ol>',
+  desktop:
+    '<ol>' +
+    '<li>פתח את האתר ב‑<b>Chrome</b> או <b>Edge</b>.</li>' +
+    '<li>בשורת הכתובת, בצד, לחץ על אייקון <b>ההתקנה</b> <span class="pk">⊕</span>.</li>' +
+    '<li>לחץ <b>"התקן"</b>.</li>' +
+    '<li>אם אין אייקון — פתח את תפריט הדפדפן ובחר "התקן את NexTrade".</li>' +
+    '</ol>'
+};
+function pwaHelpShow(platform) {
+  var steps = document.getElementById('pwaHelpSteps');
+  if (steps) steps.innerHTML = PWA_STEPS[platform] || PWA_STEPS.desktop;
+  ['ios','android','desktop'].forEach(function(p) {
+    var t = document.getElementById('pwaTab' + p.charAt(0).toUpperCase() + p.slice(1));
+    if (t) t.classList.toggle('active', p === platform);
+  });
+  // Offer the one-tap native install inside the modal when it's available
+  var pb = document.getElementById('pwaHelpInstallBtn');
+  if (pb) pb.style.display = (_pwaPrompt && platform !== 'ios') ? 'block' : 'none';
+}
+function pwaHelpOpen() {
+  var m = document.getElementById('pwaHelp');
+  if (!m) return;
+  pwaHelpShow(pwaDefaultPlatform());
+  m.classList.add('open');
+}
+function pwaHelpClose() {
+  var m = document.getElementById('pwaHelp');
+  if (m) m.classList.remove('open');
+}
+function pwaHelpBackdrop(ev) {
+  if (ev && ev.target && ev.target.id === 'pwaHelp') pwaHelpClose();
+}
+window.pwaHelpOpen = pwaHelpOpen;
+window.pwaHelpClose = pwaHelpClose;
+window.pwaHelpShow = pwaHelpShow;
+window.pwaHelpBackdrop = pwaHelpBackdrop;
+</script>
+</body>
+</html>
