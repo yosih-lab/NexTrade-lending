@@ -239,6 +239,8 @@
       var isBuy  = cond === 'buy_signal'  || a.direction === 'long'  || a.direction === 'bullish';
       var isSell = cond === 'sell_signal' || a.direction === 'short' || a.direction === 'bearish';
       if (!isBuy && !isSell) return;
+      // Hard rule: no short above SMA30, no long below it (drops stale/cached signals too).
+      if (a.sma30 != null && a.price != null && ((isSell && !isBuy && a.price >= a.sma30) || (isBuy && !isSell && a.price < a.sma30))) return;
       if (/=[FX]$|-USD$/i.test(a.sym || '')) return;   // only stocks + the two indices
       var dir = isBuy ? 'long' : 'short';
       var levels = computeLevels(a, dir);

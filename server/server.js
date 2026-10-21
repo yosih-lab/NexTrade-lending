@@ -1123,6 +1123,7 @@ function pruneSignals() {
   const cutoff = Date.now() - SIG_MAX_AGE_MS;
   _sigStore = _sigStore.filter(s => s.ts >= cutoff && !_sigDismissed.has(s.key) && !/=[FX]$|-USD$/i.test(s.sym || '') &&
     !(s.direction === 'short' && isTaseStock(s.sym || '')) && !inEarnBlackout(s.earnDate) &&
+    !(s.sma30 != null && s.price != null && ((s.direction === 'short' && s.price >= s.sma30) || (s.direction === 'long' && s.price < s.sma30))) &&
     (isIndexSym(s.sym || '') || (s.avgTurnover != null && s.avgTurnover >= minTurnoverFor(s.sym || ''))));
   _sigByKey = {};
   _sigStore.forEach(s => { _sigByKey[s.key] = s; });
