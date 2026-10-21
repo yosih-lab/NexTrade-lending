@@ -88,9 +88,9 @@
   function loadEarnings() {
     try { return JSON.parse(localStorage.getItem(EARN_KEY) || '{}') || {}; } catch (e) { return {}; }
   }
-  function earningsInfo(sym) {
+  function earningsInfo(sym, serverDate) {
     var map = loadEarnings();
-    var d = map[sym] || map[(sym || '').replace('.TA', '')];
+    var d = serverDate || map[sym] || map[(sym || '').replace('.TA', '')];
     if (!d) return null;
     var when = new Date(d + 'T00:00:00');
     if (isNaN(when.getTime())) return null;
@@ -232,6 +232,7 @@
         alertLevel: (a.alertLevel != null ? a.alertLevel : null),
         alertSide: a.alertSide || '',
         avgTurnover: (a.avgTurnover != null ? a.avgTurnover : null),
+        earnDate: a.earnDate || '',
         avgVolume: (a.avgVolume != null ? a.avgVolume : null),
         lastWeekTurnover: (a.lastWeekTurnover != null ? a.lastWeekTurnover : null),
         scanStatus: a.status || ''
@@ -359,7 +360,7 @@
 
   // Shared detail block (reasons, earnings, actions) for row expansion.
   function sigDetail(s) {
-    var earn = earningsInfo(s.sym);
+    var earn = earningsInfo(s.sym, s.earnDate);
     var setupTxt = SETUP_TXT[s.setup] || s.setup || '';
     var stt = signalStatus(s);
     var out = '<div class="sr-detail-grid">' +
@@ -378,6 +379,7 @@
       if (s.avgVolume != null) chips += ' <span class="sig-setup vol">נפח ממוצע: ' + fmtBig(s.avgVolume, '') + ' מניות</span>';
     }
     if (stt.dist != null) chips += ' <span class="sig-dist ' + (Math.abs(stt.dist) <= 1.5 ? 'near' : '') + '">' + (stt.dist >= 0 ? '+' : '') + stt.dist.toFixed(1) + '% מהכניסה</span>';
+    if (earn && earn.days >= 0 && canUse('earnings')) chips += ' <span class="sig-setup earn' + (earn.days <= 14 ? ' soon' : '') + '">📅 דוחות בעוד ' + earn.days + ' ימים (' + esc(earn.date) + ')</span>';
     out += '<div class="sr-chips">' + chips + '</div>';
     if (s.reasons && s.reasons.length) out += '<div class="sig-why">💡 ' + s.reasons.slice(0, 3).map(esc).join(' · ') + '</div>';
     if (earn && canUse('earnings')) {
@@ -425,7 +427,7 @@
     var st = stt.key;
     var dirTxt = s.dir === 'long' ? '🟢 לונג' : '🔴 שורט';
     var fav = isFav(s.sym);
-    var earn = earningsInfo(s.sym);
+    var earn = earningsInfo(s.sym, s.earnDate);
     var setupTxt = SETUP_TXT[s.setup] || s.setup || '';
 
     // distance-to-entry chip
@@ -451,7 +453,8 @@
       '<div class="sig-head">' +
         '<div><div class="sig-sym">' + esc(dispSym(s.sym)) + mktTag(s.sym) +
           (isNewSig(s) ? ' <span class="sr-new">חדש</span>' : '') +
-          (setupTxt ? ' <span class="sig-setup">' + setupTxt + '</span>' : '') + '</div>' +
+          (setupTxt ? ' <span class="sig-setup">' + setupTxt + '</span>' : '') +
+          (earn && earn.days >= 0 && canUse('earnings') ? ' <span class="sig-setup earn' + (earn.days <= 14 ? ' soon' : '') + '">📅 דוחות בעוד ' + earn.days + ' ימים</span>' : '') + '</div>' +
         '<div class="sig-name">' + s.name + ' · ' + ageTxt(s.ts) + '</div></div>' +
         '<div class="sig-head-right">' +
           adminDelBtn(s) +
