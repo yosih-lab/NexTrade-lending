@@ -432,6 +432,7 @@ var wlColorNames = {};
 try { wlColorNames = _readUserColorNames(); } catch (e) { wlColorNames = {}; }
 function saveWlColorNames() {
   try { localStorage.setItem(_wlNamesKey(), JSON.stringify(wlColorNames)); } catch (e) {}
+  if (typeof pushWatchlistToServer === 'function') pushWatchlistToServer();
 }
 function wlColorLabel(key) {
   if (wlColorNames[key]) return wlColorNames[key];
@@ -441,6 +442,7 @@ function wlColorLabel(key) {
 
 function saveWlColors() {
   try { localStorage.setItem(_wlColorsKey(), JSON.stringify(wlColorMap)); } catch (e) {}
+  if (typeof pushWatchlistToServer === 'function') pushWatchlistToServer();
 }
 
 // Persistent bottom-bar "more" menu
@@ -1162,38 +1164,56 @@ function saveWatchlist() {
 function pushWatchlistToServer() {
   var token = _ntToken();
   if (!token) return; // demo/not-logged-in → local only
+  try { localStorage.setItem('nt_wl_dirty::' + _userScope(), '1'); } catch (e) {}
   clearTimeout(_wlSyncTimer);
+  var scope = _userScope();
   var snapshot = watchlist.slice();
+  var colorsSnap = JSON.parse(JSON.stringify(wlColorMap || {}));
+  var namesSnap = JSON.parse(JSON.stringify(wlColorNames || {}));
   _wlSyncTimer = setTimeout(function () {
+    _wlSyncTimer = null;
     fetch(API_BASE + '/api/watchlist', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ symbols: snapshot })
-    }).catch(function () {});
+      body: JSON.stringify({ symbols: snapshot, colors: colorsSnap, names: namesSnap })
+    }).then(function (r) {
+      if (r.ok) { try { localStorage.removeItem('nt_wl_dirty::' + scope); } catch (e) {} }
+    }).catch(function () {}); // stays dirty -> retried by the next sync tick
   }, 500);
 }
 
-// Pull the server copy on load. Server is the source of truth once logged in.
-// If the server is empty but we have a local list, seed the server with it.
+// Pull the server copy on load. Server is the source of truth once logged in,
+// unless this device has local changes that haven't reached the server yet.
 async function syncWatchlistFromServer() {
   var token = _ntToken();
   if (!token) return; // demo/not-logged-in → keep local list
   try {
+    if (_wlSyncTimer) return; // a push is pending
+    if (localStorage.getItem('nt_wl_dirty::' + _userScope())) { pushWatchlistToServer(); return; }
     var r = await fetch(API_BASE + '/api/watchlist', {
-      headers: { 'Authorization': 'Bearer ' + token }
+      headers: { 'Authorization': 'Bearer ' + token }, cache: 'no-store'
     });
     if (!r.ok) return;
     var data = await r.json();
+    if (_wlSyncTimer || localStorage.getItem('nt_wl_dirty::' + _userScope())) return; // changed while fetching
     var serverList = Array.isArray(data.symbols) ? data.symbols : null;
     if (serverList === null) return;
-    if (serverList.length === 0) {
+    if (serverList.length === 0 && !data.hasMeta) {
       // First time for this user → upload whatever is on this device
-      if (watchlist.length) pushWatchlistToServer();
+      if (watchlist.length || Object.keys(wlColorMap || {}).length) pushWatchlistToServer();
       return;
     }
-    // Adopt the server list (handles deletions made on another device)
+    // Adopt the server copy (handles deletions/colors made on another device)
     watchlist = serverList;
     try { localStorage.setItem(_wlKey(), JSON.stringify(watchlist)); } catch (e) {}
+    if (data.hasMeta) {
+      wlColorMap = data.colors || {};
+      wlColorNames = data.names || {};
+      try { localStorage.setItem(_wlColorsKey(), JSON.stringify(wlColorMap)); } catch (e) {}
+      try { localStorage.setItem(_wlNamesKey(), JSON.stringify(wlColorNames)); } catch (e) {}
+    } else if (Object.keys(wlColorMap || {}).length || Object.keys(wlColorNames || {}).length) {
+      pushWatchlistToServer(); // upgrade: upload this device's colors once
+    }
     if (typeof renderWatchlist === 'function') renderWatchlist();
   } catch (e) {}
 }
@@ -1209,6 +1229,10 @@ document.addEventListener('visibilitychange', function () {
 window.addEventListener('focus', function () {
   if (_ntToken()) syncWatchlistFromServer();
 });
+// Poll so an open client picks up changes made elsewhere within ~30s
+setInterval(function () {
+  if (document.visibilityState === 'visible' && _ntToken()) syncWatchlistFromServer();
+}, 30000);
 
 // ============================================
 //   MOVING AVERAGES
