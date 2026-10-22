@@ -365,10 +365,10 @@
     .wlcb-chip.active .wlcb-bm { transform:scale(1.12); }
     /* dark circle behind each list flag: fills white on hover and when the list is selected */
     .wlcb-ring {
-      width:30px; height:30px; border-radius:50%; border:1.5px solid #2f3442; background:#1b1f2b;
+      width:34.5px; height:34.5px; border-radius:50%; border:1.5px solid #2f3442; background:#1b1f2b;
       display:flex; align-items:center; justify-content:center; transition:background .15s, border-color .15s;
     }
-    .wlcb-flag { display:block; transition:transform .12s; }
+    .wlcb-flag { display:block; width:19.5px; height:19.5px; transition:transform .12s; }
     .wlcb-chip:hover .wlcb-ring, .wlcb-chip.active .wlcb-ring { background:#fff; border-color:#fff; }
     .wlcb-chip.active .wlcb-flag { transform:scale(1.1); }
     .wlcb-bm {
@@ -378,9 +378,9 @@
     }
     .wlcb-bm.all {
       background:linear-gradient(135deg,#ef5350,#f5a623,#26a69a,#2962ff,#a855f7);
-      clip-path:none; border-radius:50%; width:16px; height:16px;
+      clip-path:none; border-radius:50%; width:18.4px; height:18.4px;
     }
-    .wlcb-count { font-size:.62rem; font-weight:800; color:var(--text-muted); line-height:1; }
+    .wlcb-count { font-size:.71rem; font-weight:800; color:var(--text-muted); line-height:1; }
     .wlcb-chip.active .wlcb-count { color:var(--accent); }
     .wl-logo { border-radius:50%; object-fit:contain; flex-shrink:0; background:var(--surface); position:absolute; top:0; left:0; }
     .watch-item {
@@ -1403,18 +1403,18 @@
     #techToolsBtn {
       display:inline-flex; align-items:center; gap:.4rem;
       background:rgba(41,98,255,.14); border:1px solid rgba(41,98,255,.4); color:var(--accent);
-      border-radius:8px; padding:.32rem .7rem; font-size:.78rem; font-weight:800; cursor:pointer;
+      border-radius:5px; padding:.205rem .615rem; font-size:1.01rem; font-weight:800; cursor:pointer;
       font-family:Heebo,sans-serif; white-space:nowrap; transition:background .15s;
     }
     #techToolsBtn:hover { background:rgba(41,98,255,.28); }
-    #techToolsBtn svg { width:16px; height:16px; }
+    #techToolsBtn svg { width:14px; height:14px; }
     #techToolsCaret {
       display:inline-flex; align-items:center; justify-content:center;
-      width:22px; height:22px; margin-right:.12rem; color:#fff;
+      width:18px; height:18px; margin-right:.12rem; color:#fff;
       border-radius:5px; transition:background .12s;
     }
     #techToolsCaret:hover { background:rgba(255,255,255,.22); }
-    #techToolsCaret svg { width:18px; height:18px; display:block; }
+    #techToolsCaret svg { width:15px; height:15px; display:block; }
 
     /* ---- Favorites dropdown (combo list) ---- */
     #techToolsDropdown {
@@ -2366,7 +2366,7 @@
     /* ===== SIGNAL FEED (Mode A) ===== */
     .topbar-modebtn {
       background:rgba(41,98,255,.14); border:1px solid rgba(41,98,255,.4); color:var(--accent);
-      border-radius:8px; padding:.44rem .98rem; font-size:1.11rem; font-weight:700; cursor:pointer;
+      border-radius:5px; padding:.205rem .615rem; font-size:1.01rem; font-weight:800; cursor:pointer;
       font-family:Heebo,sans-serif; margin-left:.4rem; white-space:nowrap; transition:background .15s;
     }
     .topbar-modebtn:hover { background:rgba(41,98,255,.28); }
