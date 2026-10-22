@@ -539,6 +539,15 @@ async function setWatchlist(userId, symbols) {
   saveWlMem(map);
 }
 
+// Stored value is either a legacy array of symbols or { l: symbols, c: colors, n: names }.
+function normWl(v) {
+  if (Array.isArray(v)) return { symbols: v, colors: {}, names: {}, hasMeta: false };
+  if (v && typeof v === 'object') {
+    return { symbols: Array.isArray(v.l) ? v.l : [], colors: v.c || {}, names: v.n || {}, hasMeta: true };
+  }
+  return { symbols: [], colors: {}, names: {}, hasMeta: false };
+}
+
 // ── SEED ADMIN + START SERVER ─────────────────────────────────────
 // Must complete seeding BEFORE accepting requests
 async function seedAndStart() {
@@ -746,9 +755,10 @@ app.get('/api/signals', requireAuth, async (req, res) => {
 // Read the current user's watchlist (symbols array).
 app.get('/api/watchlist', requireAuth, async (req, res) => {
   try {
-    const symbols = await getWatchlist(req.user.id);
+    const stored = await getWatchlist(req.user.id);
     res.setHeader('Cache-Control', 'no-store');
-    res.json({ symbols: Array.isArray(symbols) ? symbols : [] });
+    const wl = normWl(stored);
+    res.json({ symbols: wl.symbols, colors: wl.colors, names: wl.names, hasMeta: wl.hasMeta });
   } catch (e) {
     console.error('[NexTrade] GET /api/watchlist error:', e.message);
     res.status(500).json({ error: 'שגיאה בטעינת רשימת המעקב' });
@@ -766,7 +776,20 @@ app.put('/api/watchlist', requireAuth, async (req, res) => {
     if (typeof s === 'string' && s.length > 0 && s.length <= 24 && !seen[s]) { seen[s] = 1; clean.push(s); }
   }
   try {
-    await setWatchlist(req.user.id, clean);
+    const prev = normWl(await getWatchlist(req.user.id));
+    const body = req.body || {};
+    const cleanMap = (m, maxLen) => {
+      const out = {};
+      if (m && typeof m === 'object' && !Array.isArray(m)) {
+        Object.keys(m).slice(0, 500).forEach(k => {
+          if (k.length <= 24 && typeof m[k] === 'string' && m[k].length <= maxLen) out[k] = m[k];
+        });
+      }
+      return out;
+    };
+    const colors = body.colors !== undefined ? cleanMap(body.colors, 16) : prev.colors;
+    const names  = body.names  !== undefined ? cleanMap(body.names, 40)  : prev.names;
+    await setWatchlist(req.user.id, { l: clean, c: colors, n: names });
     res.json({ ok: true, count: clean.length });
   } catch (e) {
     console.error('[NexTrade] PUT /api/watchlist error:', e.message);

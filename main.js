@@ -432,6 +432,7 @@ var wlColorNames = {};
 try { wlColorNames = _readUserColorNames(); } catch (e) { wlColorNames = {}; }
 function saveWlColorNames() {
   try { localStorage.setItem(_wlNamesKey(), JSON.stringify(wlColorNames)); } catch (e) {}
+  pushWatchlistToServer();
 }
 function wlColorLabel(key) {
   if (wlColorNames[key]) return wlColorNames[key];
@@ -441,6 +442,7 @@ function wlColorLabel(key) {
 
 function saveWlColors() {
   try { localStorage.setItem(_wlColorsKey(), JSON.stringify(wlColorMap)); } catch (e) {}
+  pushWatchlistToServer();
 }
 
 // Persistent bottom-bar "more" menu
@@ -1164,12 +1166,14 @@ function pushWatchlistToServer() {
   if (!token) return; // demo/not-logged-in → local only
   clearTimeout(_wlSyncTimer);
   var snapshot = watchlist.slice();
+  var colorsSnap = JSON.parse(JSON.stringify(wlColorMap || {}));
+  var namesSnap = JSON.parse(JSON.stringify(wlColorNames || {}));
   _wlSyncTimer = setTimeout(function () {
     fetch(API_BASE + '/api/watchlist', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ symbols: snapshot })
-    }).catch(function () {});
+      body: JSON.stringify({ symbols: snapshot, colors: colorsSnap, names: namesSnap })
+    }).then(function () { _wlSyncTimer = null; }).catch(function () { _wlSyncTimer = null; });
   }, 500);
 }
 
@@ -1186,7 +1190,7 @@ async function syncWatchlistFromServer() {
     var data = await r.json();
     var serverList = Array.isArray(data.symbols) ? data.symbols : null;
     if (serverList === null) return;
-    if (serverList.length === 0) {
+    if (serverList.length === 0 && !data.hasMeta) {
       // First time for this user → upload whatever is on this device
       if (watchlist.length) pushWatchlistToServer();
       return;
@@ -1194,6 +1198,14 @@ async function syncWatchlistFromServer() {
     // Adopt the server list (handles deletions made on another device)
     watchlist = serverList;
     try { localStorage.setItem(_wlKey(), JSON.stringify(watchlist)); } catch (e) {}
+    if (data.hasMeta) {
+      wlColorMap = data.colors || {};
+      wlColorNames = data.names || {};
+      try { localStorage.setItem(_wlColorsKey(), JSON.stringify(wlColorMap)); } catch (e) {}
+      try { localStorage.setItem(_wlNamesKey(), JSON.stringify(wlColorNames)); } catch (e) {}
+    } else if (Object.keys(wlColorMap || {}).length || Object.keys(wlColorNames || {}).length) {
+      pushWatchlistToServer();
+    }
     if (typeof renderWatchlist === 'function') renderWatchlist();
   } catch (e) {}
 }
@@ -1209,6 +1221,10 @@ document.addEventListener('visibilitychange', function () {
 window.addEventListener('focus', function () {
   if (_ntToken()) syncWatchlistFromServer();
 });
+// Poll so open clients pick up changes made elsewhere within ~30s
+setInterval(function () {
+  if (document.visibilityState === 'visible' && _ntToken() && !_wlSyncTimer) syncWatchlistFromServer();
+}, 30000);
 
 // ============================================
 //   MOVING AVERAGES
