@@ -363,12 +363,14 @@
     .wlcb-chip:hover { background:var(--surface2); }
     .wlcb-chip.active { background:transparent; }
     .wlcb-chip.active .wlcb-bm { transform:scale(1.12); }
-    /* red ring behind each list bookmark: fills red on hover and when the list is selected */
+    /* dark circle behind each list flag: fills white on hover and when the list is selected */
     .wlcb-ring {
-      width:30px; height:30px; border-radius:50%; border:2px solid #ef5350; background:transparent;
-      display:flex; align-items:center; justify-content:center; transition:background .15s;
+      width:30px; height:30px; border-radius:50%; border:1.5px solid #2f3442; background:#1b1f2b;
+      display:flex; align-items:center; justify-content:center; transition:background .15s, border-color .15s;
     }
-    .wlcb-chip:hover .wlcb-ring, .wlcb-chip.active .wlcb-ring { background:#ef5350; }
+    .wlcb-flag { display:block; transition:transform .12s; }
+    .wlcb-chip:hover .wlcb-ring, .wlcb-chip.active .wlcb-ring { background:#fff; border-color:#fff; }
+    .wlcb-chip.active .wlcb-flag { transform:scale(1.1); }
     .wlcb-bm {
       width:19px; height:13px; flex-shrink:0; display:block;
       background:#5b6472; transition:transform .12s;
@@ -3623,7 +3625,7 @@
 <script src="scanner-symbols.js?v=20261019g"></script>
 <script src="scanner-engine.js?v=20261021c"></script>
 <script src="plan.js?v=20261019g"></script>
-<script src="main.js?v=20261022a"></script>
+<script src="main.js?v=20261022b"></script>
 <script src="stockpanel.js?v=20261021a"></script>
 <script src="drawing.js?v=20261019b"></script>
 <script src="features.js?v=20261018j"></script>

@@ -562,7 +562,7 @@ function renderColorBar() {
     + '</button>';
   WL_COLORS.forEach(function(c) {
     html += '<button class="wlcb-chip' + (wlColorFilter === c.key ? ' active' : '') + '" onclick="setFavFilter(\'' + c.key + '\')" title="' + wlColorLabel(c.key) + '" aria-label="' + wlColorLabel(c.key) + '">'
-      + '<span class="wlcb-ring"><span class="wlcb-bm" style="background:' + c.hex + '"></span></span>'
+      + '<span class="wlcb-ring"><svg class="wlcb-flag" viewBox="0 0 20 20" width="17" height="17"><path d="M4.5 3.5 H15.5 L12 8.5 L15.5 13.5 H4.5 Z" fill="' + c.hex + '" stroke="' + c.hex + '" stroke-width="2" stroke-linejoin="round"/></svg></span>'
       + '<span class="wlcb-count">' + (counts[c.key] || 0) + '</span>'
       + '</button>';
   });
