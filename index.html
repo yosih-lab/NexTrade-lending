@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="he" dir="rtl" translate="no">
 <head>
 <script>if(location.hostname==='www.getnexttrade.com'){location.href='https://getnexttrade.com'+location.pathname+location.search+location.hash;}</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="google" content="notranslate" />
-  <title>NexTrade ?????? ????????</title>
+  <title>NexTrade הבורסה הישראלית</title>
 
   <!-- PWA manifest -->
   <link rel="manifest" href="/manifest.json" />
@@ -25,9 +25,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-96.png" />
 
   <!-- SEO / social -->
-  <meta name="description" content="???????? ???? ?????? ????? ?????? ???????? � ?????, ???????????, ??? ??????" />
-  <meta property="og:title" content="NexTrade � ?????? ????????" />
-  <meta property="og:description" content="????? ?????, ????? ???? ???? ???????" />
+  <meta name="description" content="פלטפורמת מסחר וניתוח מניות בבורסה הישראלית — גרפים, אינדיקטורים, תיק השקעות" />
+  <meta property="og:title" content="NexTrade — הבורסה הישראלית" />
+  <meta property="og:description" content="ניתוח מניות, גרפים וכלי מסחר מתקדמים" />
   <meta property="og:image" content="/icons/icon-512.png" />
   <meta property="og:url" content="https://getnexttrade.com" />
 
@@ -124,9 +124,9 @@
     .search-box input { background:#2a2e3a; border:1px solid var(--border); border-radius:10px; padding:.18rem .32rem; color:#fff; font-size:.62rem; font-family:'Heebo',sans-serif; width:67px; direction:rtl; height:22px; cursor:pointer; }
     .search-box input:focus { outline:none; border-color:var(--accent); }
     .search-box input::placeholder { color:#fff; opacity:.95; }
-    /* OLD dropdown hidden � replaced by search modal */
+    /* OLD dropdown hidden — replaced by search modal */
     #searchDropdown { display:none !important; }
-    /* SEARCH MODAL � center of page */
+    /* SEARCH MODAL — center of page */
     #searchModal { display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.7); backdrop-filter:blur(4px); align-items:center; justify-content:center; }
     #searchModal.open { display:flex; }
     .sm-box { background:#1a1d27; border:1px solid #333; border-radius:16px; width:min(640px,92vw); max-height:80vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,.8); overflow:hidden; direction:rtl; }
@@ -269,7 +269,7 @@
     .sp-sec { border-top:1px solid var(--border); }
     .sp-sec > summary { cursor:pointer; list-style:none; padding:.6rem .8rem; font-size:.8rem; font-weight:800; color:#e6ecf8; display:flex; align-items:center; justify-content:space-between; user-select:none; }
     .sp-sec > summary::-webkit-details-marker { display:none; }
-    .sp-sec > summary::after { content:'?'; color:var(--text-muted); font-size:.8rem; transition:transform .15s; }
+    .sp-sec > summary::after { content:'▾'; color:var(--text-muted); font-size:.8rem; transition:transform .15s; }
     .sp-sec[open] > summary::after { transform:rotate(180deg); }
     .sp-sec > summary:hover { background:rgba(255,255,255,.03); }
     .sp-sec-b { padding:0 .8rem .8rem; }
@@ -535,7 +535,7 @@
     /* CHART PANEL */
     .chart-panel { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:visible; display:flex; flex-direction:column; height:100%; }
     .chart-header { display:none; }
-    /* Stock info overlay � removed duplicate (see below in CHART WRAP section) */
+    /* Stock info overlay — removed duplicate (see below in CHART WRAP section) */
     /* TIMEFRAME TOOLBAR */
     .tf-toolbar { display:flex; gap:.22rem; align-items:center; flex:1; min-width:0; overflow:visible; position:relative; z-index:60; }
     .tf-btn { background:transparent; border:1px solid transparent; color:var(--text-muted); border-radius:5px; padding:.205rem .615rem; font-size:1.01rem; font-weight:700; font-family:'Heebo',sans-serif; cursor:pointer; transition:all .15s; letter-spacing:.3px; white-space:nowrap; }
@@ -582,7 +582,7 @@
     /* CHART WRAP + OHLCV LEGEND */
     .chart-wrap { position:relative; flex:1; min-height:0; overflow:hidden; }
     .chart-legend { display:none !important; } /* merged into chartInfoBar */
-    /* chartInfoBar � single row, top-left */
+    /* chartInfoBar — single row, top-left */
     #chartInfoBar {
       position:absolute; top:8px; left:10px; z-index:11;
       display:flex; align-items:baseline; gap:.38rem; flex-wrap:nowrap;
@@ -684,7 +684,7 @@
     .cm-key { font-size:.58rem; color:#5b6577; flex-shrink:0; white-space:nowrap; }
     .cm-sep { height:1px; background:#2a2e39; margin:.3rem .2rem; }
     .cm-check { color:#2962ff; }
-    /* ===== CHART CONTEXT MENU (canvas color picker � reused inside Settings > Canvas) ===== */
+    /* ===== CHART CONTEXT MENU (canvas color picker — reused inside Settings > Canvas) ===== */
     .ctxm-header { padding:.45rem .75rem .3rem; font-size:.68rem; font-weight:800; color:#8b9ab5; text-transform:uppercase; letter-spacing:.8px; border-bottom:1px solid #2a2e39; }
     .ctxm-label { display:flex; align-items:center; gap:.5rem; padding:.35rem .75rem; font-size:.78rem; font-weight:700; color:#fff; cursor:pointer; transition:background .12s; }
     .ctxm-label:hover { background:#2a2e39; }
@@ -737,7 +737,7 @@
       font-size:.68rem; color:#fff; transition:all .12s;
     }
     .cst-row.checked .cst-chk { background:#2962ff; border-color:#2962ff; }
-    .cst-row.checked .cst-chk::after { content:'?'; }
+    .cst-row.checked .cst-chk::after { content:'✓'; }
     .cst-row-txt { flex:1; }
     .cst-row-label { font-size:.82rem; font-weight:600; color:#d1d4dc; display:flex; align-items:center; gap:.35rem; }
     .cst-info-ic { color:#5b6577; font-size:.72rem; cursor:help; }
@@ -782,7 +782,7 @@
     .sidebar .stock-card { min-height:70px; padding:.75rem; }
     .right-sidebar { width:220px; }
     .right-sidebar .section-title { margin-bottom:.9rem; }
-    /* VERTICAL ICON TOOLBAR � TradingView style, top-right strip */
+    /* VERTICAL ICON TOOLBAR – TradingView style, top-right strip */
     .icon-toolbar{
       position:fixed;
       right:0;
@@ -827,7 +827,7 @@
       gap:2px;
       padding-bottom:4px;
     }
-    /* Hamburger button � bigger, always highlighted at top */
+    /* Hamburger button — bigger, always highlighted at top */
     .ib-hamburger{
       width:44px;
       height:52px;
@@ -1162,7 +1162,7 @@
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:transparent; }
     ::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
-    /* PWA install button � small dismissible corner FAB (kept out of the chart's way) */
+    /* PWA install button — small dismissible corner FAB (kept out of the chart's way) */
     #pwaInstallBtn {
       display:none; position:fixed; bottom:8px; left:8px; z-index:9997;
       height:44px; border-radius:22px; padding:0 16px;
@@ -1182,7 +1182,7 @@
       font-size:.65rem; line-height:1; cursor:pointer; align-items:center; justify-content:center;
     }
     #pwaInstallClose:hover { color:#ef5350; border-color:#ef5350; }
-    /* PWA install help modal � platform-specific instructions */
+    /* PWA install help modal — platform-specific instructions */
     #pwaHelp {
       display:none; position:fixed; inset:0; z-index:10001;
       background:rgba(2,4,10,.78); backdrop-filter:blur(4px);
@@ -1312,7 +1312,7 @@
     .bell-popup-empty {
       text-align:center; padding:1.5rem; color:var(--text-muted); font-size:.82rem;
     }
-    /* ===== DRAWING / ANALYSIS TOOLS � permanent left panel ===== */
+    /* ===== DRAWING / ANALYSIS TOOLS — permanent left panel ===== */
     #drawToolbar {
       position:fixed; top:42px; left:0; bottom:0; width:47px;
       z-index:200; display:flex !important; flex-direction:column; gap:2px;
@@ -1461,7 +1461,7 @@
     .ttd-eye.on { color:#fff; } /* visible = white open eye */
     .ttd-eye svg { width:19px; height:19px; }
 
-    /* ---- Floating favorites bar (bottom) � draggable ---- */
+    /* ---- Floating favorites bar (bottom) — draggable ---- */
     #techFavBar {
       display:none; position:fixed; z-index:5000; bottom:14px; left:58px;
       align-items:center; gap:4px; padding:5px 7px 5px 5px; direction:rtl;
@@ -1684,7 +1684,7 @@
       position:absolute; top:-2px; right:-2px;
     }
 
-    /* ---- Persistent mobile BOTTOM BAR (avatar + name + 3-dots) � home & chart ---- */
+    /* ---- Persistent mobile BOTTOM BAR (avatar + name + 3-dots) — home & chart ---- */
     #mBottomBar { display:none; }
     .mbb-avatar {
       width:48px; height:48px; border-radius:50%; border:none; cursor:pointer; flex-shrink:0;
@@ -1775,7 +1775,7 @@
       font-family:'Heebo',sans-serif; font-size:1rem; font-weight:700;
     }
     .mfav-row.active { border-color:var(--accent); background:rgba(41,98,255,.12); }
-    /* Bookmark-shaped color swatch � horizontal ribbon */
+    /* Bookmark-shaped color swatch — horizontal ribbon */
     .mfav-swatch {
       width:28px; height:18px; flex-shrink:0;
       clip-path:polygon(0 0,100% 0,100% 100%,0 100%,22% 50%);
@@ -1881,7 +1881,7 @@
       #positionPanel { right:0; top:78px; bottom:56px; width:270px; max-width:88vw; z-index:1500; }
       body.trade-open .layout { padding-right:0; }
     }
-    /* Position action bar � floats top-left below chart info */
+    /* Position action bar — floats top-left below chart info */
     #posActionBar {
       position:absolute; top:36px; left:10px; z-index:2001;
       display:none; align-items:center; gap:6px;
@@ -1919,7 +1919,7 @@
     .pab-opacity input[type=number] { width:36px; background:var(--bg); border:1px solid var(--border); border-radius:4px; color:#fff; font-size:.68rem; padding:1px 3px; text-align:center; }
     .pab-line-sl { width:16px; height:3px; background:#ef5350; border-radius:2px; }
     .pab-line-tp { width:16px; height:3px; background:#26a69a; border-radius:2px; }
-    /* Resize handles � all 8 directions */
+    /* Resize handles — all 8 directions */
     .pp-rh { position:absolute; z-index:10; background:transparent; }
     .pp-rh-n  { top:-4px;    left:12px;  right:12px; height:8px;  cursor:n-resize; }
     .pp-rh-s  { bottom:-4px; left:12px;  right:12px; height:8px;  cursor:s-resize; }
@@ -2105,7 +2105,7 @@
       #drawToolbar .dt-flyout .dt-sub { height:38px; }
 
 
-      /* RIGHT icon-toolbar ? stays on RIGHT, vertical, pushes chart left */
+      /* RIGHT icon-toolbar → stays on RIGHT, vertical, pushes chart left */
       .icon-toolbar {
         position:fixed !important;
         right:0 !important; top:78px !important; bottom:53px !important;
@@ -2127,7 +2127,7 @@
       .ib-sep { width:80%; height:1px !important; background:var(--border); margin:2px 0; }
       .ib-tip, .ib-hamburger .ib-tip { display:none !important; }
 
-      /* Layout: adjusted � chart pushed left by 41px toolbar, bottom by 53px draw bar */
+      /* Layout: adjusted — chart pushed left by 41px toolbar, bottom by 53px draw bar */
       .layout {
         position:fixed !important;
         top:78px !important; bottom:53px !important;
@@ -2166,7 +2166,7 @@
 
       /* ================================================================
          MOBILE DRILL-DOWN NAVIGATION
-         Home = watchlist only. Tap a stock ? chart screen.
+         Home = watchlist only. Tap a stock → chart screen.
          Default (no body.m-chart) = list home; body.m-chart = chart view.
          ================================================================ */
       /* List home: watchlist fills the screen below the topbar */
@@ -2206,9 +2206,9 @@
         display:flex;
         position:absolute; right:8px; top:50%; transform:translateY(-50%);
       }
-      /* Floating user avatar (bottom-right) � replaced by the persistent bottom bar */
+      /* Floating user avatar (bottom-right) — replaced by the persistent bottom bar */
       body:not(.m-chart) #mHomeAvatar { display:none; }
-      /* Persistent bottom bar � shown on BOTH home and chart screens */
+      /* Persistent bottom bar — shown on BOTH home and chart screens */
       #mBottomBar {
         display:flex; align-items:center; gap:.6rem;
         position:fixed; left:0; right:0; bottom:0; z-index:960; height:60px;
@@ -2222,7 +2222,7 @@
       /* Chart screen: lift the symbol switcher + its sheet above the bottom bar */
       body.m-chart #mSymSwitch { bottom:60px !important; }
       body.m-chart #mSymSheet { bottom:116px !important; }
-      /* Floating alerts bell (bottom-left) � only for signal/alerts users on the home screen */
+      /* Floating alerts bell (bottom-left) — only for signal/alerts users on the home screen */
       body:not(.m-chart).mode-signals #mHomeBell { display:flex; bottom:72px; }
       /* Bell alerts popup: full-width sheet centered on mobile */
       #bellAlertsPopup {
@@ -2244,7 +2244,7 @@
       body:not(.m-chart) #toSignalsBtn,
       body:not(.m-chart) #ib-alerts,
       body:not(.m-chart) .search-box { display:none !important; }
-      /* User avatar removed from the home header (redundant � shown in the bottom bar) */
+      /* User avatar removed from the home header (redundant — shown in the bottom bar) */
       body:not(.m-chart) .user-menu { display:none !important; }
       body:not(.m-chart) .topbar-left { justify-content:space-between; padding:0 .3rem; }
 
@@ -2262,7 +2262,7 @@
       body:not(.m-chart) .watch-remove-btn { width:33px; height:33px; font-size:1.26rem; }
 
       /* ================================================================
-         CHART SCREEN (body.m-chart): clean � chart + price scale only.
+         CHART SCREEN (body.m-chart): clean — chart + price scale only.
          No top header, no right icon-toolbar. Keep TF strip + draw bar +
          bottom symbol switcher.
          ================================================================ */
@@ -2371,9 +2371,9 @@
     }
     .topbar-modebtn:hover { background:rgba(41,98,255,.28); }
     /* ===== USER MODE SEPARATION =====
-       Analysis users (chose "??? ?????"): regular site, NO bell/alerts, NO signal feed.
+       Analysis users (chose "נתח בעצמי"): regular site, NO bell/alerts, NO signal feed.
        Signals-only users: locked to the signal feed (no switch to analysis).
-       Admins: FULL access � regular site by default + a button to open the feed. */
+       Admins: FULL access — regular site by default + a button to open the feed. */
     body.mode-analysis #ib-alerts,
     body.mode-analysis #toSignalsBtn,
     body.mode-analysis #bellAlertsPopup,
@@ -2471,11 +2471,11 @@
     .aim-pbar i { display:block; width:2%; height:100%; border-radius:99px; background:linear-gradient(90deg,#2962ff,#5b8bff); transition-property:width; transition-timing-function:cubic-bezier(.25,.6,.35,1); }
     .aim-steps { list-style:none; margin:0 0 .7rem; padding:0; text-align:right; display:flex; flex-direction:column; gap:.4rem; }
     .aim-step { font-size:.84rem; color:var(--text-muted); opacity:.35; transition:opacity .3s,color .3s; padding-right:1.5rem; position:relative; }
-    .aim-step::before { content:'?'; position:absolute; right:0; }
+    .aim-step::before { content:'○'; position:absolute; right:0; }
     .aim-step.act { opacity:1; color:#fff; font-weight:700; }
-    .aim-step.act::before { content:'?'; color:var(--accent); animation:aimblink 1s infinite; }
+    .aim-step.act::before { content:'●'; color:var(--accent); animation:aimblink 1s infinite; }
     .aim-step.done { opacity:.85; color:var(--green); }
-    .aim-step.done::before { content:'?'; }
+    .aim-step.done::before { content:'✓'; }
     @keyframes aimblink { 50% { opacity:.2; } }
     .ai-input-wrap { position:relative; flex:1; min-width:0; }
     .ai-input-wrap #aiInput { width:100%; box-sizing:border-box; }
@@ -3025,7 +3025,7 @@
     @media (max-width:640px) {
       /* Compact the topbar "Signals" button to an icon so it doesn't crowd the bar */
       .topbar-modebtn { font-size:0; padding:.32rem .5rem; margin-left:.25rem; }
-      .topbar-modebtn::before { content:'??'; font-size:.95rem; }
+      .topbar-modebtn::before { content:'🔔'; font-size:.95rem; }
       .sf-top { gap:.5rem; padding:.6rem .8rem; }
       .sf-logo { font-size:1.1rem; }
       .sf-avatar { width:30px; height:30px; font-size:.9rem; }
@@ -3082,74 +3082,74 @@
   <div class="auth-glow"></div>
   <div class="auth-card">
     <div class="auth-logo"><span class="lg-nex">Nex</span><span class="lg-trade">Trade</span></div>
-    <div class="auth-tagline">???????? ??????? ????? ??????? ?????? ?????? ????? <span class="flag">&#127470;&#127473;</span> <span class="flag">&#127482;&#127480;</span></div>
+    <div class="auth-tagline">פלטפורמת איתותים ומסחר מקצועית בישראל וארצות הברית <span class="flag">&#127470;&#127473;</span> <span class="flag">&#127482;&#127480;</span></div>
     <div class="auth-tabs">
-      <div class="auth-tab active" id="tabLogin"  onclick="switchTab('login')">?????</div>
-      <div class="auth-tab"        id="tabSignup" onclick="switchTab('signup')">?????</div>
+      <div class="auth-tab active" id="tabLogin"  onclick="switchTab('login')">כניסה</div>
+      <div class="auth-tab"        id="tabSignup" onclick="switchTab('signup')">הרשמה</div>
     </div>
     <form class="auth-form" id="loginForm" onsubmit="handleLogin(event)">
-      <div class="field-group"><label for="loginEmail">??????</label><input id="loginEmail" type="email" placeholder="your@email.com" autocomplete="email" required /></div>
+      <div class="field-group"><label for="loginEmail">אימייל</label><input id="loginEmail" type="email" placeholder="your@email.com" autocomplete="email" required /></div>
       <div class="field-group">
-        <label for="loginPassword">?????</label>
+        <label for="loginPassword">סיסמה</label>
         <div class="pw-wrap">
-          <input id="loginPassword" type="password" placeholder="???? ?????" autocomplete="current-password" required />
+          <input id="loginPassword" type="password" placeholder="הכנס סיסמה" autocomplete="current-password" required />
           <button type="button" class="eye-btn" onclick="toggleEye('loginPassword',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
         </div>
       </div>
       <div class="msg-error" id="loginError"></div>
-      <button type="submit" class="auth-btn">????? &#8594;</button>
-      <div class="forgot-link"><a onclick="switchTab('forgot')">&#128274; ????? ?????</a></div>
-      <div class="auth-divider">??</div>
-      <button type="button" class="demo-btn" onclick="demoLogin()">&#9889; ????? ?????? Demo</button>
+      <button type="submit" class="auth-btn">כניסה &#8594;</button>
+      <div class="forgot-link"><a onclick="switchTab('forgot')">&#128274; שכחתי סיסמה</a></div>
+      <div class="auth-divider">או</div>
+      <button type="button" class="demo-btn" onclick="demoLogin()">&#9889; כניסה כמשתמש Demo</button>
     </form>
     <form class="auth-form hidden" id="signupForm" onsubmit="handleSignup(event)">
-      <div class="field-group"><label for="signupName">?? ???</label><input id="signupName" type="text" placeholder="????? ??????" autocomplete="name" required /></div>
-      <div class="field-group"><label for="signupEmail">??????</label><input id="signupEmail" type="email" placeholder="your@email.com" autocomplete="email" required /></div>
+      <div class="field-group"><label for="signupName">שם מלא</label><input id="signupName" type="text" placeholder="ישראל ישראלי" autocomplete="name" required /></div>
+      <div class="field-group"><label for="signupEmail">אימייל</label><input id="signupEmail" type="email" placeholder="your@email.com" autocomplete="email" required /></div>
       <div class="field-group">
-        <label for="signupPassword">?????</label>
+        <label for="signupPassword">סיסמה</label>
         <div class="pw-wrap">
-          <input id="signupPassword" type="password" placeholder="????? 6 ?????" autocomplete="new-password" oninput="checkStrength(this.value)" required />
+          <input id="signupPassword" type="password" placeholder="לפחות 6 תווים" autocomplete="new-password" oninput="checkStrength(this.value)" required />
           <button type="button" class="eye-btn" onclick="toggleEye('signupPassword',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
         </div>
         <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
         <div class="strength-text" id="strengthText"></div>
       </div>
       <div class="field-group">
-        <label for="signupConfirm">????? ?????</label>
+        <label for="signupConfirm">אימות סיסמה</label>
         <div class="pw-wrap">
-          <input id="signupConfirm" type="password" placeholder="???? ?? ??????" autocomplete="new-password" required />
+          <input id="signupConfirm" type="password" placeholder="חזור על הסיסמה" autocomplete="new-password" required />
           <button type="button" class="eye-btn" onclick="toggleEye('signupConfirm',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
         </div>
       </div>
       <div class="msg-error" id="signupError"></div>
       <div class="msg-ok"    id="signupSuccess"></div>
-      <button type="submit" class="auth-btn">????? &#10003;</button>
+      <button type="submit" class="auth-btn">הרשמה &#10003;</button>
     </form>
     <form class="auth-form hidden" id="forgotForm" onsubmit="handleForgot(event)">
-      <a class="back-link" onclick="switchTab('login')">&#8592; ???? ??????</a>
-      <div class="field-group"><label for="forgotEmail">???? ?? ??????? ?????? ????</label><input id="forgotEmail" type="email" placeholder="your@email.com" autocomplete="email" required /></div>
+      <a class="back-link" onclick="switchTab('login')">&#8592; חזרה לכניסה</a>
+      <div class="field-group"><label for="forgotEmail">הכנס את האימייל שנרשמת איתו</label><input id="forgotEmail" type="email" placeholder="your@email.com" autocomplete="email" required /></div>
       <div class="msg-error" id="forgotError"></div>
       <div class="msg-ok"    id="forgotSuccess"></div>
-      <button type="submit" class="auth-btn">???? ????? &#128274;</button>
+      <button type="submit" class="auth-btn">שחזר סיסמה &#128274;</button>
     </form>
-    <div class="auth-footer">NexTrade &copy; 2026 &middot; ?? ??????? ??????</div>
+    <div class="auth-footer">NexTrade &copy; 2026 &middot; כל הזכויות שמורות</div>
   </div>
 </div>
 
 <!-- APP -->
 <div id="appContainer" style="display:none">
-  <div class="ticker-wrap"><div class="ticker-inner" id="tickerInner">???? ??????...</div></div>
+  <div class="ticker-wrap"><div class="ticker-inner" id="tickerInner">טוען נתונים...</div></div>
   <header class="topbar">
     <div class="topbar-left">
       <!-- Mobile-only: back to watchlist (shown only on the chart screen) -->
-      <button id="mobileBackBtn" onclick="mobileBackToList()" title="???? ?????? ?????">� ????</button>
+      <button id="mobileBackBtn" onclick="mobileBackToList()" title="חזרה לרשימת המעקב">‹ מעקב</button>
       <!-- Mobile-only HOME header (list screen): centered logo + big search -->
       <div id="mHomeLogo"><span class="lg-nex">Nex</span><span class="lg-trade">Trade</span></div>
-      <button id="mHomeSearch" onclick="openSearchModal()" title="??? ????" aria-label="??? ????">
+      <button id="mHomeSearch" onclick="openSearchModal()" title="חפש מניה" aria-label="חפש מניה">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
       </button>
       <!-- Mobile-only HOME header: hamburger (favorites color lists) on the right -->
-      <button id="mHomeMenu" onclick="openFavLists()" title="?????? ???????" aria-label="?????? ???????">
+      <button id="mHomeMenu" onclick="openFavLists()" title="רשימות מועדפים" aria-label="רשימות מועדפים">
         <span></span><span></span><span></span>
       </button>
       <!-- TIMEFRAME TOOLBAR -->
@@ -3166,28 +3166,28 @@
       <button class="tf-btn" id="tf-trade" onclick="openPortPage()" style="background:rgba(41,98,255,.12);color:var(--accent);border-color:rgba(41,98,255,.4);font-weight:800">Trade</button>
       <div class="tf-sep"></div>
       <!-- Technical Tools launcher (next to Trade) -->
-      <button id="techToolsBtn" onclick="openTechTools()" aria-label="???? ??????" title="???? ??????">
+      <button id="techToolsBtn" onclick="openTechTools()" aria-label="כלים טכניים" title="כלים טכניים">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="5.5" cy="18.5" r="1.7"/><circle cx="18.5" cy="5.5" r="1.7"/><path d="M6.9 17.1 17.1 6.9"/>
           <path d="M4 4.5h4M6 2.5v4" opacity=".7"/>
         </svg>
-        <span>???? ??????</span>
-        <span id="techToolsCaret" onclick="toggleTechDropdown(event)" title="???????" aria-label="??? ????? ????">
+        <span>כלים טכניים</span>
+        <span id="techToolsCaret" onclick="toggleTechDropdown(event)" title="מועדפים" aria-label="פתח רשימת כלים">
           <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
         </span>
       </button>
       <div class="tf-sep"></div>
-      <span id="taseBadge" class="tase-dot" title="??? ???"></span>
+      <span id="taseBadge" class="tase-dot" title="מצב שוק"></span>
       <!-- SPACER -->
       <div style="flex:1"></div>
       <!-- SEARCH + USER -->
-      <button class="topbar-modebtn" id="toSignalsBtn" onclick="if(window.NTSignals)NTSignals.show()" title="???? ???? ???????">?? ???????</button>
-      <button class="topbar-bell" id="ib-alerts" onclick="toggleBellPopup()" title="?????? ????" style="position:relative">
-        ??
+      <button class="topbar-modebtn" id="toSignalsBtn" onclick="if(window.NTSignals)NTSignals.show()" title="עבור ללוח איתותים">🔔 איתותים</button>
+      <button class="topbar-bell" id="ib-alerts" onclick="toggleBellPopup()" title="איתותי מסחר" style="position:relative">
+        🔔
         <span id="alertBadge" class="alert-badge" style="display:none">0</span>
       </button>
       <div class="search-box">
-        <input id="searchInput" placeholder="??? ????..." autocomplete="off" readonly onclick="openSearchModal()" />
+        <input id="searchInput" placeholder="חפש מניה..." autocomplete="off" readonly onclick="openSearchModal()" />
       </div>
       <div class="user-menu">
         <button class="user-btn" onclick="toggleUserMenu()">
@@ -3195,8 +3195,8 @@
           <span class="user-name" id="userNameDisplay"></span>
         </button>
         <div class="user-dropdown" id="userDropdown">
-          <button class="user-dd-btn" id="backOfficeBtn" style="display:none" onclick="window.location.href='admin.html'">?? ????? ????? (Back Office)</button>
-          <button class="user-dd-btn" onclick="handleLogout()">????? ???????</button>
+          <button class="user-dd-btn" id="backOfficeBtn" style="display:none" onclick="window.location.href='admin.html'">⚙️ ניהול מערכת (Back Office)</button>
+          <button class="user-dd-btn" onclick="handleLogout()">יציאה מהמערכת</button>
         </div>
       </div>
     </div>
@@ -3214,61 +3214,61 @@
     <button class="tf-btn" id="mtf-1Q" onclick="setTimeframe('1Q',this)">1Q</button>
     <button class="tf-btn" id="mtf-6M" onclick="setTimeframe('6M',this)">6M</button>
   </div>
-  <!-- Mobile-only bottom SYMBOL SWITCHER (chart screen) � scroll the watchlist to flip charts -->
+  <!-- Mobile-only bottom SYMBOL SWITCHER (chart screen) — scroll the watchlist to flip charts -->
   <div id="mSymSwitch">
-    <button class="m-sym-back" onclick="mobileBackToList()" title="???? ??????" aria-label="???? ??????">�</button>
+    <button class="m-sym-back" onclick="mobileBackToList()" title="חזרה לרשימה" aria-label="חזרה לרשימה">‹</button>
     <span class="m-sym-ico" id="mSymSwitchIco" onclick="toggleMSymSheet()"></span>
     <div class="m-sym-mid" onclick="toggleMSymSheet()">
-      <span class="m-sym-txt" id="mSymSwitchSym">�</span>
+      <span class="m-sym-txt" id="mSymSwitchSym">—</span>
       <span class="m-sym-tf" id="mSymSwitchTf"></span>
     </div>
-    <button class="m-sym-caret" id="mSymCaret" onclick="toggleMSymSheet()" aria-label="??? ????? ?????">?</button>
+    <button class="m-sym-caret" id="mSymCaret" onclick="toggleMSymSheet()" aria-label="פתח רשימת מניות">▴</button>
   </div>
   <div id="mSymSheet">
     <div class="m-sym-sheet-hdr">
-      <span>????? ?????</span>
-      <button class="m-sym-sheet-close" onclick="closeMSymSheet(event)">?</button>
+      <span>רשימת המעקב</span>
+      <button class="m-sym-sheet-close" onclick="closeMSymSheet(event)">✕</button>
     </div>
     <div id="mSymSheetList"></div>
   </div>
 
   <!-- Mobile-only: floating user avatar (bottom-right of the home screen) -->
-  <button id="mHomeAvatar" onclick="openProfile()" title="??????? ???" aria-label="??????? ???">Y</button>
+  <button id="mHomeAvatar" onclick="openProfile()" title="הפרופיל שלי" aria-label="הפרופיל שלי">Y</button>
 
-  <!-- Mobile-only: floating ALERTS bell (bottom-left of home) � only for signal/alerts users -->
-  <button id="mHomeBell" onclick="toggleBellPopup()" title="?????? ?????" aria-label="?????? ?????">
+  <!-- Mobile-only: floating ALERTS bell (bottom-left of home) — only for signal/alerts users -->
+  <button id="mHomeBell" onclick="toggleBellPopup()" title="התראות מניות" aria-label="התראות מניות">
     <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
     <span id="mBellBadge" class="alert-badge" style="display:none">0</span>
   </button>
 
-  <!-- Mobile-only: persistent BOTTOM BAR (three-dots � spacer � username + avatar) � home & chart -->
+  <!-- Mobile-only: persistent BOTTOM BAR (three-dots · spacer · username + avatar) — home & chart -->
   <div id="mBottomBar">
-    <button class="mbb-more" id="mbbMore" onclick="toggleBottomMore(event)" title="??? ????????" aria-label="??? ????????">?</button>
+    <button class="mbb-more" id="mbbMore" onclick="toggleBottomMore(event)" title="עוד אפשרויות" aria-label="עוד אפשרויות">⋯</button>
     <div class="mbb-spacer"></div>
   </div>
   <div id="mbbMoreMenu">
-    <button class="mbb-menu-item" onclick="openProfile();closeBottomMore()"><span class="mbb-menu-ico">??</span><span>??????? ???</span></button>
-    <button class="mbb-menu-item" onclick="openFavLists();closeBottomMore()"><span class="mbb-menu-ico">??</span><span>?????? ???????</span></button>
-    <button class="mbb-menu-item" onclick="openSearchModal();closeBottomMore()"><span class="mbb-menu-ico">??</span><span>????? ????</span></button>
+    <button class="mbb-menu-item" onclick="openProfile();closeBottomMore()"><span class="mbb-menu-ico">👤</span><span>הפרופיל שלי</span></button>
+    <button class="mbb-menu-item" onclick="openFavLists();closeBottomMore()"><span class="mbb-menu-ico">🔖</span><span>רשימות מועדפים</span></button>
+    <button class="mbb-menu-item" onclick="openSearchModal();closeBottomMore()"><span class="mbb-menu-ico">🔍</span><span>חיפוש מניה</span></button>
   </div>
 
   <!-- Mobile PROFILE screen (opens from the avatar) -->
   <div id="mProfile">
     <div class="mprof-top">
-      <button class="mprof-back" onclick="closeProfile()" aria-label="????">�</button>
-      <span class="mprof-title">??????? ???</span>
+      <button class="mprof-back" onclick="closeProfile()" aria-label="חזרה">‹</button>
+      <span class="mprof-title">הפרופיל שלי</span>
     </div>
     <div class="mprof-card">
       <div class="mprof-avatar" id="mProfAvatar">Y</div>
       <div class="mprof-info">
-        <div class="mprof-name" id="mProfName">?????</div>
+        <div class="mprof-name" id="mProfName">משתמש</div>
         <div class="mprof-sub" id="mProfSub"></div>
       </div>
     </div>
     <div class="mprof-actions">
-      <button class="mprof-act" onclick="mProfAbout()"><span class="mprof-act-ico">?</span><span>????? NexTrade</span><span class="mprof-act-chev">�</span></button>
-      <button class="mprof-act" onclick="mProfHelp()"><span class="mprof-act-ico">?</span><span>???? ????</span><span class="mprof-act-chev">�</span></button>
-      <button class="mprof-act danger" onclick="handleLogout()"><span class="mprof-act-ico">?</span><span>??????? ???????</span><span class="mprof-act-chev">�</span></button>
+      <button class="mprof-act" onclick="mProfAbout()"><span class="mprof-act-ico">ⓘ</span><span>אודות NexTrade</span><span class="mprof-act-chev">‹</span></button>
+      <button class="mprof-act" onclick="mProfHelp()"><span class="mprof-act-ico">?</span><span>מרכז עזרה</span><span class="mprof-act-chev">‹</span></button>
+      <button class="mprof-act danger" onclick="handleLogout()"><span class="mprof-act-ico">⎋</span><span>התנתקות מהחשבון</span><span class="mprof-act-chev">‹</span></button>
     </div>
   </div>
 
@@ -3276,10 +3276,10 @@
   <div id="mFavLists" onclick="favListsBackdrop(event)">
     <div class="mfav-card">
       <div class="mfav-hdr">
-        <span>?????? ???? � ???????</span>
-        <button class="mfav-close" onclick="closeFavLists()" aria-label="????">?</button>
+        <span>רשימות מעקב — מועדפים</span>
+        <button class="mfav-close" onclick="closeFavLists()" aria-label="סגור">✕</button>
       </div>
-      <div class="mfav-sub">??? ?? ????? ????? ??? ??? ???????</div>
+      <div class="mfav-sub">סנן את רשימת המעקב לפי צבע מועדפים</div>
       <div class="mfav-rows" id="mFavRows"></div>
     </div>
   </div>
@@ -3291,15 +3291,15 @@
     <button class="wlcp-dot" data-color="yellow" style="background:#f5a623" onclick="setSymColor('yellow')"></button>
     <button class="wlcp-dot" data-color="purple" style="background:#a855f7" onclick="setSymColor('purple')"></button>
     <button class="wlcp-dot" data-color="blue"   style="background:#2962ff" onclick="setSymColor('blue')"></button>
-    <button class="wlcp-clear" onclick="setSymColor('')" title="??? ???">?</button>
+    <button class="wlcp-clear" onclick="setSymColor('')" title="הסר צבע">✕</button>
   </div>
 
   <!-- Technical Tools window: all drawing tools as labeled category cards -->
   <div id="techToolsModal" onclick="techToolsBackdrop(event)">
     <div class="tt-card">
       <div class="tt-hdr">
-        <span>???? ??????</span>
-        <button class="tt-close" onclick="closeTechTools()" aria-label="????">?</button>
+        <span>כלים טכניים</span>
+        <button class="tt-close" onclick="closeTechTools()" aria-label="סגור">✕</button>
       </div>
       <div class="tt-body" id="ttBody"></div>
     </div>
@@ -3310,7 +3310,7 @@
     <div class="ttd-list" id="ttdList"></div>
   </div>
 
-  <!-- Floating favorites bar (bottom) � favorited tools appear here -->
+  <!-- Floating favorites bar (bottom) — favorited tools appear here -->
   <div id="techFavBar"></div>
 
   <div class="layout">
@@ -3326,12 +3326,12 @@
             </div>
             <ul id="watchlist" style="list-style:none;padding:0;margin:0;"></ul>
           </div>
-          <div class="sp-split" id="spSplit" title="???? ?????? ????"></div>
+          <div class="sp-split" id="spSplit" title="גרור לשינוי גודל"></div>
           <div class="sp-panel" id="stockPanel"></div>
         </div>
 
         <!-- VIEW: Alerts -->
-        <!-- VIEW: Alerts (removed � signals via bell only) -->
+        <!-- VIEW: Alerts (removed — signals via bell only) -->
         <div class="sidebar-view" id="sview-alerts" style="display:none">
           <div id="scannerList" style="display:none"></div>
         </div>
@@ -3363,7 +3363,7 @@
 
         <!-- VIEW: Chat -->
         <div class="sidebar-view" id="sview-chat">
-          <div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:2rem 0">?? ?'?? ?????</div>
+          <div style="color:var(--text-muted);font-size:.78rem;text-align:center;padding:2rem 0">💬 צ'אט בקרוב</div>
         </div>
 
         <!-- VIEW: Clock -->
@@ -3378,7 +3378,7 @@
 
         <!-- VIEW: Tasks -->
         <div class="sidebar-view" id="sview-tasks">
-          <div class="ib-panel-add-row"><input id="taskInput2" placeholder="????? ????..." onkeydown="if(event.key==='Enter')ibAddTask2()" /><button class="btn btn-sm" onclick="ibAddTask2()">????</button></div>
+          <div class="ib-panel-add-row"><input id="taskInput2" placeholder="משימה חדשה..." onkeydown="if(event.key==='Enter')ibAddTask2()" /><button class="btn btn-sm" onclick="ibAddTask2()">הוסף</button></div>
           <ul id="taskList2" style="list-style:none;margin-top:.5rem"></ul>
         </div>
 
@@ -3394,39 +3394,39 @@
       <!-- PORTFOLIO FULL PAGE OVERLAY -->
       <div class="port-page" id="portPage">
         <div class="port-page-header">
-          <span class="port-page-title">&#128188; ??? ??????</span>
-          <button class="port-back-btn" onclick="closePortPage()">&#8592; ???? ????</button>
+          <span class="port-page-title">&#128188; תיק השקעות</span>
+          <button class="port-back-btn" onclick="closePortPage()">&#8592; חזור לגרף</button>
         </div>
         <div class="port-page-body">
           <div class="port-total-card">
-            <div class="port-total-label">???? ??? ????</div>
+            <div class="port-total-label">שווי תיק כולל</div>
             <div class="port-total-val" id="portTotalVal">$0.00</div>
           </div>
           <div class="port-add-row">
-            <input class="port-add-inp sym-inp" id="portSymInput" placeholder="??? (AAPL / TEVA)" autocomplete="off" />
+            <input class="port-add-inp sym-inp" id="portSymInput" placeholder="סמל (AAPL / TEVA)" autocomplete="off" />
             <select class="port-add-inp" id="portDirInput" style="flex:.8"><option value="long">Long</option><option value="short">Short</option></select>
-            <input class="port-add-inp num-inp" id="portSharesInput" placeholder="????" type="number" min="0" step="any" />
-            <input class="port-add-inp num-inp" id="portPriceInput" placeholder="???? ?????" type="number" min="0" step="any" />
+            <input class="port-add-inp num-inp" id="portSharesInput" placeholder="כמות" type="number" min="0" step="any" />
+            <input class="port-add-inp num-inp" id="portPriceInput" placeholder="מחיר כניסה" type="number" min="0" step="any" />
             <input class="port-add-inp num-inp" id="portTPInput" placeholder="TP" type="number" min="0" step="any" />
             <input class="port-add-inp num-inp" id="portSLInput" placeholder="SL" type="number" min="0" step="any" />
-            <input class="port-add-inp num-inp" id="portFeeInput" placeholder="????" type="number" min="0" step="any" />
-            <button class="btn btn-sm" onclick="portAddStock()" style="white-space:nowrap">+ ????</button>
+            <input class="port-add-inp num-inp" id="portFeeInput" placeholder="עמלה" type="number" min="0" step="any" />
+            <button class="btn btn-sm" onclick="portAddStock()" style="white-space:nowrap">+ הוסף</button>
           </div>
           <div class="port-table-wrap">
             <table class="port-table" id="portTable">
               <thead id="portTableHead">
                 <tr>
                   <th data-col="num">#</th>
-                  <th data-col="sym">???</th>
-                  <th data-col="dir">?????</th>
-                  <th data-col="qty">????</th>
-                  <th data-col="entry">???? ?????</th>
+                  <th data-col="sym">סמל</th>
+                  <th data-col="dir">כיוון</th>
+                  <th data-col="qty">כמות</th>
+                  <th data-col="entry">מחיר כניסה</th>
                   <th data-col="tp">TP</th>
                   <th data-col="sl">SL</th>
-                  <th data-col="pnl">????</th>
-                  <th data-col="fee">????</th>
+                  <th data-col="pnl">רווח</th>
+                  <th data-col="fee">עמלה</th>
                   <th data-col="net">Net P/L</th>
-                  <th data-col="actions">??????</th>
+                  <th data-col="actions">פעולות</th>
                 </tr>
               </thead>
               <tbody id="portTableBody"></tbody>
@@ -3436,19 +3436,19 @@
       </div>
       <div class="chart-panel">
         <!-- kept in DOM for JS compat, hidden visually -->
-        <h2 id="chartTitle" style="display:none">??? ????</h2>
+        <h2 id="chartTitle" style="display:none">בחר מניה</h2>
         <div id="chartSubtitle" style="display:none"></div>
         <div class="chart-wrap">
           <!-- Position action bar (trash, lock, color pickers) -->
           <div id="posActionBar">
-            <button class="pab-btn" id="pabTrash" title="??? ????">
+            <button class="pab-btn" id="pabTrash" title="מחק עסקה">
               <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M3.5 6h17M9 6V4a.75.75 0 01.75-.75h4.5A.75.75 0 0115 4v2"/>
                 <path d="M8 6l.75 14.25h6.5L16 6"/>
                 <line x1="10" y1="10" x2="10" y2="17"/><line x1="14" y1="10" x2="14" y2="17"/>
               </svg>
             </button>
-            <button class="pab-btn" id="pabLock" title="??? ?? ????">
+            <button class="pab-btn" id="pabLock" title="נעל על המסך">
               <svg id="svgLocked" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round">
                 <rect x="5" y="11" width="14" height="10" rx="2"/>
                 <path d="M8 11V7a4 4 0 018 0v4"/>
@@ -3461,7 +3461,7 @@
               </svg>
             </button>
             <span class="pab-sep"></span>
-            <button class="pab-btn" id="pabColorSL" title="??? ???? ???" style="position:relative">
+            <button class="pab-btn" id="pabColorSL" title="צבע סטופ לוס" style="position:relative">
               <svg viewBox="0 0 24 24" width="26" height="26">
                 <rect x="2" y="5" width="20" height="14" rx="3" fill="#ef5350" opacity="0.35"/>
                 <rect x="2" y="5" width="20" height="14" rx="3" stroke="#ef5350" stroke-width="1.8" fill="none"/>
@@ -3469,7 +3469,7 @@
               </svg>
               <div class="pab-colors" id="pabColorsSL"></div>
             </button>
-            <button class="pab-btn" id="pabColorTP" title="??? ???" style="position:relative">
+            <button class="pab-btn" id="pabColorTP" title="צבע יעד" style="position:relative">
               <svg viewBox="0 0 24 24" width="26" height="26">
                 <rect x="2" y="5" width="20" height="14" rx="3" fill="#26a69a" opacity="0.35"/>
                 <rect x="2" y="5" width="20" height="14" rx="3" stroke="#26a69a" stroke-width="1.8" fill="none"/>
@@ -3478,13 +3478,13 @@
               <div class="pab-colors" id="pabColorsTP"></div>
             </button>
           </div>
-          <!-- floating stock info � top-left of chart (single unified bar) -->
+          <!-- floating stock info — top-left of chart (single unified bar) -->
           <div id="chartInfoBar">
             <span class="ci-sym" id="ciSym"></span>
             <span class="ci-name" id="ciName"></span>
             <span class="ci-sep">|</span>
             <span class="ci-change" id="ciChange"></span>
-            <span class="ci-sep">�</span>
+            <span class="ci-sep">·</span>
             <span class="ci-price" id="ciPrice"></span>
             <span class="ci-sep ci-ohlcv-sep">|</span>
             <div class="ci-ohlcv" id="ciOhlcv">
@@ -3492,9 +3492,9 @@
               <span class="ohlcv-pair"><span class="ohlcv-lbl">H</span><span class="ohlcv-val" id="lgH"></span></span>
               <span class="ohlcv-pair"><span class="ohlcv-lbl">L</span><span class="ohlcv-val" id="lgL"></span></span>
               <span class="ohlcv-pair"><span class="ohlcv-lbl">C</span><span class="ohlcv-val" id="lgC"></span></span>
-              <span class="legend-sep">�</span>
+              <span class="legend-sep">·</span>
               <span class="ohlcv-pair"><span class="ohlcv-lbl">Vol</span><span class="ohlcv-val" id="lgV"></span></span>
-              <span class="legend-sep">�</span>
+              <span class="legend-sep">·</span>
               <span class="legend-pct" id="lgPct"></span>
             </div>
           </div>
@@ -3505,7 +3505,7 @@
           <!-- Clock below price axis -->
           <div id="chartClock"></div>
           <!-- Crosshair alert button -->
-          <button id="crosshairAlertBtn" title="???? ?????" onclick="event.stopPropagation(); openCrosshairAlertPopup()">
+          <button id="crosshairAlertBtn" title="הגדר התראה" onclick="event.stopPropagation(); openCrosshairAlertPopup()">
             <svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round">
               <line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/>
             </svg>
@@ -3515,21 +3515,21 @@
             <div id="crosshairMenuList"></div>
             <div id="crosshairOrderForm" style="display:none;padding:.2rem .35rem">
               <div style="display:flex;align-items:center;gap:.35rem;margin-bottom:.45rem">
-                <span onclick="crosshairMenuBackToList()" style="cursor:pointer;color:#8b9ab5;font-size:.85rem;line-height:1">?</span>
-                <span style="font-size:.74rem;font-weight:800;color:#fff">? ???? ?????</span>
+                <span onclick="crosshairMenuBackToList()" style="cursor:pointer;color:#8b9ab5;font-size:.85rem;line-height:1">→</span>
+                <span style="font-size:.74rem;font-weight:800;color:#fff">✎ הוסף פקודה</span>
               </div>
               <div style="font-size:.7rem;color:#f5a623;font-weight:700;margin-bottom:.35rem" id="crosshairAlertPriceLabel"></div>
               <div style="display:flex;gap:.3rem;margin-bottom:.3rem">
                 <select id="crosshairAlertCond" style="flex:1;background:#131722;border:1px solid #2a2e39;border-radius:5px;color:#fff;font-size:.7rem;padding:.22rem .3rem;font-family:'Heebo',sans-serif;">
-                  <option value="above">???</option>
-                  <option value="below">????</option>
+                  <option value="above">מעל</option>
+                  <option value="below">מתחת</option>
                 </select>
-                <input id="crosshairAlertPriceInp" type="number" step="any" placeholder="????" style="flex:1.2;background:#131722;border:1px solid #2a2e39;border-radius:5px;color:#fff;font-size:.7rem;padding:.22rem .35rem;font-family:'Heebo',sans-serif;" />
+                <input id="crosshairAlertPriceInp" type="number" step="any" placeholder="מחיר" style="flex:1.2;background:#131722;border:1px solid #2a2e39;border-radius:5px;color:#fff;font-size:.7rem;padding:.22rem .35rem;font-family:'Heebo',sans-serif;" />
               </div>
-              <input id="crosshairAlertEmail" type="email" placeholder="???? (?????????)" style="width:100%;background:#131722;border:1px solid #2a2e39;border-radius:5px;color:#fff;font-size:.68rem;padding:.22rem .35rem;margin-bottom:.35rem;box-sizing:border-box;font-family:'Heebo',sans-serif;" />
+              <input id="crosshairAlertEmail" type="email" placeholder="מייל (אופציונלי)" style="width:100%;background:#131722;border:1px solid #2a2e39;border-radius:5px;color:#fff;font-size:.68rem;padding:.22rem .35rem;margin-bottom:.35rem;box-sizing:border-box;font-family:'Heebo',sans-serif;" />
               <div style="display:flex;gap:.3rem">
-                <button onclick="crosshairAddAlert()" style="flex:1;background:#2962ff;border:none;border-radius:5px;color:#fff;font-size:.72rem;font-weight:700;padding:.3rem;cursor:pointer;font-family:'Heebo',sans-serif;">????</button>
-                <button onclick="closeCrosshairAlertPopup()" style="background:#2a2e39;border:none;border-radius:5px;color:#8b9ab5;font-size:.72rem;padding:.3rem .5rem;cursor:pointer;font-family:'Heebo',sans-serif;">?????</button>
+                <button onclick="crosshairAddAlert()" style="flex:1;background:#2962ff;border:none;border-radius:5px;color:#fff;font-size:.72rem;font-weight:700;padding:.3rem;cursor:pointer;font-family:'Heebo',sans-serif;">הוסף</button>
+                <button onclick="closeCrosshairAlertPopup()" style="background:#2a2e39;border:none;border-radius:5px;color:#8b9ab5;font-size:.72rem;padding:.3rem .5rem;cursor:pointer;font-family:'Heebo',sans-serif;">ביטול</button>
               </div>
             </div>
           </div>
@@ -3540,36 +3540,36 @@
   </div>
 </div>
 
-<!-- SIGNAL FEED (Mode A � clean signals board for signal-only users) -->
+<!-- SIGNAL FEED (Mode A — clean signals board for signal-only users) -->
 <div id="signalFeed" style="display:none">
   <header class="sf-top">
-    <!-- RIGHT (RTL start): green user avatar ? logout menu, + admin back-to-site button -->
+    <!-- RIGHT (RTL start): green user avatar → logout menu, + admin back-to-site button -->
     <div class="sf-right">
       <div class="sf-user" id="sfUserWrap">
-        <button class="sf-avatar" id="sfAvatar" onclick="NTSignals.toggleUserMenu(event)" title="?????? ???">?</button>
+        <button class="sf-avatar" id="sfAvatar" onclick="NTSignals.toggleUserMenu(event)" title="החשבון שלי">?</button>
         <div class="sf-usermenu" id="sfUserMenu">
           <div class="sf-usermenu-name" id="sfUserMenuName"></div>
           <div class="sf-usermenu-plan" id="sfUserMenuPlan"></div>
-          <button class="sf-usermenu-logout" onclick="handleLogout()">?? ???????</button>
+          <button class="sf-usermenu-logout" onclick="handleLogout()">🚪 התנתקות</button>
         </div>
       </div>
-      <button class="sf-backbtn" id="sfBackBtn" onclick="if(window.NTSignals)NTSignals.setMode('analysis')" title="???? ???? ?????">?? <span>???? ?????</span></button>
+      <button class="sf-backbtn" id="sfBackBtn" onclick="if(window.NTSignals)NTSignals.setMode('analysis')" title="חזרה לאתר הרגיל">📊 <span>לאתר הרגיל</span></button>
     </div>
     <!-- CENTER: brand logo in its standard colors -->
     <div class="sf-logo"><span class="lg-nex">Nex</span><span class="lg-trade">Trade</span></div>
     <!-- LEFT (RTL end): trial / upgrade banner -->
     <button class="sf-trial" id="sfTrialBanner" onclick="if(window.NTPlan)NTPlan.openUpgrade()">
-      <span class="sf-trial-ic">??</span>
-      <span class="sf-trial-txt" id="sfTrialTxt">7 ??? ?????? ????</span>
+      <span class="sf-trial-ic">🎁</span>
+      <span class="sf-trial-txt" id="sfTrialTxt">7 ימי ניסיון חינם</span>
     </button>
   </header>
   <nav class="sf-tabs">
-    <button class="sf-tab active" data-tab="signals" onclick="NTSignals.switchTab('signals')">???????</button>
-    <button class="sf-tab" data-tab="risk" onclick="NTSignals.switchTab('risk')"><span class="sf-tab-risk">??? ????? ???????</span></button>
-    <button class="sf-tab" data-tab="ai" onclick="NTSignals.switchTab('ai')">?? ????? AI ??????</button>
-    <button class="sf-tab" data-tab="trades" onclick="NTSignals.switchTab('trades')">??????? ???</button>
-    <button class="sf-tab" data-tab="history" onclick="NTSignals.switchTab('history')">????????</button>
-    <button class="sf-tab" data-tab="alerts" onclick="NTSignals.switchTab('alerts')">?? ????</button>
+    <button class="sf-tab active" data-tab="signals" onclick="NTSignals.switchTab('signals')">איתותים</button>
+    <button class="sf-tab" data-tab="risk" onclick="NTSignals.switchTab('risk')"><span class="sf-tab-risk">🛡️ ניהול סיכונים</span></button>
+    <button class="sf-tab" data-tab="ai" onclick="NTSignals.switchTab('ai')">🤖 ניתוח AI למניות</button>
+    <button class="sf-tab" data-tab="trades" onclick="NTSignals.switchTab('trades')">העסקאות שלי</button>
+    <button class="sf-tab" data-tab="history" onclick="NTSignals.switchTab('history')">היסטוריה</button>
+    <button class="sf-tab" data-tab="alerts" onclick="NTSignals.switchTab('alerts')">🔔 יומן</button>
   </nav>
   <div class="sf-body" id="sfBody"></div>
   <div class="sf-disc" id="sfDisc"></div>
@@ -3578,7 +3578,7 @@
 <!-- AI STOCK ANALYSIS POPUP -->
 <div id="aiModal" class="ai-modal" onclick="if(event.target===this&&window.NTSignals)NTSignals.closeAiModal()">
   <div class="ai-modal-card">
-    <button class="nt-upgrade-x" onclick="if(window.NTSignals)NTSignals.closeAiModal()">?</button>
+    <button class="nt-upgrade-x" onclick="if(window.NTSignals)NTSignals.closeAiModal()">✕</button>
     <div class="ai-modal-body" id="aiModalBody"></div>
   </div>
 </div>
@@ -3586,46 +3586,46 @@
 <!-- UPGRADE / PAYWALL MODAL -->
 <div id="ntUpgradeModal" class="nt-upgrade-modal" onclick="if(event.target===this&&window.NTPlan)NTPlan.closeUpgrade()">
   <div class="nt-upgrade-card wide">
-    <button class="nt-upgrade-x" onclick="if(window.NTPlan)NTPlan.closeUpgrade()">?</button>
-    <div class="nt-upgrade-crown">?</div>
-    <h2 class="nt-upgrade-title">???? ?-NexTrade � ??? ?????</h2>
-    <p class="nt-upgrade-sub" id="ntUpgradeSub">???? ???? ???? ?????? AI, ??????? ???? ??? ????? ????? ????.</p>
+    <button class="nt-upgrade-x" onclick="if(window.NTPlan)NTPlan.closeUpgrade()">✕</button>
+    <div class="nt-upgrade-crown">⭐</div>
+    <h2 class="nt-upgrade-title">שדרג ל‑NexTrade — בחר מסלול</h2>
+    <p class="nt-upgrade-sub" id="ntUpgradeSub">שדרג לקבל יותר ניתוחי AI, איתותים בזמן אמת ומעקב חופשי יותר.</p>
     <div class="nt-tiers">
       <div class="nt-tier gold">
-        <div class="nt-tier-badge">?? ????</div>
-        <div class="nt-tier-price">?39<span>/????</span></div>
+        <div class="nt-tier-badge">🥇 גולד</div>
+        <div class="nt-tier-price">₪39<span>/חודש</span></div>
         <ul class="nt-tier-list">
-          <li>? 15 ?????? AI ????</li>
-          <li>? ??????? ???? ??? (?? 15)</li>
-          <li>? ?? 15 ????? ?????</li>
-          <li>? ???? ?????? + ????? ???????</li>
+          <li>✓ 15 ניתוחי AI ביום</li>
+          <li>✓ איתותים בזמן אמת (עד 15)</li>
+          <li>✓ עד 15 מניות במעקב</li>
+          <li>✓ יומן התראות + סיכום ביצועים</li>
         </ul>
-        <button class="nt-tier-btn" onclick="if(window.NTPlan)NTPlan.startCheckout('monthly','gold')">????? � ?39</button>
-        <button class="nt-tier-btn ghost" onclick="if(window.NTPlan)NTPlan.startCheckout('yearly','gold')">???? � ?390</button>
+        <button class="nt-tier-btn" onclick="if(window.NTPlan)NTPlan.startCheckout('monthly','gold')">חודשי · ₪39</button>
+        <button class="nt-tier-btn ghost" onclick="if(window.NTPlan)NTPlan.startCheckout('yearly','gold')">שנתי · ₪390</button>
       </div>
       <div class="nt-tier premium">
-        <div class="nt-tier-ribbon">??? ?????</div>
-        <div class="nt-tier-badge">? ???????</div>
-        <div class="nt-tier-price">?69<span>/????</span></div>
+        <div class="nt-tier-ribbon">הכי משתלם</div>
+        <div class="nt-tier-badge">⭐ פרימיום</div>
+        <div class="nt-tier-price">₪69<span>/חודש</span></div>
         <ul class="nt-tier-list">
-          <li>? ?????? AI ??? ?????</li>
-          <li>? ?? ???????? ???? ???</li>
-          <li>? ???? ???????? ??? ?????</li>
-          <li>? ????? ????? (earnings) ???? ?????</li>
-          <li>? ?? ?? ??????</li>
+          <li>✓ ניתוחי AI ללא הגבלה</li>
+          <li>✓ כל האיתותים בזמן אמת</li>
+          <li>✓ מעקב ומועדפים ללא הגבלה</li>
+          <li>✓ התראת דוחות (earnings) לפני פרסום</li>
+          <li>✓ כל מה שבגולד</li>
         </ul>
-        <button class="nt-tier-btn primary" onclick="if(window.NTPlan)NTPlan.startCheckout('monthly','premium')">????? � ?69</button>
-        <button class="nt-tier-btn ghost" onclick="if(window.NTPlan)NTPlan.startCheckout('yearly','premium')">???? � ?490</button>
+        <button class="nt-tier-btn primary" onclick="if(window.NTPlan)NTPlan.startCheckout('monthly','premium')">חודשי · ₪69</button>
+        <button class="nt-tier-btn ghost" onclick="if(window.NTPlan)NTPlan.startCheckout('yearly','premium')">שנתי · ₪490</button>
       </div>
     </div>
-    <div class="nt-upgrade-foot">?????? ?????? (????): 3 ?????? AI ????, 3 ????? ?????, 3 ??????? ?????? � ????? ??? ?? � ????? ??????</div>
+    <div class="nt-upgrade-foot">המסלול הבסיסי (חינם): 3 ניתוחי AI ביום, 3 מניות במעקב, 3 איתותים בעיכוב · ביטול בכל עת · תשלום מאובטח</div>
   </div>
 </div>
 
 <script src="scanner-symbols.js?v=20261019g"></script>
 <script src="scanner-engine.js?v=20261021c"></script>
 <script src="plan.js?v=20261019g"></script>
-<script src="main.js?v=20261022c"></script>
+<script src="main.js?v=20261022b"></script>
 <script src="stockpanel.js?v=20261021a"></script>
 <script src="drawing.js?v=20261019b"></script>
 <script src="features.js?v=20261018j"></script>
@@ -3636,58 +3636,58 @@
   <div class="cst-modal" onclick="event.stopPropagation()">
     <div class="cst-header">
       <span class="cst-title">Settings</span>
-      <button class="cst-close" onclick="closeChartSettings()">?</button>
+      <button class="cst-close" onclick="closeChartSettings()">✕</button>
     </div>
     <div class="cst-body">
       <div class="cst-nav">
-        <div class="cst-nav-item" data-tab="symbol" onclick="switchSettingsTab('symbol')"><span class="cst-nav-ic">??</span>Symbol</div>
-        <div class="cst-nav-item" data-tab="statusline" onclick="switchSettingsTab('statusline')"><span class="cst-nav-ic">=</span>Status line</div>
-        <div class="cst-nav-item" data-tab="scales" onclick="switchSettingsTab('scales')"><span class="cst-nav-ic">?</span>Scales and lines</div>
-        <div class="cst-nav-item" data-tab="canvas" onclick="switchSettingsTab('canvas')"><span class="cst-nav-ic">??</span>Canvas</div>
-        <div class="cst-nav-item" data-tab="trading" onclick="switchSettingsTab('trading')"><span class="cst-nav-ic">??</span>Trading</div>
-        <div class="cst-nav-item" data-tab="alerts" onclick="switchSettingsTab('alerts')"><span class="cst-nav-ic">?</span>Alerts</div>
-        <div class="cst-nav-item" data-tab="events" onclick="switchSettingsTab('events')"><span class="cst-nav-ic">??</span>Events</div>
+        <div class="cst-nav-item" data-tab="symbol" onclick="switchSettingsTab('symbol')"><span class="cst-nav-ic">📈</span>Symbol</div>
+        <div class="cst-nav-item" data-tab="statusline" onclick="switchSettingsTab('statusline')"><span class="cst-nav-ic">≡</span>Status line</div>
+        <div class="cst-nav-item" data-tab="scales" onclick="switchSettingsTab('scales')"><span class="cst-nav-ic">⤢</span>Scales and lines</div>
+        <div class="cst-nav-item" data-tab="canvas" onclick="switchSettingsTab('canvas')"><span class="cst-nav-ic">✏️</span>Canvas</div>
+        <div class="cst-nav-item" data-tab="trading" onclick="switchSettingsTab('trading')"><span class="cst-nav-ic">📶</span>Trading</div>
+        <div class="cst-nav-item" data-tab="alerts" onclick="switchSettingsTab('alerts')"><span class="cst-nav-ic">⏰</span>Alerts</div>
+        <div class="cst-nav-item" data-tab="events" onclick="switchSettingsTab('events')"><span class="cst-nav-ic">📅</span>Events</div>
       </div>
       <div class="cst-content">
-        <div class="cst-pane" data-pane="symbol"><div class="cst-empty">??? ?????? ?????? ??? ????</div></div>
-        <div class="cst-pane" data-pane="statusline"><div class="cst-empty">??? ?????? ?????? ??? ????</div></div>
-        <div class="cst-pane" data-pane="scales"><div class="cst-empty">??? ?????? ?????? ??? ????</div></div>
+        <div class="cst-pane" data-pane="symbol"><div class="cst-empty">אין הגדרות זמינות כאן כרגע</div></div>
+        <div class="cst-pane" data-pane="statusline"><div class="cst-empty">אין הגדרות זמינות כאן כרגע</div></div>
+        <div class="cst-pane" data-pane="scales"><div class="cst-empty">אין הגדרות זמינות כאן כרגע</div></div>
 
-        <!-- CANVAS TAB � background color picker (moved from the old right-click menu) -->
+        <!-- CANVAS TAB — background color picker (moved from the old right-click menu) -->
         <div class="cst-pane" data-pane="canvas">
-          <div class="ctxm-header" style="padding:0 0 .4rem;border-bottom:none">??? ???</div>
+          <div class="ctxm-header" style="padding:0 0 .4rem;border-bottom:none">רקע גרף</div>
           <div class="ctxm-tabs">
-            <button class="ctxm-tab active" id="ctxTabSolid">??? ????</button>
+            <button class="ctxm-tab active" id="ctxTabSolid">צבע אחיד</button>
             <button class="ctxm-tab" id="ctxTabGrad">Gradient</button>
           </div>
           <div id="ctxSolidPanel">
             <div class="ctxm-colors" id="ctxSolidColors"></div>
           </div>
           <div id="ctxGradPanel" style="display:none">
-            <div class="ctxm-grad-row"><div class="ctxm-grad-dot" id="ctxGradTopDot" style="background:#05070a"></div><span>??? ?????</span></div>
+            <div class="ctxm-grad-row"><div class="ctxm-grad-dot" id="ctxGradTopDot" style="background:#05070a"></div><span>צבע עליון</span></div>
             <div class="ctxm-colors" id="ctxGradTopColors"></div>
-            <div class="ctxm-grad-row"><div class="ctxm-grad-dot" id="ctxGradBotDot" style="background:#12161f"></div><span>??? ?????</span></div>
+            <div class="ctxm-grad-row"><div class="ctxm-grad-dot" id="ctxGradBotDot" style="background:#12161f"></div><span>צבע תחתון</span></div>
             <div class="ctxm-colors" id="ctxGradBotColors"></div>
           </div>
 
-          <!-- WATERMARK � symbol name behind the chart -->
-          <div class="ctxm-header" style="padding:1rem 0 .4rem;border-bottom:none;border-top:1px solid #2a2e39;margin-top:.8rem">???? ??? (?? ????? ????)</div>
+          <!-- WATERMARK — symbol name behind the chart -->
+          <div class="ctxm-header" style="padding:1rem 0 .4rem;border-bottom:none;border-top:1px solid #2a2e39;margin-top:.8rem">סימן מים (שם הנייר ברקע)</div>
           <div class="cst-row" id="wmToggleRow" onclick="wmToggle()" style="padding:.4rem .2rem">
             <div class="cst-chk"></div>
             <div class="cst-row-txt">
-              <div class="cst-row-label">??? ???? ???</div>
-              <div class="cst-row-desc">?? ????? ????? ????? ???? ????</div>
+              <div class="cst-row-label">הצג סימן מים</div>
+              <div class="cst-row-desc">שם הנייר יופיע במרכז הגרף ברקע</div>
             </div>
           </div>
-          <div class="ctxm-grad-row" style="margin-top:.5rem"><span>???? ?????</span></div>
+          <div class="ctxm-grad-row" style="margin-top:.5rem"><span>חוזק תצוגה</span></div>
           <div class="ctxm-tabs" id="wmStrengthTabs">
-            <button class="ctxm-tab" data-wm="weak" onclick="wmSetStrength('weak')">???</button>
-            <button class="ctxm-tab" data-wm="medium" onclick="wmSetStrength('medium')">??????</button>
-            <button class="ctxm-tab" data-wm="strong" onclick="wmSetStrength('strong')">???</button>
+            <button class="ctxm-tab" data-wm="weak" onclick="wmSetStrength('weak')">חלש</button>
+            <button class="ctxm-tab" data-wm="medium" onclick="wmSetStrength('medium')">בינוני</button>
+            <button class="ctxm-tab" data-wm="strong" onclick="wmSetStrength('strong')">חזק</button>
           </div>
         </div>
 
-        <!-- TRADING TAB � matches the TradingView "Settings > Trading" reference design -->
+        <!-- TRADING TAB — matches the TradingView "Settings > Trading" reference design -->
         <div class="cst-pane active" data-pane="trading">
           <div class="cst-section-hdr">General</div>
           <div class="cst-row" id="cstRow_buySellBtns" onclick="cstToggle('buySellBtns')">
@@ -3700,7 +3700,7 @@
           <div class="cst-row" id="cstRow_oneTap" onclick="cstToggle('oneTap')">
             <div class="cst-chk"></div>
             <div class="cst-row-txt">
-              <div class="cst-row-label">One-tap trading <span class="cst-info-ic" title="Instantly place, edit, cancel orders, or close positions without confirmation">?</span></div>
+              <div class="cst-row-label">One-tap trading <span class="cst-info-ic" title="Instantly place, edit, cancel orders, or close positions without confirmation">ⓘ</span></div>
               <div class="cst-row-desc">Instantly place, edit, cancel orders, or close positions without confirmation</div>
             </div>
           </div>
@@ -3709,7 +3709,7 @@
             <div class="cst-row-txt">
               <div class="cst-row-label">Execution sound</div>
               <div class="cst-inline-ctrl" onclick="event.stopPropagation()">
-                <span>??</span>
+                <span>🔊</span>
                 <input type="range" min="0" max="100" value="70" id="cstVolumeRange">
                 <select class="cst-select" id="cstSoundSelect">
                   <option>Alarm Clock</option>
@@ -3730,7 +3730,7 @@
           <div class="cst-row checked" id="cstRow_positionsOrders" onclick="cstToggle('positionsOrders')">
             <div class="cst-chk"></div>
             <div class="cst-row-txt">
-              <div class="cst-row-label">Positions and orders <span class="cst-info-ic" title="Show open positions and orders on the chart">?</span></div>
+              <div class="cst-row-label">Positions and orders <span class="cst-info-ic" title="Show open positions and orders on the chart">ⓘ</span></div>
             </div>
           </div>
           <div class="cst-row checked cst-row-sub" id="cstRow_reversePos" onclick="cstToggle('reversePos')">
@@ -3750,7 +3750,7 @@
           <div class="cst-row checked" id="cstRow_pnlValue" onclick="cstToggle('pnlValue')">
             <div class="cst-chk"></div>
             <div class="cst-row-txt">
-              <div class="cst-row-label">Profit and loss value <span class="cst-info-ic" title="Show open P&L on positions and brackets">?</span></div>
+              <div class="cst-row-label">Profit and loss value <span class="cst-info-ic" title="Show open P&L on positions and brackets">ⓘ</span></div>
             </div>
           </div>
           <div class="cst-sub-row">
@@ -3770,17 +3770,17 @@
           <div class="cst-row checked" id="cstRow_execMarks" onclick="cstToggle('execMarks')">
             <div class="cst-chk"></div>
             <div class="cst-row-txt">
-              <div class="cst-row-label">Execution marks <span class="cst-info-ic" title="Show buy/sell execution marks on the chart">?</span></div>
+              <div class="cst-row-label">Execution marks <span class="cst-info-ic" title="Show buy/sell execution marks on the chart">ⓘ</span></div>
             </div>
           </div>
         </div>
 
-        <div class="cst-pane" data-pane="alerts"><div class="cst-empty">??? ?????? ?????? ??? ????</div></div>
-        <div class="cst-pane" data-pane="events"><div class="cst-empty">??? ?????? ?????? ??? ????</div></div>
+        <div class="cst-pane" data-pane="alerts"><div class="cst-empty">אין הגדרות זמינות כאן כרגע</div></div>
+        <div class="cst-pane" data-pane="events"><div class="cst-empty">אין הגדרות זמינות כאן כרגע</div></div>
       </div>
     </div>
     <div class="cst-footer">
-      <div class="cst-tpl">Template ?</div>
+      <div class="cst-tpl">Template ▾</div>
       <div class="cst-footer-btns">
         <button class="cst-btn cst-btn-ghost" onclick="closeChartSettings()">Cancel</button>
         <button class="cst-btn cst-btn-primary" onclick="closeChartSettings()">Ok</button>
@@ -3801,40 +3801,40 @@
       <path d="M12 7.2v4.6l3.1 1.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
       <path d="M12 4.9v1.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
     </svg>
-    <span class="ib-tip">?????? ???</span><span class="ib-badge" id="chartAlertBadge" style="display:none">0</span>
+    <span class="ib-tip">התראות גרף</span><span class="ib-badge" id="chartAlertBadge" style="display:none">0</span>
   </button>
   <button class="ib" id="ib-layers" onclick="ibToggle('layers')" title="">
-    ?<span class="ib-tip">????????? ?? ????</span>
+    ◫<span class="ib-tip">אובייקטים על הגרף</span>
   </button>
   <!-- All other tools drop to the bottom-right, leaving a gap below the hamburger -->
   <div class="ib-bottom-group">
     <button class="ib" id="ib-chat"    onclick="ibToggle('chat')"    title="">
-      ??<span class="ib-tip">?'????</span>
+      💬<span class="ib-tip">צ'אטים</span>
     </button>
     <div class="ib-sep"></div>
     <button class="ib" id="ib-insights" onclick="ibToggle('insights')" title="">
-      ??<span class="ib-tip">?????? AI</span>
+      🧠<span class="ib-tip">תובנות AI</span>
     </button>
     <button class="ib" id="ib-risk" onclick="ibToggle('risk')" title="">
-      ??<span class="ib-tip">?????? ???</span>
+      ⚖️<span class="ib-tip">סיכוני תיק</span>
     </button>
     <button class="ib" id="ib-calendar" onclick="ibToggle('calendar')" title="">
-      ??<span class="ib-tip">??? ???????</span>
+      📅<span class="ib-tip">לוח אירועים</span>
     </button>
     <button class="ib" id="ib-lab" onclick="ibToggle('lab')" title="">
-      ??<span class="ib-tip">????? / ???</span>
+      🧪<span class="ib-tip">מעבדה / דמו</span>
     </button>
     <div class="ib-sep"></div>
     <button class="ib" id="ib-news" onclick="ibToggle('news')" title="">
-      ??<span class="ib-tip">????? ???</span>
+      📰<span class="ib-tip">חדשות שוק</span>
     </button>
   </div>
 </div>
 
-<!-- TOOLBAR PANELS (hidden � content moved to sidebar) -->
+<!-- TOOLBAR PANELS (hidden — content moved to sidebar) -->
 <div style="display:none">
-<div id="ibPanel-tasks"   class="ib-panel"><div class="ib-panel-hdr"><span>??? ???? ??????</span></div><div class="ib-panel-body"><div class="ib-panel-add-row"><input id="taskInput" placeholder="????? ????..." onkeydown="if(event.key==='Enter')ibAddTask()" /><button class="btn btn-sm" onclick="ibAddTask()">????</button></div><ul id="taskList" style="list-style:none;margin-top:.5rem"></ul></div></div>
-<div id="ibPanel-clock"   class="ib-panel"><div class="ib-panel-hdr"><span>?? ???? ??????</span></div><div class="ib-panel-body" id="ibClockBody"></div></div>
+<div id="ibPanel-tasks"   class="ib-panel"><div class="ib-panel-hdr"><span>🗒️ סרגל משימות</span></div><div class="ib-panel-body"><div class="ib-panel-add-row"><input id="taskInput" placeholder="משימה חדשה..." onkeydown="if(event.key==='Enter')ibAddTask()" /><button class="btn btn-sm" onclick="ibAddTask()">הוסף</button></div><ul id="taskList" style="list-style:none;margin-top:.5rem"></ul></div></div>
+<div id="ibPanel-clock"   class="ib-panel"><div class="ib-panel-hdr"><span>🕐 שעון התראות</span></div><div class="ib-panel-body" id="ibClockBody"></div></div>
 <div id="ibPanel-chat"    class="ib-panel"></div>
 <div id="ibPanel-scanner" class="ib-panel"><div class="ib-panel-body" id="_ibScannerBody_old"></div></div>
 <div id="ibPanel-indicators" class="ib-panel"><div class="ib-panel-body"><div class="ma-list" id="_maList_old"></div></div></div>
@@ -3844,95 +3844,95 @@
 <div id="ibPanel-lab" class="ib-panel"><div class="ib-panel-body" id="_labBody_old"></div></div>
 <div id="ibPanel-alerts"  class="ib-panel"><div class="ib-panel-body">
   <div id="_scannerList_old"></div>
-  <div class="ib-panel-add-row"><input id="ibAlertSym" placeholder="???" style="width:60px" /><input id="ibAlertPrice" placeholder="????" type="number" style="width:70px" /><button class="btn btn-sm" onclick="ibAddAlert()">????</button></div><ul id="ibAlertList" style="list-style:none;margin-top:.5rem"></ul></div></div>
+  <div class="ib-panel-add-row"><input id="ibAlertSym" placeholder="סמל" style="width:60px" /><input id="ibAlertPrice" placeholder="מחיר" type="number" style="width:70px" /><button class="btn btn-sm" onclick="ibAddAlert()">הוסף</button></div><ul id="ibAlertList" style="list-style:none;margin-top:.5rem"></ul></div></div>
 </div>
 
 <!-- BELL ALERTS POPUP -->
 <div id="bellAlertsPopup">
   <div class="bell-popup-hdr">
-    <span>?? ?????? ????</span>
-    <button class="bell-popup-close" onclick="closeBellPopup()">?</button>
+    <span>🔔 איתותי מסחר</span>
+    <button class="bell-popup-close" onclick="closeBellPopup()">✕</button>
   </div>
   <div class="bell-popup-body" id="bellAlertsList"></div>
   <div class="bell-popup-ftr">
-    <button class="btn btn-sm" onclick="closeBellPopup()">???? ????</button>
+    <button class="btn btn-sm" onclick="closeBellPopup()">סגור חלון</button>
   </div>
 </div>
 
 <div id="bellAlertDetails">
   <div class="bad-hdr">
-    <span class="bad-title">???? ?????</span>
-    <button class="bad-close" onclick="closeBellAlertDetails()">?</button>
+    <span class="bad-title">פרטי איתות</span>
+    <button class="bad-close" onclick="closeBellAlertDetails()">✕</button>
   </div>
   <div class="bad-body" id="bellAlertDetailsBody"></div>
   <div class="bad-actions">
-    <button class="btn btn-sm" id="badOpenChartBtn" style="flex:1;background:var(--accent);border-color:var(--accent)">?? ??? ???</button>
-    <button class="btn btn-sm" onclick="closeBellAlertDetails()">???? ?????</button>
+    <button class="btn btn-sm" id="badOpenChartBtn" style="flex:1;background:var(--accent);border-color:var(--accent)">📈 פתח גרף</button>
+    <button class="btn btn-sm" onclick="closeBellAlertDetails()">סגור פרטים</button>
   </div>
 </div>
 
 <!-- NEWS POPUP -->
 <div id="newsPopup">
   <div class="news-popup-header">
-    <span>&#128240; ????? ??? &nbsp;<span id="newsSymbol" style="color:var(--text-muted);font-weight:400"></span></span>
+    <span>&#128240; חדשות שוק &nbsp;<span id="newsSymbol" style="color:var(--text-muted);font-weight:400"></span></span>
     <button class="news-popup-close" onclick="toggleNewsPopup()">&times;</button>
   </div>
-  <div id="newsPopupList"><div style="padding:1rem;color:var(--text-muted);font-size:.82rem">??? ???? ??????</div></div>
+  <div id="newsPopupList"><div style="padding:1rem;color:var(--text-muted);font-size:.82rem">בחר מניה לחדשות</div></div>
 </div>
 
 <!-- PORTFOLIO POPUP -->
 <div id="portfolioPopup">
   <div class="portfolio-popup-header">
-    <span>&#128188; ??? ??????</span>
+    <span>&#128188; תיק השקעות</span>
     <button class="news-popup-close" onclick="togglePortfolioPopup()">&times;</button>
   </div>
   <div class="portfolio-popup-body">
     <ul id="portfolioList" style="list-style:none;"></ul>
     <div class="port-total" id="portfolioTotal"></div>
-    <div class="form-group"><label>???</label><input id="portSymbol" placeholder="TEVA" /></div>
-    <div class="form-group"><label>???? ?????</label><input id="portShares" type="number" placeholder="100" /></div>
-    <div class="form-group"><label>???? ?????</label><input id="portPrice" type="number" placeholder="50.00" /></div>
-    <button class="btn btn-sm" style="width:100%" onclick="addToPortfolio()">???? ????</button>
+    <div class="form-group"><label>סמל</label><input id="portSymbol" placeholder="TEVA" /></div>
+    <div class="form-group"><label>כמות מניות</label><input id="portShares" type="number" placeholder="100" /></div>
+    <div class="form-group"><label>מחיר קנייה</label><input id="portPrice" type="number" placeholder="50.00" /></div>
+    <button class="btn btn-sm" style="width:100%" onclick="addToPortfolio()">הוסף לתיק</button>
   </div>
 </div>
 
 <!-- ALERTS POPUP -->
 <div id="alertPopup">
   <div class="alert-popup-header">
-    <span>&#128276; ?????? ???? ????</span>
+    <span>&#128276; התראות סורק יומי</span>
     <button class="news-popup-close" onclick="toggleAlertPopup()">&times;</button>
   </div>
   <div class="alert-popup-body">
     <ul id="alertsList" style="list-style:none;"></ul>
     <!-- EmailJS setup button -->
     <div id="alertEmailSetup" style="background:rgba(41,98,255,.08);border:1px solid rgba(41,98,255,.25);border-radius:8px;padding:.4rem .6rem;margin-bottom:.45rem;font-size:.72rem;color:#8b9ab5;">
-      <span id="ejsStatus">?? EmailJS ?? ????? � ?????? ?? ?????</span>
-      <button onclick="toggleEmailJSForm()" style="float:left;padding:.15rem .4rem;font-size:.65rem;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer">?? ????</button>
+      <span id="ejsStatus">⚠️ EmailJS לא מוגדר — מיילים לא ישלחו</span>
+      <button onclick="toggleEmailJSForm()" style="float:left;padding:.15rem .4rem;font-size:.65rem;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer">⚙️ הגדר</button>
     </div>
     <div id="alertEmailJSForm" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.55rem .65rem;margin-bottom:.5rem;">
-      <div style="font-size:.72rem;font-weight:700;margin-bottom:.35rem;color:var(--text)">?? ????? EmailJS</div>
+      <div style="font-size:.72rem;font-weight:700;margin-bottom:.35rem;color:var(--text)">✉️ הגדרת EmailJS</div>
       <div class="form-group"><label>Service ID</label><input id="ejsServiceId" placeholder="service_xxxxxxx" /></div>
       <div class="form-group"><label>Template ID</label><input id="ejsTemplateId" placeholder="template_xxxxxxx" /></div>
       <div class="form-group"><label>Public Key</label><input id="ejsPublicKey" placeholder="xxxxxxxxxxxx" /></div>
-      <button class="btn btn-sm" style="width:100%;margin-top:.15rem" onclick="saveEmailJSConfig()">????</button>
+      <button class="btn btn-sm" style="width:100%;margin-top:.15rem" onclick="saveEmailJSConfig()">שמור</button>
       <div style="font-size:.63rem;color:var(--text-muted);margin-top:.3rem;line-height:1.5">
-        ?????: <a href="https://emailjs.com" target="_blank" style="color:var(--accent)">emailjs.com</a><br>
-        Add Service ? Create Template ? Account ? Public Key
+        בחינם: <a href="https://emailjs.com" target="_blank" style="color:var(--accent)">emailjs.com</a><br>
+        Add Service → Create Template → Account → Public Key
       </div>
     </div>
-    <div class="form-group"><label>???</label><input id="alertSymbol" placeholder="TEVA.TA" /></div>
-    <div class="form-group"><label>????</label>
+    <div class="form-group"><label>סמל</label><input id="alertSymbol" placeholder="TEVA.TA" /></div>
+    <div class="form-group"><label>תנאי</label>
       <select id="alertCondition">
-        <option value="above">??? ?????</option>
-        <option value="below">???? ?????</option>
+        <option value="above">מעל המחיר</option>
+        <option value="below">מתחת למחיר</option>
       </select>
     </div>
-    <div class="form-group"><label>???? ???</label><input id="alertPrice" type="number" placeholder="100" /></div>
+    <div class="form-group"><label>מחיר יעד</label><input id="alertPrice" type="number" placeholder="100" /></div>
     <div class="form-group">
-      <label>???? ?????? <span style="font-size:.65rem;color:var(--text-muted)">(?????????)</span></label>
+      <label>מייל להתראה <span style="font-size:.65rem;color:var(--text-muted)">(אופציונלי)</span></label>
       <input id="alertEmail" type="email" placeholder="your@email.com" autocomplete="email" />
     </div>
-    <button class="btn btn-sm btn-ghost" style="width:100%" onclick="addAlert()">???? ?????</button>
+    <button class="btn btn-sm btn-ghost" style="width:100%" onclick="addAlert()">הוסף התראה</button>
   </div>
 </div>
 
@@ -3940,20 +3940,20 @@
 <div id="searchModal" onclick="if(event.target===this)closeSearchModal()">
   <div class="sm-box">
     <div class="sm-header">
-      <div class="sm-title">????? ???</div>
-      <button class="sm-close" onclick="closeSearchModal()" title="????">?</button>
+      <div class="sm-title">חיפוש סמל</div>
+      <button class="sm-close" onclick="closeSearchModal()" title="סגור">✕</button>
       <div class="sm-input-wrap">
-        <span class="sm-search-ic">??</span>
-        <input class="sm-input" id="smInput" placeholder="???? ?? ???? ?? ?????..." autocomplete="off" oninput="smOnInput()" />
-        <button class="sm-clear" id="smClearBtn" onclick="smClearInput()" title="???">?</button>
+        <span class="sm-search-ic">🔍</span>
+        <input class="sm-input" id="smInput" placeholder="הקלד שם מניה או סימול..." autocomplete="off" oninput="smOnInput()" />
+        <button class="sm-clear" id="smClearBtn" onclick="smClearInput()" title="נקה">✕</button>
       </div>
     </div>
     <div class="sm-tabs">
-      <button class="sm-tab active" data-cat="all" onclick="smSetTab('all')">???</button>
-      <button class="sm-tab" data-cat="stocks" onclick="smSetTab('stocks')">???? ????? ????????</button>
-      <button class="sm-tab" data-cat="us" onclick="smSetTab('us')">???? ????? ???"?</button>
-      <button class="sm-tab" data-cat="indices" onclick="smSetTab('indices')">?? ?????</button>
-      <button class="sm-tab" data-cat="general" onclick="smSetTab('general')">?? ????</button>
+      <button class="sm-tab active" data-cat="all" onclick="smSetTab('all')">הכל</button>
+      <button class="sm-tab" data-cat="stocks" onclick="smSetTab('stocks')">🇮🇱 מניות ישראליות</button>
+      <button class="sm-tab" data-cat="us" onclick="smSetTab('us')">🇺🇸 מניות ארה"ב</button>
+      <button class="sm-tab" data-cat="indices" onclick="smSetTab('indices')">📊 מדדים</button>
+      <button class="sm-tab" data-cat="general" onclick="smSetTab('general')">🌐 כללי</button>
     </div>
     <div class="sm-body" id="smBody"></div>
   </div>
@@ -3963,24 +3963,24 @@
 // ============================================
 //   ICON TOOLBAR JS
 // ============================================
-//   UNIFIED SIDEBAR � all icons open here
+//   UNIFIED SIDEBAR — all icons open here
 // ============================================
 var ibTasks  = JSON.parse(localStorage.getItem('ib_tasks')  || '[]');
 var ibAlerts2 = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
 
 var _sidebarViews = {
-  watchlist:   { title: '?? Watchlist' },
-  alerts:      { title: '?? ?????? ?????', render: function(){ if(typeof renderAlerts==='function') renderAlerts(); if(typeof runScanner==='function') runScanner(); clearAlertBadge(); } },
-  indicators:  { title: '?? ???????????', render: function(){ if(typeof renderMAPanel==='function') renderMAPanel(); } },
-  insights:    { title: '?? ?????? AI', render: function(){ if(window.NTFeatures) NTFeatures.renderInsights(); } },
-  risk:        { title: '?? ?????? ???', render: function(){ if(window.NTFeatures) NTFeatures.renderRisk(); } },
-  calendar:    { title: '?? ??? ???????', render: function(){ if(window.NTFeatures) NTFeatures.renderCalendar(); } },
-  lab:         { title: '?? ?????', render: function(){ if(window.NTFeatures) NTFeatures.renderLab(); } },
-  chat:        { title: '?? ?\'??' },
-  clock:       { title: '? ?????? ???', render: function(){ renderChartAlertsSidebar(); } },
-  layers:      { title: '? ????????? ?? ????', render: function(){ renderLayersSidebar(); } },
-  tasks:       { title: '??? ??????', render: function(){ ibRenderTasks2(); } },
-  news:        { title: '?? ?????', render: function(){ if(typeof loadNews==='function') loadNews(typeof currentSymbol!=='undefined'?currentSymbol:''); } }
+  watchlist:   { title: '📋 Watchlist' },
+  alerts:      { title: '🔔 התראות וסורק', render: function(){ if(typeof renderAlerts==='function') renderAlerts(); if(typeof runScanner==='function') runScanner(); clearAlertBadge(); } },
+  indicators:  { title: '📊 אינדיקטורים', render: function(){ if(typeof renderMAPanel==='function') renderMAPanel(); } },
+  insights:    { title: '🧠 תובנות AI', render: function(){ if(window.NTFeatures) NTFeatures.renderInsights(); } },
+  risk:        { title: '⚖️ סיכוני תיק', render: function(){ if(window.NTFeatures) NTFeatures.renderRisk(); } },
+  calendar:    { title: '📅 לוח אירועים', render: function(){ if(window.NTFeatures) NTFeatures.renderCalendar(); } },
+  lab:         { title: '🧪 מעבדה', render: function(){ if(window.NTFeatures) NTFeatures.renderLab(); } },
+  chat:        { title: '💬 צ\'אט' },
+  clock:       { title: '⏰ התראות גרף', render: function(){ renderChartAlertsSidebar(); } },
+  layers:      { title: '◫ אובייקטים על הגרף', render: function(){ renderLayersSidebar(); } },
+  tasks:       { title: '🗒️ משימות', render: function(){ ibRenderTasks2(); } },
+  news:        { title: '📰 חדשות', render: function(){ if(typeof loadNews==='function') loadNews(typeof currentSymbol!=='undefined'?currentSymbol:''); } }
 };
 
 // Alert badge counter
@@ -4052,7 +4052,7 @@ function ibToggle(name) {
   if (!sidebar) return;
   var isOpen = !sidebar.classList.contains('collapsed');
   if (isOpen && _currentSidebarView === name) {
-    // Same icon clicked again ? collapse sidebar
+    // Same icon clicked again → collapse sidebar
     sidebar.classList.add('collapsed');
     document.getElementById('ib-sidebar').classList.remove('active');
     ['clock','layers','chat','alerts','indicators','insights','risk','calendar','lab','news'].forEach(function(p) {
@@ -4087,12 +4087,12 @@ function sidebarAddAlert() {
 // TASKS
 function ibRenderTasks2() {
   var ul = document.getElementById('taskList2'); if (!ul) return;
-  if (!ibTasks.length) { ul.innerHTML = '<li style="color:var(--text-muted);padding:.4rem 0">??? ??????</li>'; return; }
+  if (!ibTasks.length) { ul.innerHTML = '<li style="color:var(--text-muted);padding:.4rem 0">אין משימות</li>'; return; }
   ul.innerHTML = ibTasks.map(function(t, i) {
     return '<li class="ib-task-item' + (t.done ? ' done' : '') + '">'
       + '<input type="checkbox" id="tc2_'+i+'"' + (t.done?' checked':'') + ' onchange="ibToggleTask2('+i+')" />'
       + '<label for="tc2_'+i+'">'+t.text+'</label>'
-      + '<button class="ib-task-del" onclick="ibDelTask2('+i+')">?</button>'
+      + '<button class="ib-task-del" onclick="ibDelTask2('+i+')">✕</button>'
       + '</li>';
   }).join('');
 }
@@ -4136,19 +4136,19 @@ function renderChartAlertsSidebar() {
   if (!el) return;
   syncChartAlertBadge();
   if (typeof alerts === 'undefined' || !alerts.length) {
-    el.innerHTML = '<div class="ca-empty">??? ?????? ??????? ?? ???? ?????</div>';
+    el.innerHTML = '<div class="ca-empty">אין התראות שהוגדרו על הגרף עדיין</div>';
     return;
   }
   el.innerHTML = alerts.map(function(a, i) {
-    var cond = a.condition === 'above' ? '???' : '????';
-    var kind = a.kind === 'sma' ? 'SMA' : '????';
+    var cond = a.condition === 'above' ? 'מעל' : 'מתחת';
+    var kind = a.kind === 'sma' ? 'SMA' : 'מחיר';
     return '<div class="ca-item">'
       + '<div class="ca-dot">' + chartAlertIcon(a.symbol) + '</div>'
       + '<div class="ca-main" onclick="selectSymbol(\'' + a.symbol + '\')">'
       + '<div class="ca-title">' + a.symbol.replace('.TA', '') + ' ' + cond + ' ' + formatPrice(a.price) + '</div>'
-      + '<div class="ca-sub">' + kind + (a.email ? (' � ?? ' + a.email) : '') + '</div>'
+      + '<div class="ca-sub">' + kind + (a.email ? (' · ✉️ ' + a.email) : '') + '</div>'
       + '</div>'
-      + '<button class="ca-del" onclick="removeAlert(' + i + ');renderChartAlertsSidebar();if(_currentSidebarView===\'layers\')renderLayersSidebar()" title="???">??</button>'
+      + '<button class="ca-del" onclick="removeAlert(' + i + ');renderChartAlertsSidebar();if(_currentSidebarView===\'layers\')renderLayersSidebar()" title="מחק">🗑</button>'
       + '</div>';
   }).join('');
 }
@@ -4160,12 +4160,12 @@ function layersDrawingSummary() {
 
 function layerRowHtml(item) {
   return '<div class="layer-row' + (item.muted ? ' muted' : '') + '">'
-    + '<div class="layer-dot">' + (item.dot || '?') + '</div>'
+    + '<div class="layer-dot">' + (item.dot || '◫') + '</div>'
     + '<div class="layer-main"' + (item.onclick ? ' onclick="' + item.onclick + '"' : '') + '>'
     + '<div class="layer-title">' + item.title + '</div>'
     + '<div class="layer-sub">' + item.sub + '</div>'
     + '</div>'
-    + (item.del ? '<button class="layer-del" onclick="' + item.del + '" title="???">??</button>' : '')
+    + (item.del ? '<button class="layer-del" onclick="' + item.del + '" title="הסר">🗑</button>' : '')
     + '</div>';
 }
 
@@ -4173,34 +4173,34 @@ function renderLayersSidebar() {
   var el = document.getElementById('layersBody');
   if (!el) return;
   var html = '';
-  var sym = (typeof currentSymbol !== 'undefined' && currentSymbol) ? currentSymbol.replace('.TA', '') : '�';
+  var sym = (typeof currentSymbol !== 'undefined' && currentSymbol) ? currentSymbol.replace('.TA', '') : '—';
   html += '<div class="layers-head"><span>Chart</span><span>' + sym + '</span></div>';
 
   var indicatorRows = [];
   if (typeof volumeVisible !== 'undefined' && volumeVisible) {
-    indicatorRows.push(layerRowHtml({ title: 'Vol (60)', sub: '??? ??????', dot: '?', del: 'toggleVolume();renderLayersSidebar()' }));
+    indicatorRows.push(layerRowHtml({ title: 'Vol (60)', sub: 'נפח עסקאות', dot: '∿', del: 'toggleVolume();renderLayersSidebar()' }));
   }
   if (typeof maActive !== 'undefined') {
     Object.keys(maActive).forEach(function(period) {
       if (!maActive[period]) return;
-      indicatorRows.push(layerRowHtml({ title: 'SMA (' + period + ', close)', sub: '????? ?? ?? ????', dot: '?', del: 'toggleMA(' + period + ');renderLayersSidebar()' }));
+      indicatorRows.push(layerRowHtml({ title: 'SMA (' + period + ', close)', sub: 'ממוצע נע על הגרף', dot: '∿', del: 'toggleMA(' + period + ');renderLayersSidebar()' }));
     });
   }
   if (typeof indActive !== 'undefined') {
     Object.keys(indActive).forEach(function(id) {
       if (!indActive[id]) return;
       var cfg = (typeof indCfg === 'function') ? indCfg(id) : null;
-      indicatorRows.push(layerRowHtml({ title: cfg ? cfg.label : id.toUpperCase(), sub: cfg && cfg.kind === 'osc' ? '????????? ?????????' : '????????? ?? ????', dot: '?', del: 'toggleIndicator(\'' + id + '\');renderLayersSidebar()' }));
+      indicatorRows.push(layerRowHtml({ title: cfg ? cfg.label : id.toUpperCase(), sub: cfg && cfg.kind === 'osc' ? 'אינדיקטור אוסצילטור' : 'אינדיקטור על הגרף', dot: '∿', del: 'toggleIndicator(\'' + id + '\');renderLayersSidebar()' }));
     });
   }
   html += '<div class="layers-head"><span>Indicators</span><span>' + indicatorRows.length + '</span></div>';
-  html += indicatorRows.length ? indicatorRows.join('') : '<div class="layers-empty">??? ??????????? ?????? ????</div>';
+  html += indicatorRows.length ? indicatorRows.join('') : '<div class="layers-empty">אין אינדיקטורים פעילים כרגע</div>';
 
   var drawRows = layersDrawingSummary().map(function(obj) {
-    return layerRowHtml({ title: obj.name, sub: obj.sub || '??????? ???? ?? ????', dot: obj.dot || '?', del: 'deleteLayerObject(' + obj.id + ')' });
+    return layerRowHtml({ title: obj.name, sub: obj.sub || 'אובייקט ציור על הגרף', dot: obj.dot || '✎', del: 'deleteLayerObject(' + obj.id + ')' });
   });
   html += '<div class="layers-head"><span>Drawings</span><span>' + drawRows.length + '</span></div>';
-  html += drawRows.length ? drawRows.join('') : '<div class="layers-empty">??? ???? ??????/?????? ?????? ?? ????</div>';
+  html += drawRows.length ? drawRows.join('') : '<div class="layers-empty">אין כלים טכניים/ציורים שהונחו על הגרף</div>';
   el.innerHTML = html;
 }
 
@@ -4226,14 +4226,14 @@ function ibRenderTree() {
   var el = document.getElementById('ibTreeBody'); if (!el) return;
   var wl = (typeof watchlist !== 'undefined') ? watchlist : [];
   var ph = (typeof portHoldings !== 'undefined') ? portHoldings : [];
-  var lines = ['? ????? ????'].concat(wl.map(function(s){ return '  + ' + s.replace('.TA',''); }));
+  var lines = ['⭐ רשימת מעקב'].concat(wl.map(function(s){ return '  └ ' + s.replace('.TA',''); }));
   if (ph.length) {
-    lines.push('?? ??? ??????');
-    ph.forEach(function(h){ lines.push('  + ' + h.sym.replace('.TA','')); });
+    lines.push('📁 תיק השקעות');
+    ph.forEach(function(h){ lines.push('  └ ' + h.sym.replace('.TA','')); });
   }
   el.innerHTML = lines.map(function(t) {
-    var isChild = t.indexOf('+') !== -1;
-    var sym = t.trim().replace('+ ','');
+    var isChild = t.indexOf('└') !== -1;
+    var sym = t.trim().replace('└ ','');
     return '<div class="ib-tree-node" style="' + (isChild?'padding-right:1rem':'font-weight:700') + '"'
       + (isChild ? ' onclick="ibClose(\'tree\');selectSymbol(\''+sym+(sym.indexOf('.')===-1?'.TA':'')+'\')">':'>') 
       + t + '</div>';
@@ -4243,8 +4243,8 @@ function ibRenderTree() {
 // SCANNER (standalone)
 async function ibRunScanner2() {
   var body = document.getElementById('ibScannerBody'); if (!body) return;
-  body.innerHTML = '<div style="color:var(--text-muted);font-size:.75rem;text-align:center;padding:.8rem">?? ????...</div>';
-  if (typeof SCANNER_SYMS === 'undefined') { body.innerHTML = '<div style="color:var(--text-muted);font-size:.75rem;padding:.5rem">????...</div>'; return; }
+  body.innerHTML = '<div style="color:var(--text-muted);font-size:.75rem;text-align:center;padding:.8rem">🔍 סורק...</div>';
+  if (typeof SCANNER_SYMS === 'undefined') { body.innerHTML = '<div style="color:var(--text-muted);font-size:.75rem;padding:.5rem">טוען...</div>'; return; }
   var results = [];
   var syms = Array.from(new Set(SCANNER_SYMS.concat(typeof watchlist !== 'undefined' ? watchlist : [])));
   await Promise.all(syms.map(async function(sym) {
@@ -4261,12 +4261,12 @@ async function ibRunScanner2() {
   body.innerHTML = '';
   var btn = document.createElement('button');
   btn.className = 'btn btn-sm'; btn.style.width='100%'; btn.style.marginBottom='.5rem';
-  btn.textContent = '?? ????'; btn.onclick = ibRunScanner2;
+  btn.textContent = '🔄 רענן'; btn.onclick = ibRunScanner2;
   body.appendChild(btn);
   if (!results.length) {
     var d = document.createElement('div');
     d.style.cssText = 'color:var(--text-muted);font-size:.75rem;text-align:center;padding:.5rem';
-    d.textContent = '??? ?????? ????'; body.appendChild(d); return;
+    d.textContent = 'אין התראות כרגע'; body.appendChild(d); return;
   }
   results.sort(function(a,b){return b.pct-a.pct;}).slice(0,8).forEach(function(r) {
     var el = document.createElement('div');
@@ -4304,11 +4304,11 @@ function renderBellAlerts() {
   var adminBar = '';
   try {
     if (window.NTSignals && window.NTSignals.isAdmin && window.NTSignals.isAdmin()) {
-      adminBar = '<button class="btn btn-sm" style="width:100%;margin-bottom:.5rem;background:rgba(239,83,80,.14);border-color:rgba(239,83,80,.45);color:#ff8a87" onclick="clearBellAlertsAdmin()">?? ??? ?? ?? ???????? ?????? (????)</button>';
+      adminBar = '<button class="btn btn-sm" style="width:100%;margin-bottom:.5rem;background:rgba(239,83,80,.14);border-color:rgba(239,83,80,.45);color:#ff8a87" onclick="clearBellAlertsAdmin()">🗑 מחק את כל האיתותים מהסורק (מנהל)</button>';
     }
   } catch (e) {}
   if (!alerts.length) {
-    body.innerHTML = adminBar + '<div class="bell-popup-empty">?? ??? ?????? ???? ????</div>';
+    body.innerHTML = adminBar + '<div class="bell-popup-empty">🔕 אין איתותי מסחר כרגע</div>';
     return;
   }
 
@@ -4339,31 +4339,31 @@ function renderBellAlerts() {
     if (a.condition === 'buy_signal') {
       // Always rebuild the text on the fly (ignores any stale stored msg, e.g. old entries with MA16 text)
       var symDisp = a.sym ? a.sym.replace('.TA','') : '';
-      var trendDisp = a.trendType || '?? ????';
-      text = '?? ?????: ' + symDisp + ' � ???? ' + trendDisp + ' | ???? ?????? ??????';
+      var trendDisp = a.trendType || 'לא ידוע';
+      text = '🟢 קנייה: ' + symDisp + ' — מגמה ' + trendDisp + ' | חזרה לתמיכה שבועית';
     } else if (a.condition === 'sell_signal') {
       var symDispS = a.sym ? a.sym.replace('.TA','') : '';
-      var trendDispS = a.trendType || '?? ????';
-      text = '?? ????? (????): ' + symDispS + ' � ???? ' + trendDispS + ' | ???? ???????? ??????';
+      var trendDispS = a.trendType || 'לא ידוע';
+      text = '🔴 מכירה (שורט): ' + symDispS + ' — מגמה ' + trendDispS + ' | חזרה להתנגדות שבועית';
     } else if (a.condition === 'reversal_signal') {
       var symDispR = a.sym ? a.sym.replace('.TA','') : '';
       text = a.direction === 'bearish'
-        ? ('???? ????? ????: ' + symDispR + ' � ?????? ?????? | ????? ??? ?????')
-        : ('???? ????? ????: ' + symDispR + ' � ?????? ?????? | ????? ??? ?????');
+        ? ('🔄🔴 היפוך מגמה: ' + symDispR + ' — מעלייה לירידה | שבירת שפל אחרון')
+        : ('🔄🟢 היפוך מגמה: ' + symDispR + ' — מירידה לעלייה | פריצת שיא אחרון');
     } else {
-      text = a.msg || (a.sym ? a.sym.replace('.TA','') : '?????');
+      text = a.msg || (a.sym ? a.sym.replace('.TA','') : 'איתות');
     }
     html += '<div class="bell-alert-card" onclick="openBellAlertDetails(' + i + ',event)">'
       + '<div class="bell-a-dot" style="background:' + dotColor + '"></div>'
       + '<div class="bell-a-text">' + text + '</div>'
       + '<span class="bell-a-time">' + (a.time || '') + '</span>'
-      + '<button class="bell-a-del" onclick="return deleteBellAlert(event,' + i + ')" title="???">?</button>'
+      + '<button class="bell-a-del" onclick="return deleteBellAlert(event,' + i + ')" title="מחק">✕</button>'
       + '</div>';
   });
   body.innerHTML = adminBar + html;
 }
 function clearBellAlertsAdmin() {
-  if (!confirm('????? ?? ?? ???????? ?????? (???? ???????)? ?????? ??? ?? ?? ????????.')) return;
+  if (!confirm('למחוק את כל האיתותים מהסורק (בשרת ובמכשיר)? הפעולה חלה על כל המשתמשים.')) return;
   try { localStorage.setItem('ib_alerts2', '[]'); } catch (e) {}
   try { window.NTSignals.clearAllSignals(true); } catch (e) {}
   renderBellAlerts();
@@ -4391,25 +4391,25 @@ function openBellAlertDetails(idx, ev) {
 
   if (a.condition === 'reversal_signal') {
     var isBearishRev = (a.direction === 'bearish');
-    var revLabel = isBearishRev ? '????? ???? (?????? ??????)' : '????? ???? (?????? ??????)';
+    var revLabel = isBearishRev ? 'היפוך דובי (מעלייה לירידה)' : 'היפוך שורי (מירידה לעלייה)';
     var revNote = isBearishRev
-      ? '???? ??? ????? ????? (???? ???? ?????) ???????? ????? ???? ???? ?????? � ????? ????? ?????? ????? ??????.'
-      : '???? ??? ????? ?????? (???? ???? ?????) ???????? ????? ??? ???? ?????? � ????? ????? ?????? ????? ??????.';
+      ? 'זוהו שני שיאים עולים (מבנה מגמת עלייה) ולאחריהם שבירה מתחת לשפל האחרון — איתות אפשרי להיפוך המגמה לירידה.'
+      : 'זוהו שני שפלים יורדים (מבנה מגמת ירידה) ולאחריהם פריצה מעל השיא האחרון — איתות אפשרי להיפוך המגמה לעלייה.';
     body.innerHTML = ''
-      + '<div class="bad-row"><span class="bad-k">?????</span><span class="bad-v">' + (a.sym || '') + '</span></div>'
-      + '<div class="bad-row"><span class="bad-k">??? ?????</span><span class="bad-v">????? ????</span></div>'
-      + '<div class="bad-row"><span class="bad-k">????? ??????</span><span class="bad-v">' + revLabel + '</span></div>'
-      + '<div class="bad-row"><span class="bad-k">????? ?????</span><span class="bad-v">' + (a.date || '?? ????') + '</span></div>'
-      + '<div class="bad-row"><span class="bad-k">???? ?????</span><span class="bad-v">' + ((a.curr || '') + (typeof a.price === 'number' ? a.price.toFixed(2) : a.price || '')) + '</span></div>'
-      + '<div class="bad-row"><span class="bad-k">??? ??????</span><span class="bad-v">' + ((a.curr || '') + (typeof a.breakoutLevel === 'number' ? a.breakoutLevel.toFixed(2) : a.breakoutLevel || '')) + '</span></div>'
-      + '<div class="bad-row"><span class="bad-k">??? ?????</span><span class="bad-v">' + (a.time || '') + '</span></div>'
+      + '<div class="bad-row"><span class="bad-k">סימול</span><span class="bad-v">' + (a.sym || '') + '</span></div>'
+      + '<div class="bad-row"><span class="bad-k">סוג איתות</span><span class="bad-v">היפוך מגמה</span></div>'
+      + '<div class="bad-row"><span class="bad-k">כיוון ההיפוך</span><span class="bad-v">' + revLabel + '</span></div>'
+      + '<div class="bad-row"><span class="bad-k">תאריך איתות</span><span class="bad-v">' + (a.date || 'לא זמין') + '</span></div>'
+      + '<div class="bad-row"><span class="bad-k">מחיר נוכחי</span><span class="bad-v">' + ((a.curr || '') + (typeof a.price === 'number' ? a.price.toFixed(2) : a.price || '')) + '</span></div>'
+      + '<div class="bad-row"><span class="bad-k">רמת הפריצה</span><span class="bad-v">' + ((a.curr || '') + (typeof a.breakoutLevel === 'number' ? a.breakoutLevel.toFixed(2) : a.breakoutLevel || '')) + '</span></div>'
+      + '<div class="bad-row"><span class="bad-k">שעת איתות</span><span class="bad-v">' + (a.time || '') + '</span></div>'
       + '<div class="bad-note">' + revNote + '</div>';
 
     var openBtnR = document.getElementById('badOpenChartBtn');
     if (openBtnR) {
       if (a.sym) {
         openBtnR.style.display = '';
-        openBtnR.textContent = '?? ??? ??? ?? ' + a.sym.replace('.TA','');
+        openBtnR.textContent = '📈 פתח גרף של ' + a.sym.replace('.TA','');
         openBtnR.onclick = function() { openChartFromAlert(a.sym); };
       } else {
         openBtnR.style.display = 'none';
@@ -4419,42 +4419,42 @@ function openBellAlertDetails(idx, ev) {
     return;
   }
 
-  var trend = a.trendType || (parseFloat(a.maGain || '0') > 0.5 ? '?????' : (parseFloat(a.maGain || '0') < -0.5 ? '?????' : '??????'));
+  var trend = a.trendType || (parseFloat(a.maGain || '0') > 0.5 ? 'עלייה' : (parseFloat(a.maGain || '0') < -0.5 ? 'ירידה' : 'דישדוש'));
   var isShortAlert = (a.direction === 'short');
-  var levelLabel = isShortAlert ? '??????? ??????' : '????? ??????';
-  var levelDistLabel = isShortAlert ? '???? ?????????' : '???? ???????';
-  var pullbackLabel = isShortAlert ? '???? ???????? ??????' : '???? ?????? ??????';
+  var levelLabel = isShortAlert ? 'התנגדות שבועית' : 'תמיכה שבועית';
+  var levelDistLabel = isShortAlert ? 'מרחק מההתנגדות' : 'מרחק מהתמיכה';
+  var pullbackLabel = isShortAlert ? 'חזרה להתנגדות שבועית' : 'חזרה לתמיכה שבועית';
   var levelNote = isShortAlert
-    ? '????? ???????? ??????? ?????? ??? ???? ????? ???? 5 ??????? ????????.'
-    : '????? ?????? ??????? ?????? ??? ???? ????? ???? 5 ??????? ????????.';
+    ? 'הגדרת ההתנגדות השבועית מחושבת לפי השיא הגבוה מתוך 5 השבועות האחרונים.'
+    : 'הגדרת התמיכה השבועית מחושבת לפי השפל הנמוך מתוך 5 השבועות האחרונים.';
   var supportText = (typeof a.support5 === 'number')
     ? (a.curr || '') + a.support5.toFixed(2)
-    : '?? ????';
+    : 'לא זמין';
   var supportDistText = (a.supportDistPct != null)
     ? ((parseFloat(a.supportDistPct) >= 0 ? '+' : '') + parseFloat(a.supportDistPct).toFixed(2) + '%')
-    : '?? ????';
+    : 'לא זמין';
   var pullbackStatus = (a.supportDistPct != null && parseFloat(a.supportDistPct) <= 3.0 && parseFloat(a.supportDistPct) >= -1.0)
-    ? '?? (?????)'
-    : (isShortAlert ? '?? (???? ?????????)' : '?? (???? ???????)');
-  var dateText = a.date || '?? ????';
+    ? 'כן (בטווח)'
+    : (isShortAlert ? 'לא (רחוק מההתנגדות)' : 'לא (רחוק מהתמיכה)');
+  var dateText = a.date || 'לא זמין';
 
   body.innerHTML = ''
-    + '<div class="bad-row"><span class="bad-k">?????</span><span class="bad-v">' + (a.sym || '') + '</span></div>'
-    + '<div class="bad-row"><span class="bad-k">??? ?????</span><span class="bad-v">' + (isShortAlert ? '????' : '????') + '</span></div>'
-    + '<div class="bad-row"><span class="bad-k">????? ?????</span><span class="bad-v">' + dateText + '</span></div>'
-    + '<div class="bad-row"><span class="bad-k">??? ????</span><span class="bad-v">' + trend + '</span></div>'
-    + '<div class="bad-row"><span class="bad-k">???? ?????</span><span class="bad-v">' + ((a.curr || '') + (typeof a.price === 'number' ? a.price.toFixed(2) : a.price || '')) + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">סימול</span><span class="bad-v">' + (a.sym || '') + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">סוג איתות</span><span class="bad-v">' + (isShortAlert ? 'שורט' : 'לונג') + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">תאריך איתות</span><span class="bad-v">' + dateText + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">סוג מגמה</span><span class="bad-v">' + trend + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">מחיר נוכחי</span><span class="bad-v">' + ((a.curr || '') + (typeof a.price === 'number' ? a.price.toFixed(2) : a.price || '')) + '</span></div>'
     + '<div class="bad-row"><span class="bad-k">' + levelLabel + '</span><span class="bad-v">' + supportText + '</span></div>'
     + '<div class="bad-row"><span class="bad-k">' + levelDistLabel + '</span><span class="bad-v">' + supportDistText + '</span></div>'
     + '<div class="bad-row"><span class="bad-k">' + pullbackLabel + '</span><span class="bad-v">' + pullbackStatus + '</span></div>'
-    + '<div class="bad-row"><span class="bad-k">??? ?????</span><span class="bad-v">' + (a.time || '') + '</span></div>'
+    + '<div class="bad-row"><span class="bad-k">שעת איתות</span><span class="bad-v">' + (a.time || '') + '</span></div>'
     + '<div class="bad-note">' + levelNote + '</div>';
 
   var openBtn = document.getElementById('badOpenChartBtn');
   if (openBtn) {
     if (a.sym) {
       openBtn.style.display = '';
-      openBtn.textContent = '?? ??? ??? ?? ' + a.sym.replace('.TA','');
+      openBtn.textContent = '📈 פתח גרף של ' + a.sym.replace('.TA','');
       openBtn.onclick = function() { openChartFromAlert(a.sym); };
     } else {
       openBtn.style.display = 'none';
@@ -4498,17 +4498,17 @@ document.addEventListener('click', function(e) {
 function ibRenderAlerts2() {
   var ul = document.getElementById('ibAlertList'); if (!ul) return;
   var ibAlerts2 = JSON.parse(localStorage.getItem('ib_alerts2') || '[]');
-  if (!ibAlerts2.length) { ul.innerHTML = '<li style="color:var(--text-muted);padding:.4rem 0;font-size:.78rem">??? ??????</li>'; return; }
+  if (!ibAlerts2.length) { ul.innerHTML = '<li style="color:var(--text-muted);padding:.4rem 0;font-size:.78rem">אין התראות</li>'; return; }
   ul.innerHTML = ibAlerts2.map(function(a, i) {
     var isScanner = a.condition === 'scanner';
     var sevColor  = a.severity === 'green' ? 'var(--green)' : a.severity === 'red' ? '#ef5350' : '#f5a623';
     var mainText  = isScanner
       ? (a.msg || a.sym)
-      : (a.sym ? a.sym.replace('.TA','') + ' ' + (a.condition === 'above' ? '? ???' : '? ????') + ' ' + (typeof formatPrice==='function'? formatPrice(a.price):a.price) : '');
+      : (a.sym ? a.sym.replace('.TA','') + ' ' + (a.condition === 'above' ? '▲ מעל' : '▼ מתחת') + ' ' + (typeof formatPrice==='function'? formatPrice(a.price):a.price) : '');
     return '<li class="ib-alert-item triggered" style="border-right:3px solid ' + sevColor + ';padding-right:.4rem">'
       + '<span style="flex:1;font-size:.78rem">' + mainText + '</span>'
       + '<span style="font-size:.65rem;color:var(--text-muted);white-space:nowrap;margin-right:.3rem">' + (a.time || '') + '</span>'
-      + '<button class="ib-task-del" onclick="ibDelAlert2('+i+')">?</button>'
+      + '<button class="ib-task-del" onclick="ibDelAlert2('+i+')">✕</button>'
       + '</li>';
   }).join('');
 }
@@ -4531,23 +4531,23 @@ function ibDelAlert2(i) {
 }
 </script>
 
-<button id="pwaInstallBtn" onclick="pwaInstall()" title="???? ?? NexTrade ?????????">?? ???? ????????</button>
-<button id="pwaInstallClose" onclick="pwaDismiss(event)" title="?? ?????">?</button>
+<button id="pwaInstallBtn" onclick="pwaInstall()" title="התקן את NexTrade כאפליקציה">📲 התקן אפליקציה</button>
+<button id="pwaInstallClose" onclick="pwaDismiss(event)" title="לא עכשיו">✕</button>
 
 <!-- PWA install instructions modal -->
 <div id="pwaHelp" onclick="pwaHelpBackdrop(event)">
   <div class="pwa-help-card">
-    <button class="pwa-help-x" onclick="pwaHelpClose()" aria-label="????">?</button>
+    <button class="pwa-help-x" onclick="pwaHelpClose()" aria-label="סגור">✕</button>
     <div class="pwa-help-logo"><span class="lg-nex">Nex</span><span class="lg-trade">Trade</span></div>
-    <h3>????? ????????? ??????</h3>
+    <h3>התקנת האפליקציה במכשיר</h3>
     <div class="pwa-help-tabs">
-      <div class="pwa-help-tab" id="pwaTabIos"     onclick="pwaHelpShow('ios')">??????</div>
-      <div class="pwa-help-tab" id="pwaTabAndroid" onclick="pwaHelpShow('android')">????????</div>
-      <div class="pwa-help-tab" id="pwaTabDesktop" onclick="pwaHelpShow('desktop')">????</div>
+      <div class="pwa-help-tab" id="pwaTabIos"     onclick="pwaHelpShow('ios')">אייפון</div>
+      <div class="pwa-help-tab" id="pwaTabAndroid" onclick="pwaHelpShow('android')">אנדרואיד</div>
+      <div class="pwa-help-tab" id="pwaTabDesktop" onclick="pwaHelpShow('desktop')">מחשב</div>
     </div>
     <div class="pwa-help-steps" id="pwaHelpSteps"></div>
-    <button class="pwa-help-primary" id="pwaHelpInstallBtn" style="display:none" onclick="pwaInstall()">???? ?????</button>
-    <div class="pwa-help-note">???? ?????? ????????? ????? ???? ???, ?? ?????? ????, ?????? ?? ??? ???????.</div>
+    <button class="pwa-help-primary" id="pwaHelpInstallBtn" style="display:none" onclick="pwaInstall()">התקן עכשיו</button>
+    <div class="pwa-help-note">לאחר ההתקנה האפליקציה תיפתח במסך מלא, עם אייקון משלה, ותעבוד גם ללא אינטרנט.</div>
   </div>
 </div>
 <script>
@@ -4585,7 +4585,7 @@ function pwaDefaultPlatform() {
 }
 // Show the floating "Install app" button (unless already installed or dismissed)
 function pwaMaybeShowButton() {
-  if (pwaIsStandalone()) return;            // already installed ? nothing to do
+  if (pwaIsStandalone()) return;            // already installed → nothing to do
   if (pwaWasDismissedRecently()) return;    // user asked to hide it
   var btn = document.getElementById('pwaInstallBtn');
   var close = document.getElementById('pwaInstallClose');
@@ -4632,31 +4632,31 @@ function pwaInstall() {
     });
     return;
   }
-  // No native prompt (iOS Safari, or not yet eligible) ? show manual instructions
+  // No native prompt (iOS Safari, or not yet eligible) → show manual instructions
   pwaHelpOpen();
 }
 // --- instructions modal ---
 var PWA_STEPS = {
   ios:
     '<ol>' +
-    '<li>??? ????? ???? ?????? <b>Safari</b> (?? ????).</li>' +
-    '<li>??? ?? ????? <b>??????</b> <span class="pk">??</span> ?????? ????.</li>' +
-    '<li>???? ???? <b>"???? ???? ????"</b> <span class="pk">?</span>.</li>' +
-    '<li>??? <b>"????"</b> ????? ???????.</li>' +
+    '<li>ודא שהאתר פתוח בדפדפן <b>Safari</b> (לא כרום).</li>' +
+    '<li>הקש על כפתור <b>השיתוף</b> <span class="pk">⬆︎</span> בתחתית המסך.</li>' +
+    '<li>גלול ובחר <b>"הוסף למסך הבית"</b> <span class="pk">➕</span>.</li>' +
+    '<li>הקש <b>"הוסף"</b> בפינה העליונה.</li>' +
     '</ol>',
   android:
     '<ol>' +
-    '<li>??? ?? ???? ?????? <b>Chrome</b>.</li>' +
-    '<li>??? ?? <b>???? ???????</b> <span class="pk">?</span> ????? ?????? ?????.</li>' +
-    '<li>??? <b>"???? ????????"</b> ?? <b>"???? ???? ????"</b>.</li>' +
-    '<li>??? ?? ??????.</li>' +
+    '<li>פתח את האתר בדפדפן <b>Chrome</b>.</li>' +
+    '<li>הקש על <b>שלוש הנקודות</b> <span class="pk">⋮</span> בפינה הימנית למעלה.</li>' +
+    '<li>בחר <b>"התקן אפליקציה"</b> או <b>"הוסף למסך הבית"</b>.</li>' +
+    '<li>אשר את ההתקנה.</li>' +
     '</ol>',
   desktop:
     '<ol>' +
-    '<li>??? ?? ???? ?-<b>Chrome</b> ?? <b>Edge</b>.</li>' +
-    '<li>????? ??????, ???, ??? ?? ?????? <b>??????</b> <span class="pk">?</span>.</li>' +
-    '<li>??? <b>"????"</b>.</li>' +
-    '<li>?? ??? ?????? � ??? ?? ????? ?????? ???? "???? ?? NexTrade".</li>' +
+    '<li>פתח את האתר ב‑<b>Chrome</b> או <b>Edge</b>.</li>' +
+    '<li>בשורת הכתובת, בצד, לחץ על אייקון <b>ההתקנה</b> <span class="pk">⊕</span>.</li>' +
+    '<li>לחץ <b>"התקן"</b>.</li>' +
+    '<li>אם אין אייקון — פתח את תפריט הדפדפן ובחר "התקן את NexTrade".</li>' +
     '</ol>'
 };
 function pwaHelpShow(platform) {
