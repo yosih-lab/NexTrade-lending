@@ -4690,7 +4690,12 @@ function smRender(q) {
     var inWL = wl.indexOf(it.sym) !== -1;
     var typeLabel = it.typeLabel || 'מניה';
     var exchLabel = it.exch || '';
+    var flagHex = inWL ? wlColorHex(wlColorMap[it.sym]) : '';
+    var flagHtml = flagHex
+      ? '<svg class="sm-flag" viewBox="0 0 20 20" width="16" height="16"><title>' + wlColorLabel(wlColorMap[it.sym]) + '</title><path d="M4.5 3.5 H15.5 L12 8.5 L15.5 13.5 H4.5 Z" fill="' + flagHex + '" stroke="' + flagHex + '" stroke-width="2" stroke-linejoin="round"/></svg>'
+      : '';
     return '<div class="sm-item">'
+      + flagHtml
       + '<div class="sm-icon" style="background:' + bgCol + '" onclick="smPick(\'' + it.sym + '\')">' + initials + '</div>'
       + '<div class="sm-item-main" onclick="smPick(\'' + it.sym + '\')">'
       + '<div class="sm-sym-row"><span class="sm-sym">' + it.short + '</span></div>'
@@ -4787,6 +4792,8 @@ function smToggleWL(btn, sym) {
   }
   saveWatchlist();
   renderWatchlist();
+  var smB = document.getElementById('smBody'), smI = document.getElementById('smInput');
+  if (smB) { var st = smB.scrollTop; smRender(smI ? smI.value.trim() : ''); smB.scrollTop = st; }
 }
 
 // Bind modal input + escape
