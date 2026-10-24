@@ -991,7 +991,7 @@ function rebuildUniverse() {
   if (!SYMS) { _universeCache = []; return; }
   const base = SYMS.TASE_SYMBOLS.concat(SYMS.COMMODITIES_SYMBOLS || []);
   if ((process.env.SCAN_UNIVERSE || 'all') === 'tase') { _universeCache = base; return; }
-  const us = (_usLive && _usLive.list.length > 3000) ? _usLive.list : SYMS.US_SYMBOLS;
+  const us = ((_usLive && _usLive.list.length > 3000) ? _usLive.list : SYMS.US_SYMBOLS).concat(SYMS.US_DUAL_LISTED || []);
   _universeCache = Array.from(new Set(base.concat(us)));
 }
 function scanUniverse() {
@@ -1144,7 +1144,9 @@ function buildSignalObject(sym, a, liq) {
 
 function pruneSignals() {
   const cutoff = Date.now() - SIG_MAX_AGE_MS;
+  const dualUS = (SYMS && SYMS.US_DUAL_LISTED) || [];
   _sigStore = _sigStore.filter(s => s.ts >= cutoff && !_sigDismissed.has(s.key) && !/=[FX]$|-USD$/i.test(s.sym || '') &&
+    !(/\.TA$/i.test(s.sym || '') && dualUS.indexOf((s.sym || '').replace(/\.TA$/i, '')) !== -1) &&
     !(s.direction === 'short' && isTaseStock(s.sym || '')) && !inEarnBlackout(s.earnDate) &&
     !(s.sma30 != null && s.price != null && ((s.direction === 'short' && s.price >= s.sma30) || (s.direction === 'long' && s.price < s.sma30))) &&
     (isIndexSym(s.sym || '') || (s.avgTurnover != null && s.avgTurnover >= minTurnoverFor(s.sym || ''))));

@@ -254,6 +254,18 @@ var US_SYMBOLS = [
 ];
 
 // Combined scanner list
+// Israeli companies listed BOTH in the US and on TASE: the US listing (Nasdaq/NYSE) is the
+// reference market, so they are scanned only as the US ticker and dropped from the TASE list.
+var US_DUAL_LISTED = [
+  'TEVA','NICE','ICL','ESLT','CYBR','NVMI','INMD','OPK','KMDA','PERI','SPNS','RDWR',
+  'TSEM','CAMT','NNDM','CGEN','EVGN','MGIC','ORMP','PTNR','TATT','GILT','RDHL','BWAY',
+  'MDGS','ICCM','PRGO'
+];
+TASE_SYMBOLS = TASE_SYMBOLS.filter(function (s) {
+  return US_DUAL_LISTED.indexOf(s.replace(/\.TA$/i, '')) === -1;
+});
+US_DUAL_LISTED.forEach(function (s) { if (US_SYMBOLS.indexOf(s) === -1) US_SYMBOLS.push(s); });
+
 var ALL_SCANNER_SYMBOLS = TASE_SYMBOLS.concat(COMMODITIES_SYMBOLS).concat(US_SYMBOLS);
 
 // Node export (server-side scanner) — harmless in the browser.
@@ -261,6 +273,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     TASE_SYMBOLS: TASE_SYMBOLS,
     US_SYMBOLS: US_SYMBOLS,
+    US_DUAL_LISTED: US_DUAL_LISTED,
     COMMODITIES_SYMBOLS: COMMODITIES_SYMBOLS,
     ALL_SCANNER_SYMBOLS: ALL_SCANNER_SYMBOLS
   };
