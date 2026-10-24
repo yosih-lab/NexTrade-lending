@@ -2207,6 +2207,12 @@
         display:flex;
         position:absolute; right:8px; top:50%; transform:translateY(-50%);
       }
+      /* Admin on the app home: signals bell button on the LEFT beside search (not over hamburger) */
+      body.mode-admin:not(.m-chart) #toSignalsBtn {
+        display:flex !important; align-items:center; justify-content:center;
+        position:absolute; left:56px; right:auto; top:50%; transform:translateY(-50%);
+        margin:0; padding:.28rem .6rem; font-size:.8rem; border-radius:999px; z-index:5;
+      }
       /* Floating user avatar (bottom-right) — replaced by the persistent bottom bar */
       body:not(.m-chart) #mHomeAvatar { display:none; }
       /* Persistent bottom bar — shown on BOTH home and chart screens */
