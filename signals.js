@@ -399,9 +399,9 @@
     chips += '<span class="sig-setup">' + (MARKET_TXT[marketOf(s.sym)] || '') + '</span>';
     if (s.avgTurnover != null) {
       var tc = s.sym.slice(-3) === '.TA' ? '₪' : '$';
-      chips += ' <span class="sig-setup vol">מחזור יומי ממוצע (3 חודשים): ' + fmtBig(s.avgTurnover, tc) + '</span>';
-      if (s.lastWeekTurnover != null) chips += ' <span class="sig-setup vol">שבוע אחרון (ממוצע יומי): ' + fmtBig(s.lastWeekTurnover, tc) + '</span>';
-      if (s.avgVolume != null) chips += ' <span class="sig-setup vol">נפח ממוצע: ' + fmtBig(s.avgVolume, '') + ' מניות</span>';
+      chips += ' <span class="sig-setup vol" title="סך המסחר בדולרים/שקלים בשבוע, ממוצע 3 חודשים (מחזור = כמות מניות × מחיר)">מחזור שבועי ממוצע (3 חודשים): ' + fmtBig(s.avgTurnover * 5, tc) + '</span>';
+      if (s.lastWeekTurnover != null) chips += ' <span class="sig-setup vol">שבוע אחרון: ' + fmtBig(s.lastWeekTurnover * 5, tc) + '</span>';
+      if (s.avgVolume != null) chips += ' <span class="sig-setup vol" title="כמות מניות שנסחרו בשבוע, ממוצע 3 חודשים">נפח שבועי ממוצע: ' + fmtBig(s.avgVolume * 5, '') + ' מניות</span>';
     }
     if (stt.dist != null) chips += ' <span class="sig-dist ' + (Math.abs(stt.dist) <= 1.5 ? 'near' : '') + '">' + (stt.dist >= 0 ? '+' : '') + stt.dist.toFixed(1) + '% מהכניסה</span>';
     if (earn && earn.days >= 0 && canUse('earnings')) chips += ' <span class="sig-setup earn' + (earn.days <= 14 ? ' soon' : '') + '">📅 דוחות בעוד ' + earn.days + ' ימים (' + esc(earn.date) + ')</span>';
@@ -438,7 +438,7 @@
         '<div class="sr-lv tp"><small>יעד</small>' + fmt(s.tp, s.curr) + '</div>' +
         '<div class="sr-bar">' + rangeBar(s) + '</div>' +
         '<div class="sr-rr"><small>R:R</small>' + esc(String(s.rr)) + '</div>' +
-        '<div class="sr-vol" title="מחזור מסחר יומי ממוצע ל-3 חודשים"><small>מחזור יומי ממוצע</small>' + (s.avgTurnover != null ? fmtBig(s.avgTurnover, s.sym.slice(-3) === '.TA' ? '₪' : '$') : '—') + '</div>' +
+        '<div class="sr-vol" title="מחזור מסחר שבועי ממוצע ל-3 חודשים"><small>מחזור שבועי ממוצע</small>' + (s.avgTurnover != null ? fmtBig(s.avgTurnover * 5, s.sym.slice(-3) === '.TA' ? '₪' : '$') : '—') + '</div>' +
         '<span class="sig-status ' + st + '" title="' + STATUS_HINT[st] + '">' + STATUS_TXT[st] + '</span>' +
         '<div class="sr-age">' + ageTxt(s.ts) + '</div>' +
         '<div class="sr-act">' + adminDelBtn(s) + '<span class="sr-chev">' + (open ? '▴' : '▾') + '</span></div>' +
@@ -497,7 +497,7 @@
       earnTxt +
       '<div class="sig-meta">' +
         '<span class="sig-rr">יחס סיכוי/סיכון ' + s.rr + '</span>' +
-        (s.avgTurnover != null ? '<span class="sig-dist" title="מחזור מסחר יומי ממוצע ל-3 חודשים">💵 מחזור ממוצע: ' + fmtBig(s.avgTurnover, s.sym.slice(-3) === '.TA' ? '₪' : '$') + '</span>' : '') +
+        (s.avgTurnover != null ? '<span class="sig-dist" title="מחזור מסחר שבועי ממוצע ל-3 חודשים">💵 מחזור שבועי: ' + fmtBig(s.avgTurnover * 5, s.sym.slice(-3) === '.TA' ? '₪' : '$') + '</span>' : '') +
         distTxt +
         '<span class="sig-status ' + st + '">' + STATUS_TXT[st] + '</span>' +
       '</div>' +

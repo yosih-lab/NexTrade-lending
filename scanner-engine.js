@@ -46,6 +46,7 @@
     volEntryRatio: 1.0,     // pullback entry candle needs volume >= Vol MA (aggressive entry)
     slopeLookback: 4,       // weeks back to measure SMA30 slope
     trendTol: 0.015,        // swings within 1.5% count as the SAME level (a re-test of support doesn't cancel a trend)
+    minDownDays: 120,       // a DOWNtrend needs >=120 days (4 months) of decline from the 52-week peak; shorter = range
     alertBuffer: 0.01,      // fire alert ~1% before the entry level
     rrTarget: 2             // minimum 1:2 risk:reward
   };
@@ -155,6 +156,13 @@
       }
     }
     return t;
+  }
+
+  // Days since the 52-week peak (weekly bars, 7 days each): how long the decline has lasted.
+  function declineDays(bars) {
+    var n = bars.length, from = Math.max(0, n - 52), pk = from;
+    for (var i = from; i < n; i++) { if (bars[i].high >= bars[pk].high) pk = i; }
+    return (n - 1 - pk) * 7;
   }
 
   // Fresh micro-structure after a deep pullback: >=2 higher highs AND 2 higher lows.
@@ -381,6 +389,16 @@
     var swingBars = bars.slice(0, n - 1);
     var swings = findSwings(swingBars);
     var trend = trendOf(bars);
+    if (trend === 'down') {
+      var dDays = declineDays(bars);
+      res.declineDays = dDays;
+      if (dDays < CFG.minDownDays) {
+        // Too young to be a real downtrend: treated as a range (no short).
+        trend = 'range';
+        res.disq.push('decline_too_short');
+        res.reasons.push('ירידה של ' + dDays + ' ימים בלבד מהשיא — מגמת ירידה דורשת לפחות ' + CFG.minDownDays + ' ימים');
+      }
+    }
     res.trend = trend;
     var levels = buildLevels(swingBars, swings);
     var vol = volumeTrend(bars);
@@ -559,7 +577,7 @@
         return finalizeEntry(res, 'long', upper.price, upper.price, atrVal * CFG.retestStopAtr, price);
       }
     }
-    if (lower) {
+    if (lower && res.disq.indexOf('decline_too_short') === -1) {
       var boL = breakoutRetest(bars, lower.price, 'below');
       if (boL.held && boL.retesting && (boL.qualityBreakout || strongRange)) {
         res.direction = 'short'; res.setup = 'range_breakout';
