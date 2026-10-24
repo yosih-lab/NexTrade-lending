@@ -759,19 +759,10 @@
     var perf = perfSummary();
     var hero = (filterKey === 'all' && !textFilter && marketFilter === 'all') ? heroCard(uniq) : '';
 
-    // live status strip
-    var lastScan = _serverInfo && _serverInfo.lastScan;
-    var resting = false;
-    try {
-      var wd = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Jerusalem', weekday: 'short' });
-      resting = (wd === 'Sat' || wd === 'Sun');
-    } catch (e) {}
-    var live = '<div class="sf-live-bar">' +
-      (resting
-        ? '<span class="sf-live rest"><i></i>סוף שבוע</span><span class="sf-live-txt">הסורק עוצר בשבת ובראשון (אין מסחר) · חוזר ביום שני' + (lastScan ? ' · סריקה אחרונה ' + ageTxt(lastScan) : '') + '</span>'
-        : '<span class="sf-live"><i></i>LIVE</span><span class="sf-live-txt">הסורק פעיל' + (lastScan ? ' · עודכן ' + ageTxt(lastScan) : '') + '</span>') +
-      (isAdmin() && uniq.length ? '<button class="sf-clearall" onclick="NTSignals.clearAllSignals()">🗑 מחק הכל (מנהל)</button>' : '') +
-    '</div>';
+    // (status strip removed; keep only the admin clear-all button)
+    var live = (isAdmin() && uniq.length)
+      ? '<div class="sf-live-bar"><button class="sf-clearall" onclick="NTSignals.clearAllSignals()">🗑 מחק הכל (מנהל)</button></div>'
+      : '';
 
     // toolbar: search, sort, market, view toggle
     var mk = {}, mkN = 0;
