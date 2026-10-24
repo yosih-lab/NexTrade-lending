@@ -131,6 +131,20 @@
   }
   function saveTrades(t) { localStorage.setItem(TRADES_KEY, JSON.stringify(t)); }
 
+  // Symbols that already have an OPEN trade in the user's portfolio.
+  function portfolioSet() {
+    var m = {};
+    loadTrades().forEach(function (t) { if (t.status === 'open') m[t.sym] = true; });
+    return m;
+  }
+  var _portSet = {};
+  function inPort(sym) { return !!_portSet[sym]; }
+  function addBtn(sym, extraEvt) {
+    if (inPort(sym)) return '<button class="sig-btn in-port" disabled title="המניה כבר בתיק שלך">✔ כבר בתיק</button>';
+    return '<button class="sig-btn" onclick="' + (extraEvt ? 'event.stopPropagation();' : '') + 'NTSignals.addTrade(\'' + sym + '\')">הוסף לתיק</button>';
+  }
+  function portTag(sym) { return inPort(sym) ? ' <span class="sr-inport">✔ בתיק</span>' : ''; }
+
   // Live quotes for open trades: the watchlist price cache only holds watchlist symbols, so
   // every open trade symbol is fetched explicitly and pushed into the shared price cache.
   var _tradePxTs = 0, _tradePxBusy = false;
@@ -412,7 +426,7 @@
         (earn.exitToday ? ' — מומלץ לצאת יום לפני!' : '') + '</div>';
     }
     out += '<div class="sig-card-foot">' +
-      '<button class="sig-btn" onclick="event.stopPropagation();NTSignals.addTrade(\'' + s.sym + '\')">הוסף לתיק</button>' +
+      addBtn(s.sym, true) +
       '<button class="sig-btn ghost" onclick="event.stopPropagation();NTSignals.setAlert(\'' + s.sym + '\')">🔔 קבע התראה</button>' +
     '</div>';
     return out;
@@ -426,10 +440,10 @@
     var open = !!_expanded[s.key];
     var ready = (st === 'armed' || st === 'active');
     var isLong = s.dir === 'long';
-    return '<div class="sig-row ' + s.dir + (ready ? ' ready' : '') + (st === 'hit' || st === 'stopped' ? ' done' : '') + (open ? ' open' : '') + '">' +
+    return '<div class="sig-row ' + s.dir + (ready ? ' ready' : '') + (st === 'hit' || st === 'stopped' ? ' done' : '') + (open ? ' open' : '') + (inPort(s.sym) ? ' in-port' : '') + '">' +
       '<div class="sr-main" data-k="' + esc(s.key) + '" onclick="NTSignals.toggleRow(this.getAttribute(\'data-k\'))">' +
         '<button class="sig-fav sr-fav ' + (fav ? 'on' : '') + '" title="מעקב" onclick="event.stopPropagation();NTSignals.toggleFav(\'' + s.sym + '\')">' + (fav ? '★' : '☆') + '</button>' +
-        '<div class="sr-sym" dir="auto"><b>' + esc(dispSym(s.sym)) + '</b>' + mktTag(s.sym) +
+        '<div class="sr-sym" dir="auto"><b>' + esc(dispSym(s.sym)) + '</b>' + mktTag(s.sym) + portTag(s.sym) +
           (isNewSig(s) ? '<span class="sr-new">חדש</span>' : '') +
           '<small>' + esc(s.name) + '</small></div>' +
         '<span class="sr-dir ' + s.dir + '">' + (isLong ? '▲ לונג' : '▼ שורט') + '</span>' +
@@ -474,9 +488,9 @@
       whyTxt = '<div class="sig-why">💡 ' + s.reasons.slice(0, 2).join(' · ') + '</div>';
     }
 
-    return '<div class="sig-card ' + s.dir + ((st === 'armed' || st === 'active') ? ' ready' : '') + '">' +
+    return '<div class="sig-card ' + s.dir + ((st === 'armed' || st === 'active') ? ' ready' : '') + (inPort(s.sym) ? ' in-port' : '') + '">' +
       '<div class="sig-head">' +
-        '<div><div class="sig-sym">' + esc(dispSym(s.sym)) + mktTag(s.sym) +
+        '<div><div class="sig-sym">' + esc(dispSym(s.sym)) + mktTag(s.sym) + portTag(s.sym) +
           (isNewSig(s) ? ' <span class="sr-new">חדש</span>' : '') +
           (setupTxt ? ' <span class="sig-setup">' + setupTxt + '</span>' : '') +
           (earn && earn.days >= 0 && canUse('earnings') ? ' <span class="sig-setup earn' + (earn.days <= 14 ? ' soon' : '') + '">📅 דוחות בעוד ' + earn.days + ' ימים</span>' : '') + '</div>' +
@@ -502,7 +516,7 @@
         '<span class="sig-status ' + st + '">' + STATUS_TXT[st] + '</span>' +
       '</div>' +
       '<div class="sig-card-foot">' +
-        '<button class="sig-btn" onclick="NTSignals.addTrade(\'' + s.sym + '\')">הוסף לתיק</button>' +
+        addBtn(s.sym, false) +
         '<button class="sig-btn ghost" onclick="NTSignals.setAlert(\'' + s.sym + '\')">🔔 קבע התראה</button>' +
       '</div>' +
     '</div>';
@@ -528,7 +542,7 @@
       '<div class="sf-hero-action">' + action + '</div>' +
       '<div class="sf-hero-levels">כניסה ' + fmt(s.entry, s.curr) + ' · סטופ ' + fmt(s.stop, s.curr) + ' · יעד ' + fmt(s.tp, s.curr) + '</div>' +
       '<div class="sf-hero-foot">' +
-        '<button class="sig-btn" onclick="NTSignals.addTrade(\'' + s.sym + '\')">הוסף לתיק</button>' +
+        addBtn(s.sym, false) +
         '<button class="sig-btn ghost" onclick="NTSignals.setAlert(\'' + s.sym + '\')">🔔 קבע התראה</button>' +
       '</div>' +
     '</div>';
@@ -587,6 +601,7 @@
 
   // Chips + (grouped) list + upsell. Re-rendered on its own when filtering/typing.
   function renderSigDyn() {
+    _portSet = portfolioSet();
     var uniq = dedupedSignals();
     var tf = (textFilter || '').trim().toLowerCase();
     var base = uniq.filter(function (s) {
@@ -673,30 +688,46 @@
     }
 
     // Group: ready to enter → waiting → finished (hit / stopped)
-    var gReady = [], gWait = [], gDone = [];
-    list.forEach(function (s) {
-      var k = signalStatus(s).key;
-      if (k === 'armed' || k === 'active') gReady.push(s);
-      else if (k === 'hit' || k === 'stopped') gDone.push(s);
-      else gWait.push(s);
-    });
-    var groups = [
-      { t: '⚡ קרובות לכניסה', cls: 'ready', items: gReady },
-      { t: '👀 ממתינות לכניסה', cls: 'wait', items: gWait },
-      { t: '✓ הושלמו / נפגעו', cls: 'done', items: gDone }
-    ].filter(function (g) { return g.items.length; });
-    var showHeads = groups.length > 1;
-    var body = groups.map(function (g) {
-      var inner = viewMode === 'cards'
-        ? '<div class="sf-grid">' + g.items.map(signalCard).join('') + '</div>'
-        : '<div class="sig-rows">' + g.items.map(signalRow).join('') + '</div>';
-      return (showHeads ? '<div class="sig-group ' + g.cls + '"><span>' + g.t + '</span><b>' + g.items.length + '</b></div>' : '') + inner;
+    function renderGroups(items) {
+      var gReady = [], gWait = [], gDone = [];
+      items.forEach(function (s) {
+        var k = signalStatus(s).key;
+        if (k === 'armed' || k === 'active') gReady.push(s);
+        else if (k === 'hit' || k === 'stopped') gDone.push(s);
+        else gWait.push(s);
+      });
+      var groups = [
+        { t: '⚡ קרובות לכניסה', cls: 'ready', items: gReady },
+        { t: '👀 ממתינות לכניסה', cls: 'wait', items: gWait },
+        { t: '✓ הושלמו / נפגעו', cls: 'done', items: gDone }
+      ].filter(function (g) { return g.items.length; });
+      var showHeads = groups.length > 1;
+      return groups.map(function (g) {
+        var inner = viewMode === 'cards'
+          ? '<div class="sf-grid">' + g.items.map(signalCard).join('') + '</div>'
+          : '<div class="sig-rows">' + g.items.map(signalRow).join('') + '</div>';
+        return (showHeads ? '<div class="sig-group ' + g.cls + '"><span>' + g.t + '</span><b>' + g.items.length + '</b></div>' : '') + inner;
+      }).join('');
+    }
+
+    // Split by market: Tel Aviv first, then US (everything else goes with US)
+    var mTase = [], mUs = [];
+    list.forEach(function (s) { (marketOf(s.sym) === 'tase' ? mTase : mUs).push(s); });
+    var sections = [
+      { t: '🇮🇱 מניות תל אביב', cls: 'tase', items: mTase },
+      { t: '🇺🇸 מניות ארה״ב', cls: 'us', items: mUs }
+    ].filter(function (m) { return m.items.length; });
+    var body = sections.map(function (m) {
+      var nPort = m.items.filter(function (s) { return inPort(s.sym); }).length;
+      return '<div class="sig-market ' + m.cls + '"><span>' + m.t + '</span><b>' + m.items.length + '</b>' +
+        (nPort ? '<em>' + nPort + ' כבר בתיק</em>' : '') + '</div>' + renderGroups(m.items);
     }).join('');
 
     return filterBar + body + upsell;
   }
 
   function renderSignals() {
+    _portSet = portfolioSet();
     var uniq = dedupedSignals();   // also refreshes _serverInfo
     var perf = perfSummary();
     var hero = (filterKey === 'all' && !textFilter && marketFilter === 'all') ? heroCard(uniq) : '';
