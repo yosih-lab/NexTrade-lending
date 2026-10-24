@@ -2001,8 +2001,8 @@ function initPriceAxisScroll() {
         var range2 = ts2.getVisibleLogicalRange();
         if (!range2) return;
         var spacing = (ts2.options && ts2.options().barSpacing) || 0;
-        var shift = spacing > 0 ? (acc * 0.038) / spacing
-          : (acc * 0.038) / Math.max(1, rect.width) * (range2.to - range2.from);
+        var shift = spacing > 0 ? (acc * 0.0266) / spacing
+          : (acc * 0.0266) / Math.max(1, rect.width) * (range2.to - range2.from);
         ts2.setVisibleLogicalRange({ from: range2.from + shift, to: range2.to + shift });
       });
     }
