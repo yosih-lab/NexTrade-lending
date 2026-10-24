@@ -719,11 +719,15 @@
     ].filter(function (m) { return m.items.length; });
     var body = sections.map(function (m) {
       var nPort = m.items.filter(function (s) { return inPort(s.sym); }).length;
-      return '<div class="sig-market ' + m.cls + '"><span>' + m.t + '</span><b>' + m.items.length + '</b>' +
+      return '<div class="sig-market ' + m.cls + '" id="sigm-' + m.cls + '"><span>' + m.t + '</span><b>' + m.items.length + '</b>' +
         (nPort ? '<em>' + nPort + ' כבר בתיק</em>' : '') + '</div>' + renderGroups(m.items);
     }).join('');
+    var marketNav = sections.length ? '<div class="sig-market-nav">' + sections.map(function (m) {
+      return '<button class="sig-market-btn ' + m.cls + '" onclick="var e=document.getElementById(\'sigm-' + m.cls + '\');if(e)e.scrollIntoView({behavior:\'smooth\',block:\'start\'})">' +
+        '<span>' + m.t + '</span><b>' + m.items.length + '</b></button>';
+    }).join('') + '</div>' : '';
 
-    return filterBar + body + upsell;
+    return filterBar + marketNav + body + upsell;
   }
 
   function renderSignals() {
