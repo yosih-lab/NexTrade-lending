@@ -22,7 +22,7 @@
         'color:#fff;background:linear-gradient(135deg,#2962ff,#5b8bff);border:2px solid #fff;border-radius:12px;box-shadow:0 2px 12px rgba(41,98,255,.45);}' +
       '.sig-market-btn{min-width:220px;padding:.75rem 1.4rem;cursor:pointer;}' +
       '.sig-market-btn:hover{filter:brightness(1.1);}' +
-      '.sig-market{max-width:1100px;margin:1.8rem auto .8rem;padding:.7rem 1.2rem;}' +
+      '.sig-market{width:fit-content;min-width:220px;max-width:100%;margin:1.8rem auto .8rem;padding:.75rem 1.4rem;}' +
       '.sig-market b,.sig-market-btn b{background:rgba(255,255,255,.22);color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:999px;padding:0 .7rem;font-size:.9rem;}' +
       '.sig-market em{font-style:normal;font-size:.8rem;font-weight:800;color:#fff;background:rgba(255,255,255,.22);border-radius:999px;padding:.05rem .6rem;}' +
       '.sr-inport{display:inline-block;margin-inline-start:.4rem;padding:.05rem .5rem;border-radius:999px;font-size:.68rem;font-weight:900;color:#06240f;background:#22c55e;vertical-align:middle;white-space:nowrap;}' +

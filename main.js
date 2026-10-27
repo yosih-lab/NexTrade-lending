@@ -1177,7 +1177,10 @@ function pushWatchlistToServer() {
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({ symbols: snapshot, colors: colorsSnap, names: namesSnap })
     }).then(function (r) {
-      if (r.ok) { try { localStorage.removeItem('nt_wl_dirty::' + scope); } catch (e) {} }
+      // The service worker answers failed requests with a fake 200 "{}", so require the server's {ok:true}.
+      return r.ok ? r.json() : null;
+    }).then(function (d) {
+      if (d && d.ok) { try { localStorage.removeItem('nt_wl_dirty::' + scope); } catch (e) {} }
     }).catch(function () {}); // stays dirty -> retried by the next sync tick
   }, 500);
 }
