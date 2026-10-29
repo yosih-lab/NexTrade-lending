@@ -2771,6 +2771,23 @@
     .sig-status.active  { background:rgba(41,98,255,.16); color:var(--accent); }
     .sig-status.hit     { background:rgba(38,166,154,.16); color:var(--green); }
     .sig-status.stopped { background:rgba(239,83,80,.16); color:var(--red); }
+    .sig-status.plan    { background:rgba(139,154,181,.16); color:#b8c4dc; }
+    /* "plan" (setup still forming): banner + 4-step progress (break → 5 candles → retest → entry) */
+    .plan-banner { margin:.55rem 0 .4rem; padding:.55rem .75rem; border-radius:10px; font-size:.9rem; font-weight:800; line-height:1.5;
+      background:rgba(245,166,35,.12); border:1px solid rgba(245,166,35,.4); color:#ffd27a; }
+    .plan-banner.go { background:rgba(38,166,154,.16); border-color:rgba(38,166,154,.6); color:#6fe0d2; }
+    .plan-banner.near { background:rgba(41,98,255,.14); border-color:rgba(41,98,255,.5); color:#9db8ff; }
+    .plan-steps { display:flex; gap:.35rem; margin:.2rem 0 .6rem; flex-wrap:wrap; }
+    .plan-step { flex:1 1 120px; display:flex; align-items:center; gap:.4rem; padding:.4rem .5rem; border-radius:9px;
+      background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); font-size:.78rem; font-weight:700; }
+    .plan-dot { flex:0 0 auto; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+      background:#2a3348; color:#8b9ab5; font-size:.72rem; font-weight:900; }
+    .plan-step.done { color:var(--green); border-color:rgba(38,166,154,.45); }
+    .plan-step.done .plan-dot { background:var(--green); color:#04201c; }
+    .plan-step.cur { color:#fff; border-color:var(--gold); box-shadow:0 0 0 1px rgba(245,166,35,.35) inset; }
+    .plan-step.cur .plan-dot { background:var(--gold); color:#2a1c00; }
+    .plan-dim .sig-lvl-val, .plan-dim .sig-lvl-label { opacity:.55; }
+    .sig-group.plan { color:#b8c4dc; }
     /* distance-to-entry chip */
     .sig-dist { font-size:calc(.72rem + 2px); font-weight:700; color:var(--text-muted); }
     .sig-dist.near { color:#ffd27a; }
@@ -3633,11 +3650,12 @@
 <script src="scanner-symbols.js?v=20261024a"></script>
 <script src="scanner-engine.js?v=20261030a"></script>
 <script src="plan.js?v=20261019g"></script>
-<script src="main.js?v=20261030a"></script>
+<script src="main.js?v=20261030b"></script>
 <script src="stockpanel.js?v=20261030a"></script>
 <script src="drawing.js?v=20261019b"></script>
 <script src="features.js?v=20261018j"></script>
-<script src="signals.js?v=20261025f"></script>
+<script src="signals.js?v=20261030a"></script>
+<script src="plan-overlay.js?v=20261030a"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
 <div id="chartSettingsOverlay" onclick="if(event.target===this) closeChartSettings()">

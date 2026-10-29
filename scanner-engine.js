@@ -40,6 +40,7 @@
     holdCandles: 5,         // 5 weekly candles must hold past a broken level
     retestStopAtr: 0.75,    // retest setups: the flipped level is strong, so the stop sits only 0.75 ATR beyond it
     retestStopPct: 0.05,    // ...but never closer than 5% of the level for SHORT retests (room for a weekly wick)
+    planZoneAtr: 1.5,       // a not-yet-broken level within 1.5 ATR of price is shown to the user as a "plan" (do NOT enter yet)
     pullbackLookback: 8,    // weeks to inspect a pullback leg
     volContractRatio: 0.9,  // recent vol <= 0.9x of pullback-start vol = contracting
     volExpandRatio: 1.15,   // recent vol >= 1.15x = expanding
@@ -435,12 +436,14 @@
           res.direction = 'long'; res.setup = 'breakout_retest';
           res.level = resLvl.price; res.levelTouches = resLvl.touches;
           res.reasons.push('פריצה' + (bo.qualityBreakout ? ' איכותית' : '') + ' מעל ' + fmt(resLvl.price) + ' + ' + bo.heldCount + ' נרות מעל + ריטסט');
+          res.plan = makePlan('breakout', 'long', resLvl.price, resLvl.touches, bo.heldCount, 'entry');
           return finalizeEntry(res, 'long', resLvl.price, resLvl.price, atrVal * CFG.retestStopAtr, price);
         }
         if (bo.held && !bo.retesting) {
           res.direction = 'long'; res.setup = 'breakout_retest'; res.status = 'watch';
           res.level = resLvl.price; res.levelTouches = resLvl.touches;
           res.reasons.push('פריצה אושרה (' + bo.heldCount + ' נרות) — להמתין לריטסט של ' + fmt(resLvl.price));
+          res.plan = makePlan('breakout', 'long', resLvl.price, resLvl.touches, bo.heldCount, 'await_retest');
           return finalizeWatch(res, resLvl.price, price);
         }
       }
@@ -529,12 +532,7 @@
         res.disq.push('support_not_broken');
         var closesBelow = 0;
         for (var cb = n - 2; cb >= 0 && bars[cb].close < unb.price; cb--) closesBelow++;
-        var planTrade = buildTrade('short', unb.price, unb.price, Math.max(atrVal * CFG.retestStopAtr, unb.price * CFG.retestStopPct));
-        res.plan = {
-          kind: 'breakdown', level: unb.price, touches: unb.touches,
-          closesBelow: closesBelow, needed: CFG.holdCandles,
-          entry: planTrade.entry, stop: planTrade.stop, target: planTrade.target
-        };
+        res.plan = makePlan('breakdown', 'short', unb.price, unb.touches, closesBelow, closesBelow > 0 ? 'holding' : 'approach');
         res.reasons.push('התמיכה ' + fmt(unb.price) + ' (' + unb.touches + ' נגיעות) עדיין לא נשברה — אין שורט עד שבירה + ' + CFG.holdCandles + ' נרות מתחתיה + ריטסט מלמטה');
         return finalizeWatch(res, unb.price, price);
       }
@@ -547,12 +545,14 @@
           res.direction = 'short'; res.setup = 'breakdown_retest';
           res.level = supLvl.price; res.levelTouches = supLvl.touches;
           res.reasons.push('שבירה מתחת ' + fmt(supLvl.price) + ' + ' + bd.heldCount + ' נרות מתחת + ריטסט מלמטה' + (vol.expanding ? ' | נפח מתרחב מחזק שורט' : ''));
+          res.plan = makePlan('breakdown', 'short', supLvl.price, supLvl.touches, bd.heldCount, 'entry');
           return finalizeEntry(res, 'short', supLvl.price, supLvl.price, Math.max(atrVal * CFG.retestStopAtr, supLvl.price * CFG.retestStopPct), price);
         }
         if (bd.held && !bd.retesting) {
           res.direction = 'short'; res.setup = 'breakdown_retest'; res.status = 'watch';
           res.level = supLvl.price; res.levelTouches = supLvl.touches;
           res.reasons.push('שבירה אושרה (' + bd.heldCount + ' נרות) — להמתין לריטסט מלמטה של ' + fmt(supLvl.price));
+          res.plan = makePlan('breakdown', 'short', supLvl.price, supLvl.touches, bd.heldCount, 'await_retest');
           return finalizeWatch(res, supLvl.price, price);
         }
       }
@@ -606,6 +606,18 @@
     return res;
 
     // ---- inner helpers (hoisted) --------------------------------------------
+    // "Plan" = the level-based trade the user must WAIT for: break -> 5 closes beyond -> retest -> entry.
+    // Carries the progress so the app can show a stepper, chart overlay and stage alerts.
+    function makePlan(kind, dir, level, touches, closes, stage) {
+      var stopDist = Math.max(atrVal * CFG.retestStopAtr, dir === 'short' ? level * CFG.retestStopPct : 0);
+      var t = buildTrade(dir, level, level, stopDist);
+      return {
+        kind: kind, dir: dir, level: level, touches: touches,
+        closes: closes, needed: CFG.holdCandles, stage: stage,
+        zone: stage !== 'approach' || Math.abs(price - level) <= CFG.planZoneAtr * atrVal,
+        entry: t.entry, stop: t.stop, target: t.target, rr: t.rr
+      };
+    }
     function finalizeEntry(r, dir, entry, stopRef, a, px) {
       // Hard rule: never a SHORT entry while price is at/above SMA30.
       if (dir === 'short' && px >= sma30) {

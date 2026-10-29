@@ -1118,19 +1118,25 @@ function buildSignalObject(sym, a, liq) {
   const trendType = a.trend === 'up' ? 'עלייה' : (a.trend === 'down' ? 'ירידה' : 'דישדוש');
   const now = new Date();
   const key = (isShort ? 'sell_' : 'buy_') + sym + '_' + now.toDateString();
-  const statusWord = a.status === 'entry' ? 'כניסה' : 'מתקרב';
+  const planOnly = a.entry == null && !!a.plan;
+  const pe = planOnly ? a.plan.entry : a.entry;
+  const ps = planOnly ? a.plan.stop : a.stop;
+  const pt = planOnly ? a.plan.target : a.target;
+  const prr = planOnly ? a.plan.rr : a.rr;
+  const statusWord = planOnly ? 'תכנית — לא להיכנס עדיין' : (a.status === 'entry' ? 'כניסה' : 'מתקרב');
   const setupTxt = SETUP_HE[a.setup] || a.setup || '';
   const fmtN = (x) => (x == null ? '' : (Math.round(x * 100) / 100));
   let lvls = '';
-  if (a.entry != null) lvls = ' | כניסה ' + curr + fmtN(a.entry) + ' · סטופ ' + curr + fmtN(a.stop) + ' · יעד ' + curr + fmtN(a.target) + ' (1:' + a.rr + ')';
-  const msg = (isShort ? '🔴' : '🟢') + ' ' + (isShort ? 'שורט' : 'לונג') + ' (' + statusWord + '): ' +
+  if (pe != null) lvls = ' | כניסה ' + curr + fmtN(pe) + ' · סטופ ' + curr + fmtN(ps) + ' · יעד ' + curr + fmtN(pt) + ' (1:' + prr + ')';
+  const msg = (planOnly ? '⏳' : (isShort ? '🔴' : '🟢')) + ' ' + (isShort ? 'שורט' : 'לונג') + ' (' + statusWord + '): ' +
               sym.replace('.TA', '') + ' — ' + setupTxt + ' | מגמה ' + trendType + lvls;
   return {
     sym: sym, name: a.name || sym.replace('.TA', ''), price: a.price, curr: curr,
     condition: isShort ? 'sell_signal' : 'buy_signal', direction: a.direction,
     setup: a.setup, status: a.status, trendType: trendType,
     sma30: a.sma30, atr: a.atr, level: a.level, levelTouches: a.levelTouches,
-    entry: a.entry, stop: a.stop, target: a.target, rr: a.rr,
+    entry: pe, stop: ps, target: pt, rr: prr,
+    plan: a.plan || null, planOnly: planOnly,
     alertLevel: a.alertLevel, alertSide: a.alertSide, reasons: a.reasons,
     avgTurnover: liq ? liq.avgTurnover : null, avgVolume: liq ? liq.avgVolume : null,
     lastWeekTurnover: liq ? (liq.lastWeekTurnover == null ? null : liq.lastWeekTurnover) : null,
@@ -1220,6 +1226,28 @@ async function scanSignalsChunk() {
               if (o && o.sym === sym && o.direction !== keepDir) delete _sigByKey[k];
             });
           };
+          const dropPlan = () => {
+            ['long', 'short'].forEach(d => { delete _sigByKey['plan_' + sym + '_' + d]; });
+          };
+          // "Plan" signal: a strong level not yet broken / still inside the 5-candle + retest wait.
+          // Shown so the user SEES the setup forming, clearly marked "do not enter yet".
+          if (a && a.direction && a.entry == null && a.plan && a.plan.zone &&
+              !(a.direction === 'short' && isTaseStock(sym))) {
+            let pEarn = null;
+            try { pEarn = await fetchEarningsDate(sym); } catch (e) { pEarn = null; }
+            if (inEarnBlackout(pEarn)) { dropStale(null); return; }
+            const pkey = 'plan_' + sym + '_' + a.direction;
+            const prev = _sigByKey[pkey];
+            dropStale(null);
+            const psig = buildSignalObject(sym, a, liq);
+            psig.earnDate = pEarn || null;
+            psig.key = pkey;
+            if (prev && prev.plan && prev.plan.level != null && Math.abs(prev.plan.level - a.plan.level) / a.plan.level < 0.03) psig.ts = prev.ts;
+            if (_sigDismissed.has(psig.key)) return;
+            if (!prev) added++;
+            _sigByKey[pkey] = psig;
+            return;
+          }
           if (!a || !a.direction || a.entry == null) { dropStale(null); return; }
           if (a.direction === 'short' && isTaseStock(sym)) { dropStale(null); return; }   // no TASE stock shorts
           const armed = a.alertLevel != null && Math.abs(a.price - a.alertLevel) / a.alertLevel <= 0.015;
@@ -1228,6 +1256,7 @@ async function scanSignalsChunk() {
           try { earnDate = await fetchEarningsDate(sym); } catch (e) { earnDate = null; }
           if (inEarnBlackout(earnDate)) { dropStale(null); return; }
           dropStale(a.direction);
+          dropPlan();
           const sig = buildSignalObject(sym, a, liq);
           sig.earnDate = earnDate || null;
           if (_sigDismissed.has(sig.key)) return;
@@ -1312,16 +1341,19 @@ app.post('/api/admin/signals/delete', requireAdmin, async (req, res) => {
 const FREE_DELAY_MS = parseInt(process.env.FREE_SIGNAL_DELAY_MS || String(24 * 3600 * 1000), 10);
 function signalsForPlan(tier) {
   pruneSignals();
-  const total = _sigStore.length;
-  if (tier === 'premium') return { signals: _sigStore, total: total, delayedMs: 0, capped: false };
+  // "Plan" signals (setup still forming, do NOT enter yet) never use up the actionable-signal quota.
+  const actionable = _sigStore.filter(s => !s.planOnly);
+  const plans = _sigStore.filter(s => s.planOnly);
+  const total = actionable.length;
+  if (tier === 'premium') return { signals: actionable.concat(plans), total: total, delayedMs: 0, capped: false };
   if (tier === 'gold') {
     const max = TIERS.gold.signalMax;
-    return { signals: _sigStore.slice(0, max), total: total, delayedMs: 0, capped: total > max };
+    return { signals: actionable.slice(0, max).concat(plans.slice(0, 10)), total: total, delayedMs: 0, capped: total > max };
   }
   const cutoff = Date.now() - FREE_DELAY_MS;
-  const eligible = _sigStore.filter(s => s.ts <= cutoff);
+  const eligible = actionable.filter(s => s.ts <= cutoff);
   const max = TIERS.free.signalMax;
-  return { signals: eligible.slice(0, max), total: total, delayedMs: FREE_DELAY_MS, capped: eligible.length > max || total > eligible.length };
+  return { signals: eligible.slice(0, max).concat(plans.filter(s => s.ts <= cutoff).slice(0, 3)), total: total, delayedMs: FREE_DELAY_MS, capped: eligible.length > max || total > eligible.length };
 }
 
 // ── ROUTES ────────────────────────────────────────────────────────

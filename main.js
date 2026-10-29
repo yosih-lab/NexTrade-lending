@@ -2946,6 +2946,7 @@ async function loadChart(symbol, tf, preserveZoom) {
   // Refresh drawing-tools overlay + advanced feature panels for this symbol
   try { if (window.NTDraw)     window.NTDraw.onSymbolChanged(); }     catch (e) {}
   try { if (window.NTFeatures) window.NTFeatures.onSymbolChanged(); } catch (e) {}
+  try { if (window.NTPlanOverlay) window.NTPlanOverlay.onSymbolChanged(); } catch (e) {}
 }
 
 // ============================================

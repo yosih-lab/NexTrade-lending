@@ -204,6 +204,46 @@
     try { return JSON.parse(localStorage.getItem(SERVER_KEY) || 'null'); } catch (e) { return null; }
   }
 
+  // ---- stage alerts: tell the user when a forming setup moves to its next step ----
+  var STAGE_KEY = 'nt_plan_stage';
+  function stageCode(a) {
+    if (!a) return null;
+    var p = a.plan;
+    if (p && a.planOnly) return p.stage === 'holding' ? 'holding:' + p.closes : p.stage;
+    if (p && p.stage === 'entry' && a.status === 'entry') return 'entry';
+    return null;
+  }
+  function stageAlerts(newSigs) {
+    var prev = null;
+    try { prev = JSON.parse(localStorage.getItem(STAGE_KEY) || 'null'); } catch (e) { prev = null; }
+    var cur = {}, msgs = [];
+    (newSigs || []).forEach(function (a) {
+      var code = stageCode(a);
+      if (!code) return;
+      var k = a.sym + '_' + a.direction;
+      cur[k] = code;
+      if (!prev) return;                       // first run on this device: just record
+      var was = prev[k];
+      if (was === code) return;
+      var p = a.plan || {};
+      var sym = dispSym(a.sym), lvl = fmt(p.level, a.curr), bd = p.kind === 'breakdown';
+      if (code === 'entry') {
+        if (was) msgs.push('✅ ' + sym + ': עכשיו אפשר להיכנס ' + (a.direction === 'short' ? 'שורט' : 'לונג') + ' — כניסה ' + fmt(a.entry, a.curr));
+      } else if (isFav(a.sym) || was) {
+        if (code === 'approach') msgs.push('⏳ ' + sym + ' מתקרבת ל' + (bd ? 'תמיכה ' : 'התנגדות ') + lvl + ' — אל תיכנס עדיין');
+        else if (code.indexOf('holding:') === 0) msgs.push('⏳ ' + sym + ': נר ' + code.split(':')[1] + ' מתוך ' + p.needed + (bd ? ' מתחת ל-' : ' מעל ') + lvl);
+        else if (code === 'await_retest') msgs.push('⏳ ' + sym + ': 5 הנרות הושלמו — ממתינים לריטסט ל-' + lvl);
+      }
+    });
+    try { localStorage.setItem(STAGE_KEY, JSON.stringify(cur)); } catch (e) {}
+    msgs.slice(0, 4).forEach(function (m, i) {
+      setTimeout(function () {
+        try { if (typeof window.ntToast === 'function') window.ntToast(m); } catch (e) {}
+        try { if (window.Notification && Notification.permission === 'granted') new Notification('NexTrade', { body: m }); } catch (e) {}
+      }, i * 1500);
+    });
+  }
+
   // Pull the plan-gated signal feed from the server and cache it. The server
   // decides WHICH signals this user is entitled to — the client cannot unlock more.
   function syncServerSignals(force) {
@@ -217,6 +257,8 @@
     }).then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (!d || !Array.isArray(d.signals)) return;
+        try { stageAlerts(d.signals); } catch (e) {}
+        setTimeout(function () { try { if (window.NTPlanOverlay) window.NTPlanOverlay.refresh(); } catch (e) {} }, 50);
         try {
           localStorage.setItem(SERVER_KEY, JSON.stringify({
             ts: Date.now(), data: d.signals, total: d.total,
@@ -297,7 +339,9 @@
         earnDate: a.earnDate || '',
         avgVolume: (a.avgVolume != null ? a.avgVolume : null),
         lastWeekTurnover: (a.lastWeekTurnover != null ? a.lastWeekTurnover : null),
-        scanStatus: a.status || ''
+        scanStatus: a.status || '',
+        plan: a.plan || null,
+        planOnly: !!a.planOnly
       });
     });
     return out;
@@ -338,6 +382,10 @@
   // waiting → armed (within ~1.5% of entry) → active (past entry) → hit / stopped.
   function signalStatus(s) {
     var live = livePrice(s.sym);
+    if (s.planOnly) {
+      // Setup still forming — never "armed/active", whatever the live price does.
+      return { key: 'plan', dist: (live != null && s.entry) ? ((live - s.entry) / s.entry) * 100 : null };
+    }
     if (live == null) {
       // No live price: lean on the scanner's own armed/entry status if present.
       if (s.scanStatus === 'entry') return { key: 'armed', dist: null };
@@ -363,8 +411,64 @@
     armed: '⚡ קרוב לכניסה',
     active: 'בכניסה (פעיל)',
     hit: 'הגיע ליעד ✓',
-    stopped: 'נפגע סטופ ✕'
+    stopped: 'נפגע סטופ ✕',
+    plan: '⏳ לא להיכנס עדיין'
   };
+
+  // ---------- "plan" stepper: break → 5 candles → retest → entry ----------
+  function planStageText(p) {
+    if (!p) return '';
+    var bd = p.kind === 'breakdown';
+    if (p.stage === 'approach') return bd ? 'מתקרב לתמיכה — טרם נשברה' : 'מתקרב להתנגדות — טרם נפרצה';
+    if (p.stage === 'holding') return 'נר ' + Math.min(p.closes, p.needed) + ' מתוך ' + p.needed;
+    if (p.stage === 'await_retest') return 'ממתין לריטסט';
+    if (p.stage === 'entry') return 'אפשר להיכנס';
+    return '';
+  }
+  function planSteps(s) {
+    var p = s.plan;
+    if (!p) return '';
+    var bd = p.kind === 'breakdown';
+    var idx = { approach: 0, holding: 1, await_retest: 2, entry: 3 }[p.stage];
+    if (idx == null) return '';
+    var steps = [
+      (bd ? 'שבירת התמיכה ' : 'פריצת ההתנגדות ') + fmt(p.level, s.curr),
+      p.needed + (bd ? ' נרות שבועיים מתחתיה' : ' נרות שבועיים מעליה') + (p.stage === 'holding' ? ' (' + Math.min(p.closes, p.needed) + '/' + p.needed + ')' : ''),
+      bd ? 'ריטסט מלמטה' : 'ריטסט מלמעלה',
+      'כניסה ' + fmt(p.entry, s.curr)
+    ];
+    var html = '<div class="plan-steps">';
+    steps.forEach(function (t, i) {
+      var cls = i < idx ? 'done' : (i === idx ? 'cur' : '');
+      var mark = i < idx ? '✓' : (i === 3 && idx === 3 ? '✅' : (i + 1));
+      html += '<div class="plan-step ' + cls + '"><span class="plan-dot">' + mark + '</span><span class="plan-txt">' + esc(t) + '</span></div>';
+    });
+    return html + '</div>';
+  }
+  function planBanner(s) {
+    var p = s.plan;
+    if (!p) return '';
+    var bd = p.kind === 'breakdown';
+    var lvl = fmt(p.level, s.curr);
+    var word = bd ? 'התמיכה' : 'ההתנגדות';
+    var msg, cls = 'wait';
+    if (p.stage === 'approach') {
+      msg = '⏳ אל תיכנס עדיין — ' + word + ' ' + lvl + ' (' + p.touches + ' נגיעות) עוד לא ' + (bd ? 'נשברה' : 'נפרצה') +
+        '. כניסה רק אחרי ' + (bd ? 'שבירה + 5 נרות שבועיים מתחתיה + ריטסט מלמטה' : 'פריצה + 5 נרות שבועיים מעליה + ריטסט מלמעלה') + '.';
+    } else if (p.stage === 'holding') {
+      msg = '⏳ אל תיכנס עדיין — נר ' + Math.min(p.closes, p.needed) + ' מתוך ' + p.needed + ' ' + (bd ? 'מתחת ל-' : 'מעל ') + lvl + '. ממתינים להשלמת 5 הנרות ולריטסט.';
+    } else if (p.stage === 'await_retest') {
+      msg = '⏳ 5 הנרות הושלמו — ממתינים לריטסט ' + (bd ? 'מלמטה' : 'מלמעלה') + ' ל-' + lvl + '. אל תיכנס לפני הריטסט.';
+    } else if (s.scanStatus !== 'entry') {
+      cls = 'near';
+      msg = '⚡ השבירה ו-5 הנרות הושלמו — המחיר מתקרב לרמת הכניסה ' + fmt(p.entry, s.curr) + '. היכון לריטסט.';
+    } else {
+      cls = 'go';
+      msg = '✅ אפשר להיכנס עכשיו — ' + (bd ? 'שבירה + ' : 'פריצה + ') + Math.max(p.closes, p.needed) + ' נרות + ריטסט הושלמו. כניסה ' + fmt(p.entry, s.curr) + '.';
+    }
+    return '<div class="plan-banner ' + cls + '">' + msg + '</div>';
+  }
+  function planBlock(s) { return s.plan ? planBanner(s) + planSteps(s) : ''; }
 
   // ---------- rendering ----------
   var STATUS_HINT = {
@@ -372,7 +476,8 @@
     armed: 'המחיר במרחק של עד 1.5% מרמת הכניסה — הכין התראה',
     active: 'המחיר עבר את רמת הכניסה',
     hit: 'המחיר הגיע ליעד',
-    stopped: 'המחיר פגע בסטופ'
+    stopped: 'המחיר פגע בסטופ',
+    plan: 'הסטאפ עוד בהתהוות — המתן לשבירה, 5 נרות וריטסט לפני כניסה'
   };
   function marketOf(sym) {
     sym = sym || '';
@@ -425,11 +530,11 @@
     var earn = earningsInfo(s.sym, s.earnDate);
     var setupTxt = SETUP_TXT[s.setup] || s.setup || '';
     var stt = signalStatus(s);
-    var out = '<div class="sr-detail-grid">' +
-      '<div class="sig-lvl entry"><div class="sig-lvl-label">כניסה</div><div class="sig-lvl-val">' + fmt(s.entry, s.curr) + '</div></div>' +
+    var out = '<div class="sr-detail-grid' + (s.planOnly ? ' plan-dim' : '') + '">' +
+      '<div class="sig-lvl entry"><div class="sig-lvl-label">' + (s.planOnly ? 'כניסה מתוכננת' : 'כניסה') + '</div><div class="sig-lvl-val">' + fmt(s.entry, s.curr) + '</div></div>' +
       '<div class="sig-lvl stop"><div class="sig-lvl-label">סטופ</div><div class="sig-lvl-val">' + fmt(s.stop, s.curr) + '</div></div>' +
       '<div class="sig-lvl tp"><div class="sig-lvl-label">יעד</div><div class="sig-lvl-val">' + fmt(s.tp, s.curr) + '</div></div>' +
-    '</div>';
+    '</div>' + planBlock(s);
     var chips = '';
     if (setupTxt) chips += '<span class="sig-setup">' + esc(setupTxt) + '</span> ';
     if (s.trendType) chips += '<span class="sig-setup">מגמה ' + esc(s.trendType) + '</span> ';
@@ -449,7 +554,7 @@
         (earn.exitToday ? ' — מומלץ לצאת יום לפני!' : '') + '</div>';
     }
     out += '<div class="sig-card-foot">' +
-      addBtn(s.sym, true) +
+      (s.planOnly ? '' : addBtn(s.sym, true)) +
       '<button class="sig-btn ghost" onclick="event.stopPropagation();NTSignals.setAlert(\'' + s.sym + '\')">🔔 קבע התראה</button>' +
     '</div>';
     return out;
@@ -476,7 +581,7 @@
         '<div class="sr-bar">' + rangeBar(s) + '</div>' +
         '<div class="sr-rr"><small>R:R</small>' + esc(String(s.rr)) + '</div>' +
         '<div class="sr-vol" title="מחזור מסחר שבועי ממוצע ל-3 חודשים"><small>מחזור שבועי ממוצע</small>' + (s.avgTurnover != null ? fmtBig(s.avgTurnover * 5, s.sym.slice(-3) === '.TA' ? '₪' : '$') : '—') + '</div>' +
-        '<span class="sig-status ' + st + '" title="' + STATUS_HINT[st] + '">' + STATUS_TXT[st] + '</span>' +
+        '<span class="sig-status ' + st + '" title="' + STATUS_HINT[st] + '">' + STATUS_TXT[st] + (s.planOnly && s.plan ? ' · ' + esc(planStageText(s.plan)) : '') + '</span>' +
         '<div class="sr-age">' + ageTxt(s.ts) + '</div>' +
         '<div class="sr-act">' + adminDelBtn(s) + '<span class="sr-chev">' + (open ? '▴' : '▾') + '</span></div>' +
       '</div>' +
@@ -525,8 +630,9 @@
         '</div>' +
       '</div>' +
       rangeBar(s) +
-      '<div class="sig-levels">' +
-        '<div class="sig-lvl entry"><div class="sig-lvl-label">כניסה</div><div class="sig-lvl-val">' + fmt(s.entry, s.curr) + '</div></div>' +
+      planBlock(s) +
+      '<div class="sig-levels' + (s.planOnly ? ' plan-dim' : '') + '">' +
+        '<div class="sig-lvl entry"><div class="sig-lvl-label">' + (s.planOnly ? 'כניסה מתוכננת' : 'כניסה') + '</div><div class="sig-lvl-val">' + fmt(s.entry, s.curr) + '</div></div>' +
         '<div class="sig-lvl stop"><div class="sig-lvl-label">סטופ</div><div class="sig-lvl-val">' + fmt(s.stop, s.curr) + '</div></div>' +
         '<div class="sig-lvl tp"><div class="sig-lvl-label">יעד</div><div class="sig-lvl-val">' + fmt(s.tp, s.curr) + '</div></div>' +
       '</div>' +
@@ -539,7 +645,7 @@
         '<span class="sig-status ' + st + '">' + STATUS_TXT[st] + '</span>' +
       '</div>' +
       '<div class="sig-card-foot">' +
-        addBtn(s.sym, false) +
+        (s.planOnly ? '' : addBtn(s.sym, false)) +
         '<button class="sig-btn ghost" onclick="NTSignals.setAlert(\'' + s.sym + '\')">🔔 קבע התראה</button>' +
       '</div>' +
     '</div>';
@@ -712,16 +818,18 @@
 
     // Group: ready to enter → waiting → finished (hit / stopped)
     function renderGroups(items) {
-      var gReady = [], gWait = [], gDone = [];
+      var gReady = [], gWait = [], gPlan = [], gDone = [];
       items.forEach(function (s) {
         var k = signalStatus(s).key;
         if (k === 'armed' || k === 'active') gReady.push(s);
         else if (k === 'hit' || k === 'stopped') gDone.push(s);
+        else if (k === 'plan') gPlan.push(s);
         else gWait.push(s);
       });
       var groups = [
         { t: '⚡ קרובות לכניסה', cls: 'ready', items: gReady },
         { t: '👀 ממתינות לכניסה', cls: 'wait', items: gWait },
+        { t: '⏳ בהתהוות — לא להיכנס עדיין', cls: 'plan', items: gPlan },
         { t: '✓ הושלמו / נפגעו', cls: 'done', items: gDone }
       ].filter(function (g) { return g.items.length; });
       var showHeads = groups.length > 1;
@@ -2346,6 +2454,10 @@
   function onAppReady() {
     startRemChecks();
     syncServerSignals(true); // fetch the server feed as soon as we're logged in
+    // Keep polling in the background so stage alerts ("you can enter now") arrive even when the feed is closed.
+    if (!window.__ntSigBg) {
+      window.__ntSigBg = setInterval(function () { try { syncServerSignals(); } catch (e) {} }, 5 * 60 * 1000);
+    }
     // Admins default to the regular (analysis) site — they are not signal-locked.
     if (isAdmin()) { setMode('analysis'); return; }
     var plan = localStorage.getItem(PLAN_KEY);
@@ -2386,6 +2498,7 @@
     aiSavePort: aiSavePort, aiEditPort: aiEditPort, aiSetRisk: aiSetRisk, aiGoRisk: aiGoRisk,
     aiToggleRemind: aiToggleRemind, aiRemoveRemind: aiRemoveRemind, aiNotifPerm: requestNotifPerm, aiOpenHist: aiOpenHist,
     syncServerSignals: syncServerSignals,
+    signalsFor: function (sym) { return loadSignals().filter(function (s) { return s.sym === sym; }); },
     toggleUserMenu: toggleUserMenu,
     openUpgrade: function (ctx) { openUpgrade(ctx); }
   };
