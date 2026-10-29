@@ -39,6 +39,7 @@
     ranAwayPct: 0.06,       // >6% past the entry level => don't chase (watch)
     holdCandles: 5,         // 5 weekly candles must hold past a broken level
     retestStopAtr: 0.75,    // retest setups: the flipped level is strong, so the stop sits only 0.75 ATR beyond it
+    retestStopPct: 0.05,    // ...but never closer than 5% of the level for SHORT retests (room for a weekly wick)
     pullbackLookback: 8,    // weeks to inspect a pullback leg
     volContractRatio: 0.9,  // recent vol <= 0.9x of pullback-start vol = contracting
     volExpandRatio: 1.15,   // recent vol >= 1.15x = expanding
@@ -305,11 +306,15 @@
 
   // A significant support (>=3 touches) near price that has NOT yet been broken, i.e. the last
   // holdCandles weekly closes were not all below it. No short is allowed while this exists.
-  function unbrokenSupport(bars, levels, price) {
+  // A support BELOW price counts while it is within ~2 ATR (a strong floor right under price
+  // sits inside the short's path to target, so the trade only starts after it breaks).
+  function unbrokenSupport(bars, levels, price, atrVal) {
     var n = bars.length, best = null;
+    var maxBelow = Math.max(CFG.nearLevel * 2, atrVal && price ? 2 * atrVal / price : 0);
     levels.forEach(function (l) {
       if (l.touches < CFG.touchSignificant) return;
-      if (Math.abs(price - l.price) / l.price > CFG.nearLevel * 2) return;
+      var dist = Math.abs(price - l.price) / l.price;
+      if (dist > (l.price < price ? maxBelow : CFG.nearLevel * 2)) return;
       var below = 0;
       for (var i = n - 2; i >= 0; i--) { if (bars[i].close < l.price) below++; else break; }
       if (below >= CFG.holdCandles) return;   // broken for 5+ candles -> confirmed
@@ -514,6 +519,26 @@
       }
       if (smaFalling) res.reasons.push('SMA30 יורד ומשמש התנגדות דינמית');
 
+      // Hard rule: no short while a significant support under/at price has NOT been broken
+      // (break + 5 weekly closes below + retest from below is the only way in). Checked BEFORE any
+      // other short setup: a minor level above price must not trigger a short into a strong floor.
+      var unb = unbrokenSupport(bars, levels, price, atrVal);
+      if (unb) {
+        res.direction = 'short'; res.setup = 'breakdown_retest'; res.status = 'watch';
+        res.level = unb.price; res.levelTouches = unb.touches;
+        res.disq.push('support_not_broken');
+        var closesBelow = 0;
+        for (var cb = n - 2; cb >= 0 && bars[cb].close < unb.price; cb--) closesBelow++;
+        var planTrade = buildTrade('short', unb.price, unb.price, Math.max(atrVal * CFG.retestStopAtr, unb.price * CFG.retestStopPct));
+        res.plan = {
+          kind: 'breakdown', level: unb.price, touches: unb.touches,
+          closesBelow: closesBelow, needed: CFG.holdCandles,
+          entry: planTrade.entry, stop: planTrade.stop, target: planTrade.target
+        };
+        res.reasons.push('התמיכה ' + fmt(unb.price) + ' (' + unb.touches + ' נגיעות) עדיין לא נשברה — אין שורט עד שבירה + ' + CFG.holdCandles + ' נרות מתחתיה + ריטסט מלמטה');
+        return finalizeWatch(res, unb.price, price);
+      }
+
       // (A) Breakdown + 5-candle hold + retest of a flipped support from below.
       var supLvl = nearestLevelAbove(levels, price);
       if (supLvl) {
@@ -522,7 +547,7 @@
           res.direction = 'short'; res.setup = 'breakdown_retest';
           res.level = supLvl.price; res.levelTouches = supLvl.touches;
           res.reasons.push('שבירה מתחת ' + fmt(supLvl.price) + ' + ' + bd.heldCount + ' נרות מתחת + ריטסט מלמטה' + (vol.expanding ? ' | נפח מתרחב מחזק שורט' : ''));
-          return finalizeEntry(res, 'short', supLvl.price, supLvl.price, atrVal * CFG.retestStopAtr, price);
+          return finalizeEntry(res, 'short', supLvl.price, supLvl.price, Math.max(atrVal * CFG.retestStopAtr, supLvl.price * CFG.retestStopPct), price);
         }
         if (bd.held && !bd.retesting) {
           res.direction = 'short'; res.setup = 'breakdown_retest'; res.status = 'watch';
@@ -530,17 +555,6 @@
           res.reasons.push('שבירה אושרה (' + bd.heldCount + ' נרות) — להמתין לריטסט מלמטה של ' + fmt(supLvl.price));
           return finalizeWatch(res, supLvl.price, price);
         }
-      }
-
-      // Hard rule: no short while a significant support under/at price has NOT been broken
-      // (break + 5 weekly closes below + retest from below is the only way in).
-      var unb = unbrokenSupport(bars, levels, price);
-      if (unb) {
-        res.direction = 'short'; res.setup = 'breakdown_retest'; res.status = 'watch';
-        res.level = unb.price; res.levelTouches = unb.touches;
-        res.disq.push('support_not_broken');
-        res.reasons.push('התמיכה ' + fmt(unb.price) + ' (' + unb.touches + ' נגיעות) עדיין לא נשברה — אין שורט עד שבירה + ' + CFG.holdCandles + ' נרות מתחתיה + ריטסט מלמטה');
-        return finalizeWatch(res, unb.price, price);
       }
 
       // (B) SMA30 rejection: relief rally up to a falling SMA30 in a downtrend.
@@ -583,7 +597,7 @@
         res.direction = 'short'; res.setup = 'range_breakout';
         res.level = lower.price; res.levelTouches = lower.touches;
         res.reasons.push('שבירת גבול תחתון ' + fmt(lower.price) + ' + 5 נרות + ריטסט = שורט');
-        return finalizeEntry(res, 'short', lower.price, lower.price, atrVal * CFG.retestStopAtr, price);
+        return finalizeEntry(res, 'short', lower.price, lower.price, Math.max(atrVal * CFG.retestStopAtr, lower.price * CFG.retestStopPct), price);
       }
     }
     res.status = 'watch';
