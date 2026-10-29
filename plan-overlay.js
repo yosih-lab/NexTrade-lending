@@ -102,8 +102,10 @@
     }
     if (s && !isOff()) {
       var planned = !!s.planOnly;
-      if (s.plan && s.plan.level != null) addLine(s.plan.level, '#f5c518', planLabel(s) + (s.plan.touches ? ' ×' + s.plan.touches : ''), 0);
-      addLine(s.entry, planned ? '#8b9ab5' : '#ffffff', planned ? 'כניסה (אחרי 5 נרות+ריטסט)' : 'כניסה', 2);
+      var lvlP = s.plan && s.plan.level != null ? s.plan.level : null;
+      var sameAsEntry = lvlP != null && Math.abs(lvlP - s.entry) / s.entry < 0.001;
+      if (lvlP != null) addLine(lvlP, '#f5c518', planLabel(s) + (s.plan.touches ? ' ×' + s.plan.touches : '') + (sameAsEntry ? ' = כניסה' : ''), 0);
+      if (!sameAsEntry) addLine(s.entry, planned ? '#8b9ab5' : '#ffffff', planned ? 'כניסה (אחרי 5 נרות+ריטסט)' : 'כניסה', 2);
       addLine(s.stop, '#ef5350', 'סטופ', 2);
       addLine(s.tp, '#26a69a', 'יעד', 2);
     }
@@ -208,7 +210,7 @@
     var p = sig.plan;
     var txt = live ? '✅ כניסה עכשיו' : (p && p.stage === 'await_retest' ? '⏳ ממתין לריטסט' :
       (p && p.stage === 'holding' ? '⏳ נר ' + Math.min(p.closes, p.needed) + '/' + p.needed : '⏳ כניסה רק אחרי שבירה + 5 נרות + ריטסט'));
-    tag(Math.max(4, pRet.x - 8), pRet.y + (isShort ? -26 : 26), txt, live ? '#6fe0d2' : '#ffd27a');
+    tag(x0, Math.min(yS, yT, yE) - 16, txt, live ? '#6fe0d2' : '#ffd27a');
   }
 
   function loop() {
