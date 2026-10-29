@@ -343,7 +343,15 @@ function loginSuccess(user) {
   // which is paused for background tabs and would leave the chart un-initialized.
   if (window.__ntInitDone) return;
   window.__ntInitDone = true;
-  setTimeout(function() { init(); }, 60);
+  // Wait until the whole document is parsed: main.js loads before the chart-settings modal markup,
+  // so on a fast auto-login init() could otherwise run against a partially parsed DOM.
+  setTimeout(function() {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() { init(); }, { once: true });
+    } else {
+      init();
+    }
+  }, 60);
 }
 
 function handleLogout() {
