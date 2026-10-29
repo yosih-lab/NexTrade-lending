@@ -314,6 +314,8 @@ function loginSuccess(user) {
 
   var backOfficeBtn = document.getElementById('backOfficeBtn');
   if (backOfficeBtn) backOfficeBtn.style.display = (user.role === 'admin') ? '' : 'none';
+  var mbbAdminBtn = document.getElementById('mbbAdminBtn');
+  if (mbbAdminBtn) mbbAdminBtn.style.display = (user.role === 'admin') ? '' : 'none';
 
   // Mark the body for signal-oriented users so the mobile alerts bell shows (bottom-left).
   // Analysis users (chose "נתח בעצמי" in onboarding) get only the watchlists.
