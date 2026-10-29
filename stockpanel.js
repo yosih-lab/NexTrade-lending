@@ -374,8 +374,8 @@
   function initSplit() {
     var split = $('spSplit'), top = $('wlTop'), view = $('sview-watchlist');
     if (!split || !top || !view) return;
-    var saved = parseInt(localStorage.getItem('nt_sp_h') || '', 10);
-    if (saved > 0) top.style.height = saved + 'px';
+    // Always start at the default height (set in CSS); dragging only lasts for the current session.
+    try { localStorage.removeItem('nt_sp_h'); } catch (e) {}
     var drag = false, startY = 0, startH = 0;
     function move(e) {
       if (!drag) return;
@@ -387,7 +387,6 @@
     function up() {
       if (!drag) return; drag = false;
       document.body.classList.remove('sp-dragging');
-      try { localStorage.setItem('nt_sp_h', String(parseInt(top.style.height, 10) || '')); } catch (e) {}
     }
     function down(e) {
       drag = true; startY = (e.touches ? e.touches[0].clientY : e.clientY); startH = top.offsetHeight;
