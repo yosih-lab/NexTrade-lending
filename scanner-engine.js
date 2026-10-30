@@ -335,8 +335,11 @@
       if (!best || d < best.d) best = { l: l, d: d };
     });
     if (!best) return null;
-    var band = Math.max(best.l.price * CFG.levelTol * 0.5, 0.35 * (atrVal || 0)), t = 0;
-    for (var i = 0; i < bars.length; i++) { if (Math.abs(bars[i].low - best.l.price) <= band) t++; }
+    var band = Math.max(best.l.price * CFG.levelTol * 0.5, 0.35 * (atrVal || 0)), up = best.l.price * 0.005, t = 0;
+    for (var i = 0; i < bars.length; i++) {
+      var dLow = bars[i].low - best.l.price;      // wick that reaches (or pierces) the level from above
+      if (dLow <= up && dLow >= -band) t++;
+    }
     return { price: best.l.price, touches: Math.max(best.l.touches, t), lastIdx: best.l.lastIdx };
   }
 
