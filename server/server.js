@@ -1105,7 +1105,7 @@ function barsFromYahoo(json) {
 }
 
 const SETUP_HE = {
-  pullback: 'Pullback לתמיכה', breakout_retest: 'פריצה + ריטסט',
+  pullback: 'חזרה לתמיכה', breakout_retest: 'פריצה + ריטסט',
   breakdown_retest: 'שבירה + ריטסט', range_breakout: 'פריצת Range',
   sma30_reclaim: 'החזרת SMA30', sma30_rejection: 'דחייה מ-SMA30'
 };

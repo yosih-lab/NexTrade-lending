@@ -233,6 +233,7 @@
         if (code === 'approach') msgs.push('⏳ ' + sym + ' מתקרבת ל' + (bd ? 'תמיכה ' : 'התנגדות ') + lvl + ' — אל תיכנס עדיין');
         else if (code.indexOf('holding:') === 0) msgs.push('⏳ ' + sym + ': נר ' + code.split(':')[1] + ' מתוך ' + p.needed + (bd ? ' מתחת ל-' : ' מעל ') + lvl);
         else if (code === 'await_retest') msgs.push('⏳ ' + sym + ': 5 הנרות הושלמו — ממתינים לריטסט ל-' + lvl);
+        else if (code === 'await_reversal') msgs.push('⏳ ' + sym + ' חזרה לתמיכה ' + lvl + ' — ממתינים לנר היפוך + מחזור מעל הממוצע');
       }
     });
     try { localStorage.setItem(STAGE_KEY, JSON.stringify(cur)); } catch (e) {}
@@ -349,7 +350,7 @@
 
   // Human label for the setup type.
   var SETUP_TXT = {
-    pullback: 'Pullback לתמיכה',
+    pullback: 'חזרה לתמיכה',
     breakout_retest: 'פריצה + ריטסט',
     breakdown_retest: 'שבירה + ריטסט',
     range_breakout: 'פריצת טווח',
@@ -419,6 +420,7 @@
   function planStageText(p) {
     if (!p) return '';
     var bd = p.kind === 'breakdown';
+    if (p.kind === 'pullback') return p.stage === 'entry' ? 'אפשר להיכנס' : 'ממתין לנר היפוך + מחזור';
     if (p.stage === 'approach') return bd ? 'מתקרב לתמיכה — טרם נשברה' : 'מתקרב להתנגדות — טרם נפרצה';
     if (p.stage === 'holding') return 'נר ' + Math.min(p.closes, p.needed) + ' מתוך ' + p.needed;
     if (p.stage === 'await_retest') return 'ממתין לריטסט';
@@ -429,14 +431,25 @@
     var p = s.plan;
     if (!p) return '';
     var bd = p.kind === 'breakdown';
-    var idx = { approach: 0, holding: 1, await_retest: 2, entry: 3 }[p.stage];
-    if (idx == null) return '';
-    var steps = [
-      (bd ? 'שבירת התמיכה ' : 'פריצת ההתנגדות ') + fmt(p.level, s.curr),
-      p.needed + (bd ? ' נרות שבועיים מתחתיה' : ' נרות שבועיים מעליה') + (p.stage === 'holding' ? ' (' + Math.min(p.closes, p.needed) + '/' + p.needed + ')' : ''),
-      bd ? 'ריטסט מלמטה' : 'ריטסט מלמעלה',
-      'כניסה ' + fmt(p.entry, s.curr)
-    ];
+    var idx, steps;
+    if (p.kind === 'pullback') {
+      idx = p.stage === 'entry' ? 3 : (p.volContracting ? 2 : 1);
+      steps = [
+        'חזרה לתמיכה ' + fmt(p.level, s.curr) + ' (' + p.touches + ' נגיעות)',
+        'התכנסות עם מחזורי מסחר מתכווצים',
+        'נר היפוך + מחזור מעל הממוצע',
+        'כניסה ' + fmt(p.entry, s.curr)
+      ];
+    } else {
+      idx = { approach: 0, holding: 1, await_retest: 2, entry: 3 }[p.stage];
+      if (idx == null) return '';
+      steps = [
+        (bd ? 'שבירת התמיכה ' : 'פריצת ההתנגדות ') + fmt(p.level, s.curr),
+        p.needed + (bd ? ' נרות שבועיים מתחתיה' : ' נרות שבועיים מעליה') + (p.stage === 'holding' ? ' (' + Math.min(p.closes, p.needed) + '/' + p.needed + ')' : ''),
+        bd ? 'ריטסט מלמטה' : 'ריטסט מלמעלה',
+        'כניסה ' + fmt(p.entry, s.curr)
+      ];
+    }
     var html = '<div class="plan-steps">';
     steps.forEach(function (t, i) {
       var cls = i < idx ? 'done' : (i === idx ? 'cur' : '');
@@ -452,7 +465,10 @@
     var lvl = fmt(p.level, s.curr);
     var word = bd ? 'התמיכה' : 'ההתנגדות';
     var msg, cls = 'wait';
-    if (p.stage === 'approach') {
+    if (p.kind === 'pullback' && p.stage !== 'entry') {
+      msg = '⏳ אל תיכנס עדיין — המחיר חזר לתמיכה ' + lvl + ' (' + p.touches + ' נגיעות)' +
+        (p.volContracting ? ' במחזורי מסחר מתכווצים' : '') + '. כניסה רק כשהוא עולה ממנה עם נר היפוך ומחזור מעל הממוצע.';
+    } else if (p.stage === 'approach') {
       msg = '⏳ אל תיכנס עדיין — ' + word + ' ' + lvl + ' (' + p.touches + ' נגיעות) עוד לא ' + (bd ? 'נשברה' : 'נפרצה') +
         '. כניסה רק אחרי ' + (bd ? 'שבירה + 5 נרות שבועיים מתחתיה + ריטסט מלמטה' : 'פריצה + 5 נרות שבועיים מעליה + ריטסט מלמעלה') + '.';
     } else if (p.stage === 'holding') {
@@ -461,10 +477,14 @@
       msg = '⏳ 5 הנרות הושלמו — ממתינים לריטסט ' + (bd ? 'מלמטה' : 'מלמעלה') + ' ל-' + lvl + '. אל תיכנס לפני הריטסט.';
     } else if (s.scanStatus !== 'entry') {
       cls = 'near';
-      msg = '⚡ השבירה ו-5 הנרות הושלמו — המחיר מתקרב לרמת הכניסה ' + fmt(p.entry, s.curr) + '. היכון לריטסט.';
+      msg = p.kind === 'pullback'
+        ? '⚡ המחיר בתמיכה ' + lvl + ' — היכון לכניסה ' + fmt(p.entry, s.curr) + ' בנר היפוך ומחזור מעל הממוצע.'
+        : '⚡ השבירה ו-5 הנרות הושלמו — המחיר מתקרב לרמת הכניסה ' + fmt(p.entry, s.curr) + '. היכון לריטסט.';
     } else {
       cls = 'go';
-      msg = '✅ אפשר להיכנס עכשיו — ' + (bd ? 'שבירה + ' : 'פריצה + ') + Math.max(p.closes, p.needed) + ' נרות + ריטסט הושלמו. כניסה ' + fmt(p.entry, s.curr) + '.';
+      msg = p.kind === 'pullback'
+        ? '✅ אפשר להיכנס עכשיו — נר היפוך במחזור מעל הממוצע בתמיכה ' + lvl + '. כניסה ' + fmt(p.entry, s.curr) + '.'
+        : '✅ אפשר להיכנס עכשיו — ' + (bd ? 'שבירה + ' : 'פריצה + ') + Math.max(p.closes, p.needed) + ' נרות + ריטסט הושלמו. כניסה ' + fmt(p.entry, s.curr) + '.';
     }
     return '<div class="plan-banner ' + cls + '">' + msg + '</div>';
   }
@@ -853,12 +873,7 @@
       return '<div class="sig-market ' + m.cls + '" id="sigm-' + m.cls + '"><span>' + m.t + '</span><b>' + m.items.length + '</b>' +
         (nPort ? '<em>' + nPort + ' כבר בתיק</em>' : '') + '</div>' + renderGroups(m.items);
     }).join('');
-    var marketNav = sections.length ? '<div class="sig-market-nav">' + sections.map(function (m) {
-      return '<button class="sig-market-btn ' + m.cls + '" onclick="var e=document.getElementById(\'sigm-' + m.cls + '\');if(e)e.scrollIntoView({behavior:\'smooth\',block:\'start\'})">' +
-        '<span>' + m.t + '</span><b>' + m.items.length + '</b></button>';
-    }).join('') + '</div>' : '';
-
-    return filterBar + marketNav + body + upsell;
+    return filterBar + body + upsell;
   }
 
   function renderSignals() {

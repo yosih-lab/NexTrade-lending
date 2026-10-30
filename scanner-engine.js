@@ -324,6 +324,37 @@
     return best;
   }
 
+  // The level closest to price (either side, within nearLevel). Touches are re-counted from the
+  // weekly lows that land inside a small ATR band around it, because the most recent touches are not
+  // yet confirmed swings (a fractal needs bars on its right) but a trader still counts them.
+  function nearLevelAny(levels, price, bars, atrVal) {
+    var best = null;
+    levels.forEach(function (l) {
+      var d = Math.abs(price - l.price) / l.price;
+      if (d > CFG.nearLevel) return;
+      if (!best || d < best.d) best = { l: l, d: d };
+    });
+    if (!best) return null;
+    var band = Math.max(best.l.price * CFG.levelTol * 0.5, 0.35 * (atrVal || 0)), t = 0;
+    for (var i = 0; i < bars.length; i++) { if (Math.abs(bars[i].low - best.l.price) <= band) t++; }
+    return { price: best.l.price, touches: Math.max(best.l.touches, t), lastIdx: best.l.lastIdx };
+  }
+
+  // A significant resistance that price is approaching (not yet broken) or has cleared by 1-4 weekly
+  // closes (still short of the 5-candle hold). Mirror of unbrokenSupport for the long side.
+  function formingBreakout(bars, levels, price, atrVal) {
+    var n = bars.length, maxD = CFG.planZoneAtr * (atrVal || 0), best = null;
+    levels.forEach(function (l) {
+      if (l.touches < CFG.touchSignificant) return;
+      var closes = 0;
+      for (var i = n - 2; i >= 0 && bars[i].close > l.price; i--) closes++;
+      if (closes === 0) { if (l.price <= price || (l.price - price) > maxD) return; }
+      else if (closes >= CFG.holdCandles || (price - l.price) > maxD) return;
+      if (!best || Math.abs(price - l.price) < Math.abs(price - best.level)) best = { level: l.price, touches: l.touches, closes: closes };
+    });
+    return best;
+  }
+
   // ---- Fibonacci of the most recent up/down leg ------------------------------
   function fibZone(bars, swings, dir) {
     var highs = swings.filter(function (s) { return s.type === 'high'; });
@@ -428,6 +459,10 @@
       // Price above a (preferably rising) SMA30 — healthy uptrend zone.
       if (smaRising) res.reasons.push('SMA30 עולה ותומך במגמה');
 
+      // The level price is closest to (either side, within nearLevel): a support being tested right now
+      // may sit a hair ABOVE the last close (a wick-pierce), so "nearest below" alone would skip it.
+      var supNear = nearLevelAny(levels, price, bars, atrVal);
+
       // (A) Breakout + 5-candle hold + retest of a flipped resistance.
       var resLvl = nearestLevelBelow(levels, price); // the level just under price = possible flipped resistance
       if (resLvl) {
@@ -439,7 +474,9 @@
           res.plan = makePlan('breakout', 'long', resLvl.price, resLvl.touches, bo.heldCount, 'entry');
           return finalizeEntry(res, 'long', resLvl.price, resLvl.price, atrVal * CFG.retestStopAtr, price);
         }
-        if (bo.held && !bo.retesting) {
+        // A breakout level far below price is not a retest candidate when a nearer support is being tested.
+        var nearerSupport = supNear && Math.abs(price - supNear.price) < Math.abs(price - resLvl.price);
+        if (bo.held && !bo.retesting && !nearerSupport) {
           res.direction = 'long'; res.setup = 'breakout_retest'; res.status = 'watch';
           res.level = resLvl.price; res.levelTouches = resLvl.touches;
           res.reasons.push('פריצה אושרה (' + bo.heldCount + ' נרות) — להמתין לריטסט של ' + fmt(resLvl.price));
@@ -449,7 +486,7 @@
       }
 
       // (B) Pullback to a support confluence (SMA30 + historical support).
-      var sup = nearestLevelBelow(levels, price);
+      var sup = supNear || nearestLevelBelow(levels, price);
       var nearSMA = Math.abs(price - sma30) / sma30 <= CFG.nearLevel;
       var nearSup = sup && Math.abs(price - sup.price) / sup.price <= CFG.nearLevel;
       var confluence = (nearSMA ? 1 : 0) + (nearSup ? 1 : 0);
@@ -467,7 +504,7 @@
         res.levelTouches = nearSup ? sup.touches : 0;
         var rev = bullishReversal(bars);
         var confText = (nearSMA ? 'SMA30' : '') + (nearSMA && nearSup ? ' + ' : '') + (nearSup ? 'תמיכה ' + fmt(sup.price) + ' (' + sup.touches + ' נגיעות)' : '');
-        res.reasons.push('Pullback במגמת עלייה לקונפלואנס: ' + confText + (vol.contracting ? ' | נפח מתכווץ' : ''));
+        res.reasons.push('חזרה לתמיכה במגמת עלייה: ' + confText + (vol.contracting ? ' | התכנסות עם מחזורי מסחר מתכווצים' : ''));
         if (rev) res.reasons.push('נר היפוך שורי בתמיכה');
         res.direction = 'long'; res.setup = 'pullback';
         // Entry needs a reversal candle AND trading volume above the Vol MA (aggressive entry).
@@ -478,8 +515,13 @@
           res.reasons.push('חסר מחזור מסחר גבוה מהממוצע (' + Math.round(volNow / vMA * 100) + '% מ-Vol MA) — כניסה רק עם מחזור מעל הממוצע');
           res.disq.push('low_entry_volume');
         }
+        if (!(rev && volOk) && nearSup && sup.touches >= CFG.touchSignificant) {
+          res.plan = makePlan('pullback', 'long', sup.price, sup.touches, 0, 'await_reversal', { volContracting: !!vol.contracting, volRatio: +vol.ratio.toFixed(2) });
+          res.reasons.push('כניסה רק כשהמחיר עולה מהתמיכה עם נר היפוך ומחזור מסחר מעל הממוצע');
+        }
         if (rev && volOk) {
           if (vMA > 0) res.reasons.push('מחזור מסחר מעל הממוצע (' + Math.round(volNow / vMA * 100) + '% מ-Vol MA)');
+          if (nearSup) res.plan = makePlan('pullback', 'long', sup.price, sup.touches, 0, 'entry', { volContracting: !!vol.contracting, volRatio: +vol.ratio.toFixed(2) });
           var r2 = finalizeEntry(res, 'long', price, stopRef, atrVal, price);
           // Strong ceiling (>=3 touches) above price and inside the 1:2 target path?
           var ceil = null;
@@ -502,6 +544,20 @@
         }
         res.status = 'watch';
         return finalizeWatch(res, res.level, price);
+      }
+
+      // Breakout still forming: a strong resistance just above price (approach) or broken 1-4 weekly
+      // closes ago (holding) — show the user the progress instead of nothing.
+      var fb = formingBreakout(bars, levels, price, atrVal);
+      if (fb) {
+        res.direction = 'long'; res.setup = 'breakout_retest'; res.status = 'watch';
+        res.level = fb.level; res.levelTouches = fb.touches;
+        res.disq.push('resistance_not_broken');
+        res.plan = makePlan('breakout', 'long', fb.level, fb.touches, fb.closes, fb.closes > 0 ? 'holding' : 'approach');
+        res.reasons.push(fb.closes > 0
+          ? 'פריצה של ' + fmt(fb.level) + ' בתהליך — נר ' + fb.closes + ' מתוך ' + CFG.holdCandles + ' מעליה, אין כניסה עד 5 נרות + ריטסט'
+          : 'ההתנגדות ' + fmt(fb.level) + ' (' + fb.touches + ' נגיעות) עוד לא נפרצה — כניסה רק אחרי פריצה + ' + CFG.holdCandles + ' נרות מעליה + ריטסט');
+        return finalizeWatch(res, fb.level, price);
       }
 
       // Uptrend but price ran away from support — don't chase.
@@ -608,15 +664,18 @@
     // ---- inner helpers (hoisted) --------------------------------------------
     // "Plan" = the level-based trade the user must WAIT for: break -> 5 closes beyond -> retest -> entry.
     // Carries the progress so the app can show a stepper, chart overlay and stage alerts.
-    function makePlan(kind, dir, level, touches, closes, stage) {
+    function makePlan(kind, dir, level, touches, closes, stage, extra) {
       var stopDist = Math.max(atrVal * CFG.retestStopAtr, dir === 'short' ? level * CFG.retestStopPct : 0);
+      if (kind === 'pullback') stopDist = atrVal;
       var t = buildTrade(dir, level, level, stopDist);
-      return {
+      var p = {
         kind: kind, dir: dir, level: level, touches: touches,
         closes: closes, needed: CFG.holdCandles, stage: stage,
         zone: stage !== 'approach' || Math.abs(price - level) <= CFG.planZoneAtr * atrVal,
         entry: t.entry, stop: t.stop, target: t.target, rr: t.rr
       };
+      if (extra) { for (var k in extra) { if (extra.hasOwnProperty(k)) p[k] = extra[k]; } }
+      return p;
     }
     function finalizeEntry(r, dir, entry, stopRef, a, px) {
       // Hard rule: never a SHORT entry while price is at/above SMA30.
@@ -666,7 +725,7 @@
   //   with the scanner. Pure: no network, no DOM.
   // ============================================================================
   var SETUP_HE = {
-    pullback: 'Pullback לתמיכה', breakout_retest: 'פריצה + ריטסט',
+    pullback: 'חזרה לתמיכה', breakout_retest: 'פריצה + ריטסט',
     breakdown_retest: 'שבירה + ריטסט', range_breakout: 'פריצת Range',
     sma30_reclaim: 'החזרת SMA30', sma30_rejection: 'דחייה מ-SMA30'
   };

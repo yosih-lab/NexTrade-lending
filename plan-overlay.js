@@ -84,7 +84,7 @@
 
   function planLabel(s) {
     var p = s.plan;
-    return p && p.kind === 'breakdown' ? 'תמיכה' : 'התנגדות';
+    return p && (p.kind === 'breakdown' || p.kind === 'pullback') ? 'תמיכה' : 'התנגדות';
   }
 
   // Re-read the signal for the current symbol and rebuild the price lines.
@@ -188,6 +188,8 @@
 
     // direction arrow: current price → dip through the level → retest → target
     var dipY = isShort ? yL + Math.max(18, Math.abs(yT - yL) * 0.22) : yL - Math.max(18, Math.abs(yT - yL) * 0.22);
+    // A pullback to support dips slightly BELOW the level and bounces (no break-and-retest leg).
+    if (sig.plan && sig.plan.kind === 'pullback') dipY = yL + 14;
     var pStart = { x: x0 - 4, y: yP != null ? yP : yL };
     var pDip = { x: x0 + boxW * 0.28, y: dipY };
     var pRet = { x: x0 + boxW * 0.55, y: yE };
@@ -208,8 +210,8 @@
 
     // labels
     var p = sig.plan;
-    var txt = live ? '✅ כניסה עכשיו' : (p && p.stage === 'await_retest' ? '⏳ ממתין לריטסט' :
-      (p && p.stage === 'holding' ? '⏳ נר ' + Math.min(p.closes, p.needed) + '/' + p.needed : '⏳ כניסה רק אחרי שבירה + 5 נרות + ריטסט'));
+    var txt = live ? '✅ כניסה עכשיו' : (p && p.kind === 'pullback' ? '⏳ כניסה בנר היפוך + מחזור מעל הממוצע' : (p && p.stage === 'await_retest' ? '⏳ ממתין לריטסט' :
+      (p && p.stage === 'holding' ? '⏳ נר ' + Math.min(p.closes, p.needed) + '/' + p.needed : '⏳ כניסה רק אחרי שבירה + 5 נרות + ריטסט')));
     tag(x0, Math.min(yS, yT, yE) - 16, txt, live ? '#6fe0d2' : '#ffd27a');
   }
 

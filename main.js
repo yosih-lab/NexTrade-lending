@@ -4264,7 +4264,7 @@ async function runBackgroundScanner() {
       var sideWord = isShort ? 'שורט' : 'לונג';
       var statusWord = r.status === 'entry' ? 'כניסה' : 'מתקרב';
       var setupMap = {
-        pullback: 'Pullback לתמיכה',
+        pullback: 'חזרה לתמיכה',
         breakout_retest: 'פריצה + ריטסט',
         breakdown_retest: 'שבירה + ריטסט',
         range_breakout: 'פריצת Range',
