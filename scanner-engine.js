@@ -53,6 +53,9 @@
     rrTarget: 2,            // minimum 1:2 risk:reward
     maxTargetR: 4,          // snap the target to a known level only if it lies within this many R of entry
     freshBreakoutMax: 10,   // a broken level that has held longer than this many weekly closes is an established support, not a fresh breakout
+    macroRangeWeeks: [104, 156, 208], // windows (2/3/4 years) tested by the multi-year sideways filter
+    macroRangeWidth: 1.8,   // closes within a band no wider than hi/lo = 1.8 over the window => candidate range
+    macroRangeSepWeeks: 12, // two tests of the same wall must be at least this many weeks apart
     targetSnapTol: 0.01     // a level within 1% of the 1:2 point still counts as "at/beyond" it
   };
 
@@ -377,6 +380,38 @@
     return { f382: top - diff * 0.382, f5: top - diff * 0.5, f618: top - diff * 0.618 };
   }
 
+  // ---- Multi-year sideways filter ---------------------------------------------
+  // A stock is "macro range" when, over the last 2/3/4 years, (1) closes stayed inside a band no wider
+  // than CFG.macroRangeWidth, (2) the top AND bottom of that band were each tested by >=2 separate swings
+  // (so it is bouncing between two walls, not drifting), and (3) price is still inside the band
+  // (a break out of the whole band is a real move, not a range).
+  function macroRange(bars, price) {
+    var n = bars.length, wins = CFG.macroRangeWeeks, best = null;
+    for (var w = 0; w < wins.length && !best; w++) {
+      var W = wins[w];
+      if (n < W) continue;
+      var win = bars.slice(n - W);
+      var cl = win.map(function (b) { return b.close; }).sort(function (a, b) { return a - b; });
+      var k = Math.floor(W * 0.02);
+      var lo = cl[k], hi = cl[W - 1 - k];
+      if (!(lo > 0) || hi / lo > CFG.macroRangeWidth) continue;
+      if (price < lo * 0.97 || price > hi * 1.03) continue;
+      var zone = (hi - lo) * 0.2, sw = findSwings(win);
+      var tops = [], bots = [];
+      sw.forEach(function (s) {
+        if (s.type === 'high' && s.price >= hi - zone) tops.push(s.idx);
+        if (s.type === 'low' && s.price <= lo + zone) bots.push(s.idx);
+      });
+      function separated(a) {
+        var cnt = 0, last = -1e9;
+        a.forEach(function (i) { if (i - last >= CFG.macroRangeSepWeeks) { cnt++; last = i; } });
+        return cnt;
+      }
+      if (separated(tops) >= 2 && separated(bots) >= 2) best = { lo: lo, hi: hi, weeks: W, years: Math.round(W / 52 * 10) / 10 };
+    }
+    return best;
+  }
+
   // ---- Trade level builder ---------------------------------------------------
   // Target = the 1:2 minimum, but when a known level (e.g. a historical low/high) sits beyond that
   // point (within CFG.maxTargetR) the target is placed ON that level: it is where price realistically
@@ -444,6 +479,17 @@
     var vMA = volAvg(bars, CFG.volPeriod);
     res.sma30 = sma30; res.atr = atrVal; res.volMA = vMA;
     if (sma30 == null || atrVal == null) { res.disq.push('insufficient_data'); return res; }
+
+    // Extra safety layer: a multi-year sideways stock is neither a clear uptrend nor a clear downtrend,
+    // so it is never traded — however clean the break/5-candle/retest inside the range looks.
+    var mr = macroRange(bars, price);
+    if (mr) {
+      res.macroRange = mr;
+      res.trend = 'range'; res.status = 'reject';
+      res.disq.push('macro_range');
+      res.reasons.push('דשדוש רב-שנתי: המחיר נע בין ' + fmt(mr.lo) + ' ל-' + fmt(mr.hi) + ' כבר ' + mr.years + ' שנים — אין מגמה ברורה, לא נסחרת');
+      return res;
+    }
 
     var smaRising = sma30prev != null && sma30 > sma30prev;
     var smaFalling = sma30prev != null && sma30 < sma30prev;
@@ -894,6 +940,8 @@
       verdict = { key: 'enter', text: dirTxt + ' — ניתנת לכניסה כעת (' + (SETUP_HE[a.setup] || a.setup || '') + ')' };
     } else if (a.status === 'watch') {
       verdict = { key: 'wait', text: 'במעקב' + (dirTxt ? ' (' + dirTxt + ')' : '') + ' — עדיין לא ניתנת לכניסה, ממתינים לאישור' };
+    } else if (a.macroRange) {
+      verdict = { key: 'avoid', text: 'דשדוש רב-שנתי (' + a.macroRange.years + ' שנים, ' + fmt(a.macroRange.lo) + '–' + fmt(a.macroRange.hi) + ') — אין מגמה ברורה, לא נסחרת' };
     } else {
       verdict = { key: 'avoid', text: 'לא ניתנת לכניסה כרגע' };
     }
@@ -918,6 +966,7 @@
       entry: a.entry, stop: a.stop, target: a.target, rr: a.rr, alertLevel: a.alertLevel
     };
     out.eta = eta;
+    out.macroRange = a.macroRange || null;
     out.verdict = verdict;
     out.reasons = a.reasons || [];
     out.disq = a.disq || [];
