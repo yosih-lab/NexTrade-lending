@@ -2177,22 +2177,29 @@ function _saveWmPref() {
   localStorage.setItem('nt_watermark', JSON.stringify({ visible: _wmVisible, strength: _wmStrength }));
 }
 function applyWatermark() {
-  if (!chartInstance) return;
-  var cfg = _WM_STRENGTH[_wmStrength] || _WM_STRENGTH.medium;
   var txt = (currentSymbol || '').replace('.TA', '');
-  try {
-    chartInstance.applyOptions({
-      watermark: {
-        visible: _wmVisible && !!txt,
-        text: txt,
-        color: 'rgba(255,255,255,' + cfg.alpha + ')',
-        fontSize: cfg.fontSize,
-        fontStyle: 'bold',
-        horzAlign: 'center',
-        vertAlign: 'center'
-      }
-    });
-  } catch(e) {}
+  var cfg = _WM_STRENGTH[_wmStrength] || _WM_STRENGTH.medium;
+  // Native LW watermark is switched off: it only supports centre/top/bottom anchors and no custom spot.
+  if (chartInstance) {
+    try { chartInstance.applyOptions({ watermark: { visible: false } }); } catch(e) {}
+  }
+  var wrap = document.querySelector('.chart-wrap');
+  if (!wrap) return;
+  var el = document.getElementById('ntWm');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'ntWm';
+    // default spot: horizontally centred, ~18% down from the top of the chart (above the price action)
+    el.style.cssText = 'position:absolute;left:50%;top:18%;transform:translate(-50%,-50%);z-index:3;pointer-events:none;' +
+      'font-weight:800;letter-spacing:.5px;white-space:nowrap;direction:ltr;font-family:Heebo,sans-serif;user-select:none;';
+    wrap.appendChild(el);
+  }
+  var show = _wmVisible && !!txt;
+  el.style.display = show ? '' : 'none';
+  if (!show) return;
+  el.textContent = txt + ', ' + currentTF;
+  el.style.color = 'rgba(255,255,255,' + cfg.alpha + ')';
+  el.style.fontSize = cfg.fontSize + 'px';
 }
 function wmToggle() {
   _wmVisible = !_wmVisible;

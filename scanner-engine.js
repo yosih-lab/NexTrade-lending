@@ -53,6 +53,7 @@
     rrTarget: 2,            // minimum 1:2 risk:reward
     maxTargetR: 4,          // snap the target to a known level only if it lies within this many R of entry
     freshBreakoutMax: 10,   // a broken level that has held longer than this many weekly closes is an established support, not a fresh breakout
+    staleUpDrop: 0.2,       // an "uptrend" with no new high for minDownDays and >= 20% below the 52-week peak is not an uptrend
     macroRangeWeeks: [156, 208], // windows (3/4 years) tested by the multi-year sideways filter
     macroRangeWidth: 1.8,   // closes within a band no wider than hi/lo = 1.8 over the window => candidate range
     macroRangeDrift: 0.35,  // net move over the window must be < 35% of the band height (else it is a slow trend)
@@ -518,6 +519,25 @@
       }
     }
     res.trend = trend;
+
+    // An "uptrend" that has not made a new high for >= minDownDays and sits >= staleUpDrop below its 52-week
+    // peak is not an uptrend (lower major highs). Below SMA30 it is a downtrend; above it, no trade at all.
+    if (trend === 'up') {
+      var dd = declineDays(bars), pkPx = 0;
+      for (var pi = Math.max(0, n - 52); pi < n; pi++) { if (bars[pi].high > pkPx) pkPx = bars[pi].high; }
+      if (dd >= CFG.minDownDays && price <= pkPx * (1 - CFG.staleUpDrop)) {
+        res.declineDays = dd;
+        var staleTxt = 'אין שיא חדש כבר ' + Math.round(dd / 7) + ' שבועות והמחיר ' + Math.round((1 - price / pkPx) * 100) + '% מתחת לשיא — שיאים יורדים, לא מגמת עלייה';
+        if (aboveSMA) {
+          res.trend = 'range'; res.status = 'reject';
+          res.disq.push('no_new_high');
+          res.reasons.push(staleTxt);
+          return res;
+        }
+        trend = 'down'; res.trend = 'down';
+        res.reasons.push(staleTxt + ' + שבירת SMA30');
+      }
+    }
     var levels = buildLevels(swingBars, swings);
     var vol = volumeTrend(bars);
     res.volRatio = +vol.ratio.toFixed(2);
