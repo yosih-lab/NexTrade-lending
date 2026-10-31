@@ -53,8 +53,10 @@
     rrTarget: 2,            // minimum 1:2 risk:reward
     maxTargetR: 4,          // snap the target to a known level only if it lies within this many R of entry
     freshBreakoutMax: 10,   // a broken level that has held longer than this many weekly closes is an established support, not a fresh breakout
-    macroRangeWeeks: [104, 156, 208], // windows (2/3/4 years) tested by the multi-year sideways filter
+    macroRangeWeeks: [156, 208], // windows (3/4 years) tested by the multi-year sideways filter
     macroRangeWidth: 1.8,   // closes within a band no wider than hi/lo = 1.8 over the window => candidate range
+    macroRangeDrift: 0.35,  // net move over the window must be < 35% of the band height (else it is a slow trend)
+    macroRangeCross: 10,    // price must cross the middle of the band at least this many times
     macroRangeSepWeeks: 12, // two tests of the same wall must be at least this many weeks apart
     targetSnapTol: 0.01     // a level within 1% of the 1:2 point still counts as "at/beyond" it
   };
@@ -381,9 +383,10 @@
   }
 
   // ---- Multi-year sideways filter ---------------------------------------------
-  // A stock is "macro range" when, over the last 2/3/4 years, (1) closes stayed inside a band no wider
-  // than CFG.macroRangeWidth, (2) the top AND bottom of that band were each tested by >=2 separate swings
-  // (so it is bouncing between two walls, not drifting), and (3) price is still inside the band
+  // A stock is "macro range" when, over the last 3/4 years, (1) closes stayed inside a band no wider
+  // than CFG.macroRangeWidth, (2) the top AND bottom of that band were each tested by >=2 separate swings,
+  // (3) price oscillated across the band's middle many times and ended close to where it started (no net
+  // drift: a slow grind up/down is a trend, not a range), and (4) price is still inside the band
   // (a break out of the whole band is a real move, not a range).
   function macroRange(bars, price) {
     var n = bars.length, wins = CFG.macroRangeWeeks, best = null;
@@ -396,17 +399,22 @@
       var lo = cl[k], hi = cl[W - 1 - k];
       if (!(lo > 0) || hi / lo > CFG.macroRangeWidth) continue;
       if (price < lo * 0.97 || price > hi * 1.03) continue;
+      var drift = Math.abs(Math.log(win[W - 1].close / win[0].close)) / Math.log(hi / lo);
+      if (drift > CFG.macroRangeDrift) continue;
+      var mid = Math.sqrt(lo * hi), cross = 0;
+      for (var i = 1; i < win.length; i++) { if ((win[i - 1].close - mid) * (win[i].close - mid) < 0) cross++; }
+      if (cross < CFG.macroRangeCross) continue;
       var zone = (hi - lo) * 0.2, sw = findSwings(win);
       var tops = [], bots = [];
       sw.forEach(function (s) {
         if (s.type === 'high' && s.price >= hi - zone) tops.push(s.idx);
         if (s.type === 'low' && s.price <= lo + zone) bots.push(s.idx);
       });
-      function separated(a) {
+      var separated = function (a) {
         var cnt = 0, last = -1e9;
         a.forEach(function (i) { if (i - last >= CFG.macroRangeSepWeeks) { cnt++; last = i; } });
         return cnt;
-      }
+      };
       if (separated(tops) >= 2 && separated(bots) >= 2) best = { lo: lo, hi: hi, weeks: W, years: Math.round(W / 52 * 10) / 10 };
     }
     return best;
