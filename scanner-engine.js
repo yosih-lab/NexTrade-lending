@@ -50,7 +50,9 @@
     trendTol: 0.015,        // swings within 1.5% count as the SAME level (a re-test of support doesn't cancel a trend)
     minDownDays: 120,       // a DOWNtrend needs >=120 days (4 months) of decline from the 52-week peak; shorter = range
     alertBuffer: 0.01,      // fire alert ~1% before the entry level
-    rrTarget: 2             // minimum 1:2 risk:reward
+    rrTarget: 2,            // minimum 1:2 risk:reward
+    maxTargetR: 4,          // snap the target to a known level only if it lies within this many R of entry
+    targetSnapTol: 0.01     // a level within 1% of the 1:2 point still counts as "at/beyond" it
   };
 
   // ---- Small numeric helpers -------------------------------------------------
@@ -370,18 +372,34 @@
   }
 
   // ---- Trade level builder ---------------------------------------------------
-  function buildTrade(dir, entry, stopRef, atrVal) {
-    var stop, target, risk;
+  // Target = the 1:2 minimum, but when a known level (e.g. a historical low/high) sits beyond that
+  // point (within CFG.maxTargetR) the target is placed ON that level: it is where price realistically
+  // stalls, and a reward past it would be fantasy. The R:R is then recomputed from the real target.
+  function buildTrade(dir, entry, stopRef, atrVal, levels) {
+    var stop, target, risk, min;
     if (dir === 'long') {
       stop = stopRef - atrVal;
       risk = entry - stop;
-      target = entry + CFG.rrTarget * risk;
+      min = entry + CFG.rrTarget * risk;
+      target = min;
+      var up = null;
+      (levels || []).forEach(function (l) {
+        if (l.price >= min * (1 - CFG.targetSnapTol) && l.price <= entry + CFG.maxTargetR * risk && (up == null || l.price < up)) up = l.price;
+      });
+      if (up != null) target = Math.max(up, min);
     } else {
       stop = stopRef + atrVal;
       risk = stop - entry;
-      target = entry - CFG.rrTarget * risk;
+      min = entry - CFG.rrTarget * risk;
+      target = min;
+      var dn = null;
+      (levels || []).forEach(function (l) {
+        if (l.price <= min * (1 + CFG.targetSnapTol) && l.price >= entry - CFG.maxTargetR * risk && (dn == null || l.price > dn)) dn = l.price;
+      });
+      if (dn != null) target = Math.min(dn, min);
     }
-    return { entry: entry, stop: stop, target: target, rr: CFG.rrTarget, risk: risk };
+    var rr = risk > 0 ? Math.round(Math.abs(target - entry) / risk * 10) / 10 : CFG.rrTarget;
+    return { entry: entry, stop: stop, target: target, rr: rr, risk: risk };
   }
 
   // Alert fires a little before the entry, on the side price is approaching from.
@@ -670,7 +688,7 @@
     function makePlan(kind, dir, level, touches, closes, stage, extra) {
       var stopDist = Math.max(atrVal * CFG.retestStopAtr, dir === 'short' ? level * CFG.retestStopPct : 0);
       if (kind === 'pullback') stopDist = atrVal;
-      var t = buildTrade(dir, level, level, stopDist);
+      var t = buildTrade(dir, level, level, stopDist, levels);
       var p = {
         kind: kind, dir: dir, level: level, touches: touches,
         closes: closes, needed: CFG.holdCandles, stage: stage,
@@ -698,7 +716,7 @@
         return r;
       }
       var ranAway = Math.abs(px - entry) / entry > CFG.ranAwayPct;
-      var t = buildTrade(dir, entry, stopRef, a);
+      var t = buildTrade(dir, entry, stopRef, a, levels);
       r.entry = t.entry; r.stop = t.stop; r.target = t.target; r.rr = t.rr;
       var al = alertFor(entry, px);
       r.alertLevel = al.level; r.alertSide = al.side;

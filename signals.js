@@ -381,7 +381,14 @@
 
   // Status of a signal relative to the live price, with distance-to-entry.
   // waiting → armed (within ~1.5% of entry) → active (past entry) → hit / stopped.
+  // "now" = the scanner itself says the entry conditions are complete (break + 5 candles + retest, or a
+  // confirmed reversal at support) and price is still in the entry window — the one state worth shouting about.
   function signalStatus(s) {
+    var st = signalStatusBase(s);
+    if (s.scanStatus === 'entry' && !s.planOnly && (st.key === 'armed' || st.key === 'active')) st.key = 'now';
+    return st;
+  }
+  function signalStatusBase(s) {
     var live = livePrice(s.sym);
     if (s.planOnly) {
       // Setup still forming — never "armed/active", whatever the live price does.
@@ -408,6 +415,7 @@
     }
   }
   var STATUS_TXT = {
+    now: '🔥 כניסה עכשיו',
     waiting: 'ממתין לכניסה',
     armed: '⚡ קרוב לכניסה',
     active: 'בכניסה (פעיל)',
@@ -492,6 +500,7 @@
 
   // ---------- rendering ----------
   var STATUS_HINT = {
+    now: 'כל תנאי הכניסה התמלאו והמחיר בטווח הכניסה — אפשר להיכנס עכשיו',
     waiting: 'המחיר עדיין רחוק מרמת הכניסה',
     armed: 'המחיר במרחק של עד 1.5% מרמת הכניסה — הכין התראה',
     active: 'המחיר עבר את רמת הכניסה',
@@ -557,8 +566,8 @@
     '</div>' + planBlock(s);
     var chips = '';
     if (setupTxt) chips += '<span class="sig-setup">' + esc(setupTxt) + '</span> ';
-    if (s.trendType) chips += '<span class="sig-setup">מגמה ' + esc(s.trendType) + '</span> ';
-    chips += '<span class="sig-setup">' + (MARKET_TXT[marketOf(s.sym)] || '') + '</span>';
+    if (s.trendType) chips += '<span class="sig-setup trend ' + (s.trendType === 'ירידה' ? 'down' : (s.trendType === 'עלייה' ? 'up' : 'flat')) + '">' +
+      (s.trendType === 'ירידה' ? '▼ ' : (s.trendType === 'עלייה' ? '▲ ' : '↔ ')) + 'מגמת ' + esc(s.trendType) + '</span> ';
     if (s.avgTurnover != null) {
       var tc = s.sym.slice(-3) === '.TA' ? '₪' : '$';
       chips += ' <span class="sig-setup vol" title="סך המסחר בדולרים/שקלים בשבוע, ממוצע 3 חודשים (מחזור = כמות מניות × מחיר)">מחזור שבועי ממוצע (3 חודשים): ' + fmtBig(s.avgTurnover * 5, tc) + '</span>';
@@ -586,9 +595,9 @@
     var st = stt.key;
     var fav = isFav(s.sym);
     var open = !!_expanded[s.key];
-    var ready = (st === 'armed' || st === 'active');
+    var ready = (st === 'armed' || st === 'active' || st === 'now');
     var isLong = s.dir === 'long';
-    return '<div class="sig-row ' + s.dir + (ready ? ' ready' : '') + (st === 'hit' || st === 'stopped' ? ' done' : '') + (open ? ' open' : '') + (inPort(s.sym) ? ' in-port' : '') + '">' +
+    return '<div class="sig-row ' + s.dir + (ready ? ' ready' : '') + (st === 'now' ? ' now' : '') + (st === 'hit' || st === 'stopped' ? ' done' : '') + (open ? ' open' : '') + (inPort(s.sym) ? ' in-port' : '') + '">' +
       '<div class="sr-main" data-k="' + esc(s.key) + '" onclick="NTSignals.toggleRow(this.getAttribute(\'data-k\'))">' +
         '<button class="sig-fav sr-fav ' + (fav ? 'on' : '') + '" title="מעקב" onclick="event.stopPropagation();NTSignals.toggleFav(\'' + s.sym + '\')">' + (fav ? '★' : '☆') + '</button>' +
         '<div class="sr-sym" dir="auto"><b>' + esc(dispSym(s.sym)) + '</b>' + mktTag(s.sym) + portTag(s.sym) +
@@ -636,7 +645,7 @@
       whyTxt = '<div class="sig-why">💡 ' + s.reasons.slice(0, 2).join(' · ') + '</div>';
     }
 
-    return '<div class="sig-card ' + s.dir + ((st === 'armed' || st === 'active') ? ' ready' : '') + (inPort(s.sym) ? ' in-port' : '') + '">' +
+    return '<div class="sig-card ' + s.dir + ((st === 'armed' || st === 'active' || st === 'now') ? ' ready' : '') + (st === 'now' ? ' now' : '') + (inPort(s.sym) ? ' in-port' : '') + '">' +
       '<div class="sig-head">' +
         '<div><div class="sig-sym">' + esc(dispSym(s.sym)) + mktTag(s.sym) + portTag(s.sym) +
           (isNewSig(s) ? ' <span class="sr-new">חדש</span>' : '') +
@@ -675,16 +684,18 @@
   function heroCard(sigs) {
     var ranked = sigs.slice().map(function (s) {
       var k = signalStatus(s).key;
-      var score = k === 'active' ? 3 : (k === 'armed' ? 2 : 0);
+      var score = k === 'now' ? 4 : (k === 'active' ? 3 : (k === 'armed' ? 2 : 0));
       return { s: s, score: score };
     }).filter(function (x) { return x.score > 0; })
       .sort(function (a, b) { return b.score - a.score || b.s.ts - a.s.ts; });
     if (!ranked.length) return '';
     var s = ranked[0].s;
     var stt = signalStatus(s);
-    var action = stt.key === 'active'
-      ? 'המחיר בטווח הכניסה — אפשר להוסיף לתיק עכשיו'
-      : 'המחיר קרוב מאוד לכניסה — היכון וקבע התראה';
+    var action = stt.key === 'now'
+      ? '🔥 כל תנאי הכניסה התמלאו — אפשר להיכנס עכשיו'
+      : (stt.key === 'active'
+        ? 'המחיר בטווח הכניסה — אפשר להוסיף לתיק עכשיו'
+        : 'המחיר קרוב מאוד לכניסה — היכון וקבע התראה');
     return '<div class="sf-hero ' + s.dir + '">' +
       '<div class="sf-hero-tag">⚡ מה עושים עכשיו</div>' +
       '<div class="sf-hero-sym">' + esc(dispSym(s.sym)) + ' · ' + (s.dir === 'long' ? 'לונג' : 'שורט') + '</div>' +
@@ -746,7 +757,7 @@
     return uniq;
   }
 
-  function isReadySig(s) { var k = signalStatus(s).key; return k === 'armed' || k === 'active'; }
+  function isReadySig(s) { var k = signalStatus(s).key; return k === 'armed' || k === 'active' || k === 'now'; }
 
   // Chips + (grouped) list + upsell. Re-rendered on its own when filtering/typing.
   function renderSigDyn() {
@@ -838,21 +849,23 @@
 
     // Group: ready to enter → waiting → finished (hit / stopped)
     function renderGroups(items) {
-      var gReady = [], gWait = [], gPlan = [], gDone = [];
+      var gNow = [], gReady = [], gWait = [], gPlan = [], gDone = [];
       items.forEach(function (s) {
         var k = signalStatus(s).key;
-        if (k === 'armed' || k === 'active') gReady.push(s);
+        if (k === 'now') gNow.push(s);
+        else if (k === 'armed' || k === 'active') gReady.push(s);
         else if (k === 'hit' || k === 'stopped') gDone.push(s);
         else if (k === 'plan') gPlan.push(s);
         else gWait.push(s);
       });
       var groups = [
+        { t: '🔥 כניסה עכשיו', cls: 'now', items: gNow },
         { t: '⚡ קרובות לכניסה', cls: 'ready', items: gReady },
         { t: '👀 ממתינות לכניסה', cls: 'wait', items: gWait },
         { t: '⏳ בהתהוות — לא להיכנס עדיין', cls: 'plan', items: gPlan },
         { t: '✓ הושלמו / נפגעו', cls: 'done', items: gDone }
       ].filter(function (g) { return g.items.length; });
-      var showHeads = groups.length > 1;
+      var showHeads = groups.length > 1 || (groups.length === 1 && groups[0].cls === 'now');
       return groups.map(function (g) {
         var inner = viewMode === 'cards'
           ? '<div class="sf-grid">' + g.items.map(signalCard).join('') + '</div>'

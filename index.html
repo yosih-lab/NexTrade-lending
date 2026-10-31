@@ -2772,6 +2772,24 @@
     .sig-status.hit     { background:rgba(38,166,154,.16); color:var(--green); }
     .sig-status.stopped { background:rgba(239,83,80,.16); color:var(--red); }
     .sig-status.plan    { background:rgba(139,154,181,.16); color:#b8c4dc; }
+    /* "enter NOW": scanner confirmed every entry condition — loud gold badge, pulsing glow, tinted row */
+    .sig-status.now { background:linear-gradient(135deg,#ffcf33,#ff9f1a); color:#2a1700; font-weight:900; font-size:.82rem;
+      padding:.3rem .75rem; box-shadow:0 0 0 0 rgba(255,184,28,.7); animation:ntNowPulse 1.6s ease-out infinite; white-space:nowrap; }
+    @keyframes ntNowPulse { 0%{box-shadow:0 0 0 0 rgba(255,184,28,.65);} 70%{box-shadow:0 0 0 10px rgba(255,184,28,0);} 100%{box-shadow:0 0 0 0 rgba(255,184,28,0);} }
+    .sig-row.now.ready, .sig-card.now.ready, .sig-row.now, .sig-card.now { background:linear-gradient(90deg, rgba(255,184,28,.13), var(--surface) 55%); border-color:#ffb81c; border-width:2px;
+      box-shadow:0 0 0 1px rgba(255,184,28,.55), 0 0 26px rgba(255,184,28,.28); animation:ntNowGlow 1.8s ease-in-out infinite; }
+    @keyframes ntNowGlow { 0%,100%{box-shadow:0 0 0 1px rgba(255,184,28,.5), 0 0 14px rgba(255,184,28,.18);} 50%{box-shadow:0 0 0 2px rgba(255,184,28,.95), 0 0 32px rgba(255,184,28,.42);} }
+    .sig-row.now.long { border-right-color:var(--green); }
+    .sig-row.now.short { border-right-color:var(--red); }
+    .sig-row.now .sr-sym b { color:#ffd466; }
+    .sig-group.now { color:#2a1700; background:linear-gradient(135deg,#ffcf33,#ff9f1a); border-radius:10px; padding:.35rem .8rem; font-size:.95rem; }
+    .sig-group.now::after { display:none; }
+    .sig-group.now b { background:rgba(42,23,0,.85); border-color:transparent; color:#ffd466; }
+    /* trend chip: down looks like the SHORT tag, up like the LONG tag */
+    .sig-setup.trend { font-weight:900; }
+    .sig-setup.trend.down { background:rgba(239,83,80,.16); color:var(--red); }
+    .sig-setup.trend.up { background:rgba(38,166,154,.16); color:var(--green); }
+    .sig-setup.trend.flat { background:rgba(139,154,181,.16); color:#b8c4dc; }
     /* "plan" (setup still forming): banner + 4-step progress (break → 5 candles → retest → entry) */
     .plan-banner { margin:.55rem 0 .4rem; padding:.55rem .75rem; border-radius:10px; font-size:.9rem; font-weight:800; line-height:1.5;
       background:rgba(245,166,35,.12); border:1px solid rgba(245,166,35,.4); color:#ffd27a; }
@@ -3648,13 +3666,13 @@
 </div>
 
 <script src="scanner-symbols.js?v=20261024a"></script>
-<script src="scanner-engine.js?v=20261030c"></script>
+<script src="scanner-engine.js?v=20261031a"></script>
 <script src="plan.js?v=20261019g"></script>
 <script src="main.js?v=20261030c"></script>
 <script src="stockpanel.js?v=20261030a"></script>
 <script src="drawing.js?v=20261019b"></script>
 <script src="features.js?v=20261018j"></script>
-<script src="signals.js?v=20261030c"></script>
+<script src="signals.js?v=20261031a"></script>
 <script src="plan-overlay.js?v=20261030c"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
