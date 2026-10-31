@@ -230,7 +230,7 @@
       if (code === 'entry') {
         if (was) msgs.push('✅ ' + sym + ': עכשיו אפשר להיכנס ' + (a.direction === 'short' ? 'שורט' : 'לונג') + ' — כניסה ' + fmt(a.entry, a.curr));
       } else if (isFav(a.sym) || was) {
-        if (code === 'approach') msgs.push('⏳ ' + sym + ' מתקרבת ל' + (bd ? 'תמיכה ' : 'התנגדות ') + lvl + ' — אל תיכנס עדיין');
+        if (code === 'approach') msgs.push('⏳ ' + sym + ' מתקרבת ל' + ((bd || p.kind === 'pullback') ? 'תמיכה ' : 'התנגדות ') + lvl + ' — אל תיכנס עדיין');
         else if (code.indexOf('holding:') === 0) msgs.push('⏳ ' + sym + ': נר ' + code.split(':')[1] + ' מתוך ' + p.needed + (bd ? ' מתחת ל-' : ' מעל ') + lvl);
         else if (code === 'await_retest') msgs.push('⏳ ' + sym + ': 5 הנרות הושלמו — ממתינים לריטסט ל-' + lvl);
         else if (code === 'await_reversal') msgs.push('⏳ ' + sym + ' חזרה לתמיכה ' + lvl + ' — ממתינים לנר היפוך + מחזור מעל הממוצע');
@@ -428,7 +428,7 @@
   function planStageText(p) {
     if (!p) return '';
     var bd = p.kind === 'breakdown';
-    if (p.kind === 'pullback') return p.stage === 'entry' ? 'אפשר להיכנס' : 'ממתין לנר היפוך + מחזור';
+    if (p.kind === 'pullback') return p.stage === 'entry' ? 'אפשר להיכנס' : (p.stage === 'approach' ? 'ממתין לחזרה לתמיכה' : 'ממתין לנר היפוך + מחזור');
     if (p.stage === 'approach') return bd ? 'מתקרב לתמיכה — טרם נשברה' : 'מתקרב להתנגדות — טרם נפרצה';
     if (p.stage === 'holding') return 'נר ' + Math.min(p.closes, p.needed) + ' מתוך ' + p.needed;
     if (p.stage === 'await_retest') return 'ממתין לריטסט';
@@ -441,7 +441,7 @@
     var bd = p.kind === 'breakdown';
     var idx, steps;
     if (p.kind === 'pullback') {
-      idx = p.stage === 'entry' ? 3 : (p.volContracting ? 2 : 1);
+      idx = p.stage === 'entry' ? 3 : (p.stage === 'approach' ? 0 : (p.volContracting ? 2 : 1));
       steps = [
         'חזרה לתמיכה ' + fmt(p.level, s.curr) + ' (' + p.touches + ' נגיעות)',
         'התכנסות עם מחזורי מסחר מתכווצים',
@@ -473,7 +473,9 @@
     var lvl = fmt(p.level, s.curr);
     var word = bd ? 'התמיכה' : 'ההתנגדות';
     var msg, cls = 'wait';
-    if (p.kind === 'pullback' && p.stage !== 'entry') {
+    if (p.kind === 'pullback' && p.stage === 'approach') {
+      msg = '⏳ אל תיכנס עדיין — המחיר עוד לא חזר לתמיכה ' + lvl + ' (' + p.touches + ' נגיעות). כניסה רק בחזרה אליה עם נר היפוך ומחזור מעל הממוצע.';
+    } else if (p.kind === 'pullback' && p.stage !== 'entry') {
       msg = '⏳ אל תיכנס עדיין — המחיר חזר לתמיכה ' + lvl + ' (' + p.touches + ' נגיעות)' +
         (p.volContracting ? ' במחזורי מסחר מתכווצים' : '') + '. כניסה רק כשהוא עולה ממנה עם נר היפוך ומחזור מעל הממוצע.';
     } else if (p.stage === 'approach') {

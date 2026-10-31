@@ -52,6 +52,7 @@
     alertBuffer: 0.01,      // fire alert ~1% before the entry level
     rrTarget: 2,            // minimum 1:2 risk:reward
     maxTargetR: 4,          // snap the target to a known level only if it lies within this many R of entry
+    freshBreakoutMax: 10,   // a broken level that has held longer than this many weekly closes is an established support, not a fresh breakout
     targetSnapTol: 0.01     // a level within 1% of the 1:2 point still counts as "at/beyond" it
   };
 
@@ -326,9 +327,19 @@
     return best;
   }
 
-  // The level closest to price (either side, within nearLevel). Touches are re-counted from the
-  // weekly lows that land inside a small ATR band around it, because the most recent touches are not
-  // yet confirmed swings (a fractal needs bars on its right) but a trader still counts them.
+  // Touches of a level = clustered swings, re-counted from weekly lows that reach it from above (or
+  // pierce it slightly), because the most recent touches are not yet confirmed swings (a fractal needs
+  // bars on its right) but a trader still counts them.
+  function countTouches(l, bars, atrVal) {
+    var band = Math.max(l.price * CFG.levelTol * 0.5, 0.35 * (atrVal || 0)), up = l.price * 0.005, t = 0;
+    for (var i = 0; i < bars.length; i++) {
+      var dLow = bars[i].low - l.price;           // wick that reaches (or pierces) the level from above
+      if (dLow <= up && dLow >= -band) t++;
+    }
+    return Math.max(l.touches, t);
+  }
+
+  // The level closest to price (either side, within nearLevel).
   function nearLevelAny(levels, price, bars, atrVal) {
     var best = null;
     levels.forEach(function (l) {
@@ -337,12 +348,7 @@
       if (!best || d < best.d) best = { l: l, d: d };
     });
     if (!best) return null;
-    var band = Math.max(best.l.price * CFG.levelTol * 0.5, 0.35 * (atrVal || 0)), up = best.l.price * 0.005, t = 0;
-    for (var i = 0; i < bars.length; i++) {
-      var dLow = bars[i].low - best.l.price;      // wick that reaches (or pierces) the level from above
-      if (dLow <= up && dLow >= -band) t++;
-    }
-    return { price: best.l.price, touches: Math.max(best.l.touches, t), lastIdx: best.l.lastIdx };
+    return { price: best.l.price, touches: countTouches(best.l, bars, atrVal), lastIdx: best.l.lastIdx };
   }
 
   // A significant resistance that price is approaching (not yet broken) or has cleared by 1-4 weekly
@@ -484,10 +490,12 @@
       // may sit a hair ABOVE the last close (a wick-pierce), so "nearest below" alone would skip it.
       var supNear = nearLevelAny(levels, price, bars, atrVal);
 
-      // (A) Breakout + 5-candle hold + retest of a flipped resistance.
+      // (A) Breakout + 5-candle hold + retest of a flipped resistance. Only for a FRESH breakout: once a
+      // broken level has held for many weeks it is simply an established SUPPORT, and coming back to it
+      // is a "return to support" (handled below), not a breakout retest.
       var resLvl = nearestLevelBelow(levels, price); // the level just under price = possible flipped resistance
-      if (resLvl) {
-        var bo = breakoutRetest(bars, resLvl.price, 'above');
+      var bo = resLvl ? breakoutRetest(bars, resLvl.price, 'above') : null;
+      if (resLvl && bo.heldCount <= CFG.freshBreakoutMax) {
         if (bo.held && bo.retesting) {
           res.direction = 'long'; res.setup = 'breakout_retest';
           res.level = resLvl.price; res.levelTouches = resLvl.touches;
@@ -581,10 +589,18 @@
         return finalizeWatch(res, fb.level, price);
       }
 
-      // Uptrend but price ran away from support — don't chase.
+      // Uptrend but price ran away from support — don't chase, but show the plan: wait for the return.
       res.direction = 'long'; res.setup = 'pullback'; res.status = 'watch';
-      res.reasons.push('מגמת עלייה אך המחיר רחוק מהתמיכה — לא לרדוף, להמתין לריטסט/תיקון');
-      if (sup) { res.level = sup.price; res.levelTouches = sup.touches; return finalizeWatch(res, sup.price, price); }
+      res.reasons.push('מגמת עלייה אך המחיר רחוק מהתמיכה — לא לרדוף, להמתין לחזרה לתמיכה');
+      if (sup) {
+        res.level = sup.price; res.levelTouches = sup.touches;
+        var supT = countTouches(sup, bars, atrVal);
+        if (supT >= CFG.touchSignificant && (price - sup.price) <= CFG.planZoneAtr * atrVal) {
+          res.plan = makePlan('pullback', 'long', sup.price, supT, 0, 'approach', { volContracting: !!vol.contracting, volRatio: +vol.ratio.toFixed(2) });
+          res.reasons.push('התמיכה ' + fmt(sup.price) + ' (' + supT + ' נגיעות) — כניסה רק בחזרה אליה עם נר היפוך ומחזור מעל הממוצע');
+        }
+        return finalizeWatch(res, sup.price, price);
+      }
       return res;
     }
 
