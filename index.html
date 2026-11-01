@@ -206,11 +206,11 @@
     .status-dot { width:7px; height:7px; border-radius:50%; background:var(--red); }
     .status-dot.open { background:var(--green); animation:blink 2s infinite; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-    .layout { display:flex; flex-direction:row; height:calc(100vh - 42px); padding-right:50px; }
+    .layout { display:flex; flex-direction:row-reverse; height:calc(100vh - 42px); padding-left:50px; }
     .sidebar {
       width:var(--sidebar-w);
       flex:0 0 var(--sidebar-w);
-      background:#131722; border-left:1px solid var(--border);
+      background:#131722; border-right:1px solid var(--border);
       overflow:visible; display:flex; flex-direction:column;
       min-width:0; z-index:2;
       box-shadow:none;
@@ -787,7 +787,7 @@
     /* VERTICAL ICON TOOLBAR – TradingView style, top-right strip */
     .icon-toolbar{
       position:fixed;
-      right:0;
+      left:0;
       top:42px;            /* below ticker(42px) */
       bottom:0;
       width:50px;
@@ -799,8 +799,8 @@
       gap:2px;
       padding:8px 0;
       background:var(--surface);
-      border-left:1px solid var(--border);
-      box-shadow:-2px 0 10px rgba(0,0,0,.28);
+      border-right:1px solid var(--border);
+      box-shadow:2px 0 10px rgba(0,0,0,.28);
     }
     .ib{
       width:44px;
@@ -858,7 +858,8 @@
     .ib-hamburger:hover{background:rgba(41,98,255,.10)}
     .ib-hamburger .ib-tip{
       position:absolute;
-      right:35px;
+      left:35px;
+      right:auto;
       top:50%;
       transform:translateY(-50%);
       background:var(--surface2);
@@ -902,7 +903,8 @@
     }
     .ib-tip{
       position:absolute;
-      right:35px;
+      left:35px;
+      right:auto;
       top:50%;
       transform:translateY(-50%);
       background:var(--surface2);
@@ -1316,12 +1318,12 @@
     }
     /* ===== DRAWING / ANALYSIS TOOLS — permanent left panel ===== */
     #drawToolbar {
-      position:fixed; top:42px; left:0; bottom:0; width:47px;
+      position:fixed; top:42px; right:0; left:auto; bottom:0; width:47px;
       z-index:200; display:flex !important; flex-direction:column; gap:2px;
-      background:var(--surface); border-right:1px solid var(--border);
+      background:var(--surface); border-left:1px solid var(--border);
       padding:6px 3px; align-items:center; overflow-y:auto;
     }
-    .layout { padding-left:47px; }
+    .layout { padding-right:47px; }
     /* Header with float / hide / drag controls */
     .dt-head {
       display:flex; flex-direction:column; align-items:center; gap:1px;
@@ -1349,7 +1351,7 @@
     /* Divider line between logical tool groups (cursor / lines / shapes / text / fib / gann / trade / clear) */
     .dt-sep { width:60%; height:1px; background:var(--border); margin:4px 0; flex-shrink:0; pointer-events:none; }
     .dt-tip {
-      position:absolute; left:43px; top:50%; transform:translateY(-50%);
+      position:absolute; right:43px; left:auto; top:50%; transform:translateY(-50%);
       background:var(--surface2); border:1px solid var(--border); border-radius:6px;
       padding:.18rem .5rem; font-size:.68rem; white-space:nowrap; color:var(--text);
       opacity:0; pointer-events:none; transition:opacity .12s; z-index:20;
@@ -1364,7 +1366,7 @@
     }
     .dt-group:hover .dt-groupbtn .dt-arrow { opacity:1; transform:scale(1.35); }
     .dt-flyout {
-      position:absolute; left:43px; top:50%; transform:translateY(-50%) translateX(-6px);
+      position:absolute; right:43px; left:auto; top:50%; transform:translateY(-50%) translateX(6px);
       display:flex; flex-direction:column; gap:3px; padding:6px;
       background:var(--surface); border:1px solid var(--border); border-radius:10px;
       box-shadow:0 10px 30px rgba(0,0,0,.55); z-index:60;
@@ -1382,16 +1384,16 @@
     .dt-flyout .dt-sub:hover .dt-sublbl { color:var(--accent); }
 
     #drawToolbar.floating {
-      top:auto; bottom:auto; left:70px; height:auto; max-height:calc(100vh - 90px);
+      top:auto; bottom:auto; left:70px; right:auto; height:auto; max-height:calc(100vh - 90px);
       border:1px solid var(--border); border-right:1px solid var(--border);
       border-radius:12px; box-shadow:0 10px 34px rgba(0,0,0,.55);
       padding:5px 4px; z-index:1500;
     }
     #drawToolbar.floating .dt-head { cursor:grab; }
-    body.draw-float .layout { padding-left:0 !important; }
+    body.draw-float .layout { padding-right:0 !important; }
     /* Launcher button shown when the toolbar is hidden */
     #drawToolLauncher {
-      position:fixed; left:10px; top:90px; z-index:1500;
+      position:fixed; right:76px; top:90px; z-index:1500;
       width:38px; height:38px; align-items:center; justify-content:center;
       background:var(--surface); border:1px solid var(--border); border-radius:10px;
       color:var(--accent); cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,.5);
@@ -1399,7 +1401,7 @@
     }
     #drawToolLauncher:hover { border-color:var(--accent); transform:scale(1.06); }
     #drawToolLauncher svg { width:20px; height:20px; }
-    body.draw-hidden .layout { padding-left:0 !important; }
+    body.draw-hidden .layout { padding-right:0 !important; }
 
     /* ===== TECHNICAL TOOLS launcher button + window ===== */
     #techToolsBtn {
@@ -1465,7 +1467,7 @@
 
     /* ---- Floating favorites bar (bottom) — draggable ---- */
     #techFavBar {
-      display:none; position:fixed; z-index:5000; bottom:14px; left:58px;
+      display:none; position:fixed; z-index:5000; bottom:14px; left:calc(var(--sidebar-w) + 62px);
       align-items:center; gap:4px; padding:5px 7px 5px 5px; direction:rtl;
       background:#1b1c22; border:1px solid #35363d; border-radius:12px;
       box-shadow:0 8px 26px rgba(0,0,0,.5);
@@ -1863,11 +1865,11 @@
     .bad-actions .btn { font-family:'Heebo',sans-serif; }
     /* ===== POSITION PANEL (floating, draggable, resizable all sides) ===== */
     #positionPanel {
-      position:fixed; right:50px; top:42px; bottom:0;
+      position:fixed; left:50px; top:42px; bottom:0;
       width:286px;
       background:#131722; border-left:1px solid #2a2e39; border-right:1px solid #2a2e39;
       z-index:150;
-      box-shadow:-6px 0 24px rgba(0,0,0,.5);
+      box-shadow:6px 0 24px rgba(0,0,0,.5);
       display:none; flex-direction:column;
       font-family:'Heebo',sans-serif; direction:ltr;
       overflow:hidden;
@@ -1878,10 +1880,10 @@
     /* When the trade ticket is open, shrink the chart so its price scale
        sits immediately to the LEFT of the panel (panel docked between the
        right icon toolbar (50px) and the chart's price axis). */
-    body.trade-open .layout { padding-right:336px; }
+    body.trade-open .layout { padding-left:336px; }
     @media (max-width:768px) {
-      #positionPanel { right:0; top:78px; bottom:56px; width:270px; max-width:88vw; z-index:1500; }
-      body.trade-open .layout { padding-right:0; }
+      #positionPanel { left:auto; right:0; top:78px; bottom:56px; width:270px; max-width:88vw; z-index:1500; }
+      body.trade-open .layout { padding-left:0; }
     }
     /* Position action bar — floats top-left below chart info */
     #posActionBar {
@@ -2083,8 +2085,7 @@
         top:auto !important; width:100% !important; height:53px !important;
         flex-direction:row !important; gap:1px !important;
         background:var(--surface) !important; border-top:1px solid var(--border) !important;
-        border-right:none !important;
-        padding:4px 6px !important; align-items:center !important;
+        border-right:none !important; border-left:none !important;
         overflow-x:auto !important; z-index:998 !important;
         justify-content:flex-start !important;
       }
@@ -2098,7 +2099,7 @@
       #drawToolbar .dt-sep { width:1px; height:60%; margin:0 3px; }
       /* Gann flyout opens UPWARD above the bottom toolbar on mobile */
       #drawToolbar .dt-flyout {
-        left:50%; top:auto; bottom:48px;
+        left:50%; right:auto; top:auto; bottom:48px;
         transform:translateX(-50%) translateY(6px);
       }
       #drawToolbar .dt-group:hover .dt-flyout {
@@ -3668,7 +3669,7 @@
 <script src="scanner-symbols.js?v=20261024a"></script>
 <script src="scanner-engine.js?v=20261101a"></script>
 <script src="plan.js?v=20261019g"></script>
-<script src="main.js?v=20261101a"></script>
+<script src="main.js?v=20261101b"></script>
 <script src="stockpanel.js?v=20261030a"></script>
 <script src="drawing.js?v=20261019b"></script>
 <script src="features.js?v=20261018j"></script>

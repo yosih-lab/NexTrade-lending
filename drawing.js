@@ -349,7 +349,7 @@
       toolbar.classList.add('floating');
       var savedPos = null;
       try { savedPos = JSON.parse(localStorage.getItem('nt_drawtb_pos') || 'null'); } catch (e) {}
-      var left = savedPos && savedPos.left != null ? savedPos.left : 70;
+      var left = savedPos && savedPos.left != null ? savedPos.left : Math.max(4, window.innerWidth - 140);
       var top  = savedPos && savedPos.top  != null ? savedPos.top  : 90;
       left = Math.max(4, Math.min(window.innerWidth - 60, left));
       top  = Math.max(48, Math.min(window.innerHeight - 80, top));
