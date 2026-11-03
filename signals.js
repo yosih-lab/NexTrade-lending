@@ -140,13 +140,22 @@
     return (curr || '') + s;
   }
 
+  // Last price per symbol as reported by the server's 60-second tracker (for symbols the client does not quote).
+  var _srvPx = {};
+  function indexServerPx(arr) {
+    (arr || []).forEach(function (a) {
+      if (!a || a.lastPrice == null) return;
+      var old = _srvPx[a.sym], ts = a.lastPriceTs || 0;
+      if (!old || ts >= old.ts) _srvPx[a.sym] = { price: a.lastPrice, ts: ts };
+    });
+  }
   function livePrice(sym) {
     try {
       if (window.priceCache && window.priceCache[sym] && window.priceCache[sym].price) {
         return window.priceCache[sym].price;
       }
     } catch (e) {}
-    return null;
+    return _srvPx[sym] ? _srvPx[sym].price : null;
   }
 
   function loadTrades() {
@@ -187,6 +196,7 @@
     })).then(function () {
       _tradePxBusy = false;
       _tradePxTs = Date.now();
+      try { checkExits(); } catch (e) {}
       if (activeTab === 'trades') render();
     }, function () { _tradePxBusy = false; });
   }
@@ -245,6 +255,82 @@
     });
   }
 
+  // ---- EXIT ALERTS: tell the user to get OUT when a stop breaks (or a target is reached) ----
+  // Two sources, polled every minute while the app is open:
+  //  1) the user's own open trades (portfolio) vs live price, and
+  //  2) the server's 60-second tracker (signal.exit) for every entry it published.
+  var EXIT_SEEN_KEY = 'nt_exit_seen';
+  function loadExitSeen() { try { return JSON.parse(localStorage.getItem(EXIT_SEEN_KEY) || '{}') || {}; } catch (e) { return {}; } }
+  function saveExitSeen(m) {
+    var cut = Date.now() - 14 * 24 * 3600e3;
+    Object.keys(m).forEach(function (k) { if (m[k] < cut) delete m[k]; });
+    try { localStorage.setItem(EXIT_SEEN_KEY, JSON.stringify(m)); } catch (e) {}
+  }
+  function checkExits() {
+    var seen = loadExitSeen(), fresh = [], changed = false, now = Date.now();
+    function once(a, uniq) {
+      if (seen[uniq]) return;
+      var sd = 'sd_' + a.sym + '_' + a.dir + '_' + a.type;
+      seen[uniq] = now; changed = true;
+      if (seen[sd] && now - seen[sd] < 12 * 3600e3) return;   // same event already announced via the other source
+      seen[sd] = now;
+      fresh.push(a);
+    }
+    loadTrades().forEach(function (t) {
+      if (t.status !== 'open' || t.stop == null) return;
+      var live = livePrice(t.sym);
+      if (live == null) return;
+      var long = t.dir === 'long';
+      var type = (long ? live <= t.stop : live >= t.stop) ? 'stop' : ((t.tp != null && (long ? live >= t.tp : live <= t.tp)) ? 'target' : null);
+      if (type) once({ sym: t.sym, dir: t.dir, curr: t.curr, type: type, entry: t.entry, stop: t.stop, tp: t.tp, price: live }, 'tr_' + t.id + '_' + type);
+    });
+    var sc = loadServerCache();
+    ((sc && sc.data) || []).forEach(function (a) {
+      if (!a || !a.tracked || !a.exit || now - a.exit.ts > 24 * 3600e3) return;
+      var dir = a.direction === 'short' ? 'short' : 'long';
+      once({ sym: a.sym, dir: dir, curr: (a.sym && (a.sym.charAt(0) === '^' || a.sym === 'TA35.TA')) ? '' : (a.curr || ''), type: a.exit.type === 'stop' ? 'stop' : 'target',
+             entry: a.entry, stop: a.stop, tp: a.target, price: a.exit.price }, 'sg_' + (a.key || a.sym) + '_' + a.exit.ts);
+    });
+    if (changed) saveExitSeen(seen);
+    if (!fresh.length) return;
+    showExitModal(fresh);
+    fresh.slice(0, 3).forEach(function (a, i) {
+      var msg = (a.type === 'stop' ? '🛑 הסטופ נשבר — צא מ-' : '🎯 היעד הושג ב-') + dispSym(a.sym);
+      setTimeout(function () {
+        try { if (typeof window.ntToast === 'function') window.ntToast(msg); } catch (e) {}
+        try { if (window.Notification && Notification.permission === 'granted') new Notification('NexTrade', { body: msg, requireInteraction: a.type === 'stop' }); } catch (e) {}
+      }, i * 800);
+    });
+  }
+  var _exitQueue = [];
+  function showExitModal(list) {
+    _exitQueue = _exitQueue.concat(list);
+    var ov = document.getElementById('ntExitOv');
+    if (!ov) { ov = document.createElement('div'); ov.id = 'ntExitOv'; document.body.appendChild(ov); }
+    var hasStop = _exitQueue.some(function (a) { return a.type === 'stop'; });
+    var items = _exitQueue.map(function (a) {
+      var sign = a.dir === 'long' ? 1 : -1;
+      var pnl = (a.entry && a.price != null) ? ((a.price - a.entry) / a.entry * 100 * sign) : null;
+      var pnlTxt = pnl == null ? '' : ' · <span class="' + (pnl >= 0 ? 'pos' : 'neg') + '" dir="ltr">' + (pnl >= 0 ? '+' : '') + pnl.toFixed(1) + '%</span>';
+      return '<div class="nt-exit-item ' + a.type + '">' +
+        '<div class="nt-exit-sym">' + esc(dispSym(a.sym)) + ' <small>' + (a.dir === 'long' ? 'לונג' : 'שורט') + '</small></div>' +
+        '<div class="nt-exit-msg">' + (a.type === 'stop' ? '🛑 <b>הסטופ נשבר — צא מהעסקה עכשיו</b>' : '🎯 <b>הגעת ליעד — שקול לממש רווח</b>') + '</div>' +
+        '<div class="nt-exit-det">מחיר ' + fmt(a.price, a.curr) + ' · סטופ ' + fmt(a.stop, a.curr) + (a.tp != null ? ' · יעד ' + fmt(a.tp, a.curr) : '') + ' · כניסה ' + fmt(a.entry, a.curr) + pnlTxt + '</div>' +
+      '</div>';
+    }).join('');
+    ov.innerHTML = '<div class="nt-exit-box ' + (hasStop ? 'stop' : 'hit') + '" dir="rtl" role="alertdialog">' +
+      '<div class="nt-exit-title">' + (hasStop ? '🛑 התראת יציאה' : '🎯 יעד הושג') + '</div>' + items +
+      '<div class="nt-exit-foot"><button class="nt-exit-go" onclick="NTSignals.exitGo()">פתח את העסקאות שלי</button>' +
+      '<button class="nt-exit-ok" onclick="NTSignals.exitDismiss()">הבנתי</button></div></div>';
+    ov.style.display = 'flex';
+  }
+  function exitDismiss() {
+    _exitQueue = [];
+    var ov = document.getElementById('ntExitOv');
+    if (ov) ov.style.display = 'none';
+  }
+  function exitGo() { exitDismiss(); try { show(); switchTab('trades'); } catch (e) {} }
+
   // Pull the plan-gated signal feed from the server and cache it. The server
   // decides WHICH signals this user is entitled to — the client cannot unlock more.
   function syncServerSignals(force) {
@@ -266,6 +352,8 @@
             isPremium: d.isPremium, tier: d.tier, delayedMs: d.delayedMs, lastScan: d.lastScan, resting: !!d.scannerResting
           }));
         } catch (e) {}
+        indexServerPx(d.signals);
+        try { checkExits(); } catch (e) {}
         // keep the plan badge/UI + limits honest with the server's authoritative answer
         try {
           if (window.NTPlan) window.NTPlan.applyServerPlan({
@@ -314,13 +402,15 @@
       try { raw = JSON.parse(localStorage.getItem(ALERTS_KEY) || '[]'); } catch (e) { raw = []; }
     }
     var out = [];
+    indexServerPx(raw);
     raw.forEach(function (a) {
       var cond = a.condition || '';
       var isBuy  = cond === 'buy_signal'  || a.direction === 'long'  || a.direction === 'bullish';
       var isSell = cond === 'sell_signal' || a.direction === 'short' || a.direction === 'bearish';
       if (!isBuy && !isSell) return;
       // Hard rule: no short above SMA30, no long below it (drops stale/cached signals too).
-      if (a.sma30 != null && a.price != null && ((isSell && !isBuy && a.price >= a.sma30) || (isBuy && !isSell && a.price < a.sma30))) return;
+      // A TRACKED (already published) entry is exempt: it must stay visible to deliver its exit message.
+      if (!a.tracked && a.sma30 != null && a.price != null && ((isSell && !isBuy && a.price >= a.sma30) || (isBuy && !isSell && a.price < a.sma30))) return;
       if (/=[FX]$|-USD$/i.test(a.sym || '')) return;   // only stocks + the two indices
       var dir = isBuy ? 'long' : 'short';
       var levels = computeLevels(a, dir);
@@ -342,7 +432,10 @@
         lastWeekTurnover: (a.lastWeekTurnover != null ? a.lastWeekTurnover : null),
         scanStatus: a.status || '',
         plan: a.plan || null,
-        planOnly: !!a.planOnly
+        planOnly: !!a.planOnly,
+        tracked: !!a.tracked,
+        exit: a.exit || null,
+        lastPrice: a.lastPrice != null ? a.lastPrice : null
       });
     });
     return out;
@@ -385,11 +478,16 @@
   // confirmed reversal at support) and price is still in the entry window — the one state worth shouting about.
   function signalStatus(s) {
     var st = signalStatusBase(s);
-    if (s.scanStatus === 'entry' && !s.planOnly && (st.key === 'armed' || st.key === 'active')) st.key = 'now';
+    // "now" only while price is still inside the entry window (a signal that already ran 5%+ is just an open trade).
+    if (s.scanStatus === 'entry' && !s.planOnly && (st.key === 'armed' || st.key === 'active') && (st.dist == null || Math.abs(st.dist) <= 2)) st.key = 'now';
     return st;
   }
   function signalStatusBase(s) {
     var live = livePrice(s.sym);
+    if (s.exit) {
+      // The server's 60-second tracker already saw the stop / target hit — final, whatever the price does later.
+      return { key: s.exit.type === 'stop' ? 'stopped' : 'hit', dist: (live != null && s.entry) ? ((live - s.entry) / s.entry) * 100 : null };
+    }
     if (s.planOnly) {
       // Setup still forming — never "armed/active", whatever the live price does.
       return { key: 'plan', dist: (live != null && s.entry) ? ((live - s.entry) / s.entry) * 100 : null };
@@ -403,12 +501,14 @@
     if (s.dir === 'long') {
       if (live <= s.stop) return { key: 'stopped', dist: dist };
       if (live >= s.tp) return { key: 'hit', dist: dist };
+      if (s.tracked) return { key: 'active', dist: dist };   // published entry, still between stop and target = open trade
       if (live >= s.entry) return { key: 'active', dist: dist };
       if (Math.abs(dist) <= 1.5) return { key: 'armed', dist: dist };
       return { key: 'waiting', dist: dist };
     } else {
       if (live >= s.stop) return { key: 'stopped', dist: dist };
       if (live <= s.tp) return { key: 'hit', dist: dist };
+      if (s.tracked) return { key: 'active', dist: dist };
       if (live <= s.entry) return { key: 'active', dist: dist };
       if (Math.abs(dist) <= 1.5) return { key: 'armed', dist: dist };
       return { key: 'waiting', dist: dist };
@@ -418,9 +518,9 @@
     now: '🔥 כניסה עכשיו',
     waiting: 'ממתין לכניסה',
     armed: '⚡ קרוב לכניסה',
-    active: 'בכניסה (פעיל)',
-    hit: 'הגיע ליעד ✓',
-    stopped: 'נפגע סטופ ✕',
+    active: 'בעסקה פתוחה',
+    hit: '🎯 הגיע ליעד',
+    stopped: '🛑 הסטופ נשבר — צא',
     plan: '⏳ לא להיכנס עדיין'
   };
 
@@ -505,9 +605,9 @@
     now: 'כל תנאי הכניסה התמלאו והמחיר בטווח הכניסה — אפשר להיכנס עכשיו',
     waiting: 'המחיר עדיין רחוק מרמת הכניסה',
     armed: 'המחיר במרחק של עד 1.5% מרמת הכניסה — הכין התראה',
-    active: 'המחיר עבר את רמת הכניסה',
-    hit: 'המחיר הגיע ליעד',
-    stopped: 'המחיר פגע בסטופ',
+    active: 'העסקה פתוחה — המחיר בין הסטופ ליעד',
+    hit: 'המחיר הגיע ליעד — שקול לממש רווח',
+    stopped: 'המחיר פגע בסטופ — צא מהעסקה',
     plan: 'הסטאפ עוד בהתהוות — אל תיכנס לפני שכל השלבים מתקיימים'
   };
   function marketOf(sym) {
@@ -531,24 +631,85 @@
   function isNewSig(s) { return s.ts && (Date.now() - s.ts) < 24 * 3600 * 1000; }
   function rrNum(s) { var n = parseFloat(String(s.rr || '').split(':')[1]); return isNaN(n) ? 0 : n; }
 
-  // Real stop / entry / target bar with the live price marker (always left→right).
-  function rangeBar(s) {
-    var live = livePrice(s.sym);
+  // Geometry of a trade on a "progress" ruler: ALWAYS stop (loss) on the left → target (profit) on the right,
+  // for longs AND shorts, so left=bad / right=good reads the same everywhere.
+  function tradeGeom(s) {
     var vals = [s.stop, s.entry, s.tp];
-    if (live != null) vals.push(live);
-    for (var i = 0; i < vals.length; i++) { if (vals[i] == null || isNaN(vals[i])) return ''; }
-    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
-    var span = (hi - lo) || 1;
-    function pos(v) { return ((v - lo) / span * 100).toFixed(1); }
-    function seg(a, b, cls) {
-      var l = Math.min(a, b), w = Math.abs(a - b);
-      return '<div class="' + cls + '" style="left:' + pos(l) + '%;width:' + (w / span * 100).toFixed(1) + '%"></div>';
+    for (var i = 0; i < vals.length; i++) { if (vals[i] == null || isNaN(vals[i])) return null; }
+    var long = s.dir === 'long';
+    var tot = long ? (s.tp - s.stop) : (s.stop - s.tp);
+    if (!(tot > 0)) return null;
+    var live = livePrice(s.sym);
+    var g = {
+      long: long, live: live, p: null, out: null,
+      r: Math.max(2, Math.min(98, (long ? (s.entry - s.stop) : (s.stop - s.entry)) / tot * 100)),
+      risk: Math.abs(s.entry - s.stop) / s.entry * 100,
+      rew: Math.abs(s.tp - s.entry) / s.entry * 100
+    };
+    if (live != null) {
+      var raw = (long ? (live - s.stop) : (s.stop - live)) / tot * 100;
+      g.p = Math.max(0, Math.min(100, raw));
+      g.out = raw < 0 ? 'stop' : (raw > 100 ? 'tp' : null);
     }
-    return '<div class="sig-rb" dir="ltr" title="סטופ · כניסה · יעד">' +
-      seg(s.stop, s.entry, 'sig-rb-risk') + seg(s.entry, s.tp, 'sig-rb-rew') +
-      '<div class="sig-rb-entry" style="left:' + pos(s.entry) + '%"></div>' +
-      (live != null ? '<div class="sig-rb-live" style="left:' + pos(live) + '%"></div>' : '') +
+    return g;
+  }
+
+  // Compact bar for list rows.
+  function rangeBar(s) {
+    var g = tradeGeom(s);
+    if (!g) return '';
+    return '<div class="sig-rb" dir="ltr" title="אדום = אזור הסיכון (מהכניסה עד הסטופ) · ירוק = אזור הרווח (מהכניסה עד היעד) · קו לבן = כניסה · נקודה כתומה = המחיר עכשיו. שמאל = הפסד, ימין = רווח">' +
+      '<div class="sig-rb-risk" style="left:0;width:' + g.r.toFixed(1) + '%"></div>' +
+      '<div class="sig-rb-rew" style="left:' + g.r.toFixed(1) + '%;width:' + (100 - g.r).toFixed(1) + '%"></div>' +
+      '<div class="sig-rb-entry" style="left:' + g.r.toFixed(1) + '%"></div>' +
+      (g.live != null ? '<div class="sig-rb-live" style="left:' + g.p.toFixed(1) + '%"></div>' : '') +
     '</div>';
+  }
+
+  // Full, labelled trade ruler (cards + expanded rows): stop · entry · target with prices, the live price pin,
+  // risk/reward in %, and a one-line legend. Left = loss side, right = profit side (longs and shorts alike).
+  function ruler(s) {
+    var g = tradeGeom(s);
+    if (!g) return '';
+    var c = s.curr, r = g.r.toFixed(1);
+    var pin = '';
+    if (g.live != null) {
+      var pc = g.p < 14 ? ' l' : (g.p > 86 ? ' r' : '');
+      pin = '<div class="rl-pin' + pc + '" style="left:' + g.p.toFixed(1) + '%"><span class="rl-pin-lbl">עכשיו</span><b>' + fmt(g.live, c) + '</b></div>';
+    }
+    var dirTxt = g.long ? 'לונג — רווח כשהמחיר עולה מ-' + fmt(s.entry, c) + ' ל-' + fmt(s.tp, c)
+                        : 'שורט — רווח כשהמחיר יורד מ-' + fmt(s.entry, c) + ' ל-' + fmt(s.tp, c);
+    var warn = g.out === 'stop' ? '<div class="rl-warn">המחיר מעבר לסטופ</div>' : (g.out === 'tp' ? '<div class="rl-warn ok">המחיר מעבר ליעד</div>' : '');
+    return '<div class="rl' + (s.planOnly ? ' plan' : '') + '" dir="ltr">' +
+      '<div class="rl-pinrow">' + pin + '</div>' +
+      '<div class="rl-track">' +
+        '<div class="rl-risk" style="width:' + r + '%"></div>' +
+        '<div class="rl-rew" style="width:' + (100 - g.r).toFixed(1) + '%"></div>' +
+        '<div class="rl-entry" style="left:' + r + '%"></div>' +
+        (g.live != null ? '<div class="rl-dot" style="left:' + g.p.toFixed(1) + '%"></div>' : '') +
+      '</div>' +
+      '<div class="rl-ticks' + (g.r < 28 || g.r > 72 ? ' low' : '') + '">' +
+        '<div class="rl-t stop"><span>סטופ</span><b>' + fmt(s.stop, c) + '</b></div>' +
+        '<div class="rl-t entry" style="left:' + r + '%"><span>' + (s.planOnly ? 'כניסה מתוכננת' : 'כניסה') + '</span><b>' + fmt(s.entry, c) + '</b></div>' +
+        '<div class="rl-t tp"><span>יעד</span><b>' + fmt(s.tp, c) + '</b></div>' +
+      '</div>' +
+      '<div class="rl-sum"><span class="neg">הפסד אפשרי −' + g.risk.toFixed(1) + '%</span><span class="rr">יחס 1:' + (g.rew / g.risk).toFixed(1) + '</span><span class="pos">רווח אפשרי +' + g.rew.toFixed(1) + '%</span></div>' +
+      warn +
+      '<div class="rl-legend" dir="rtl">' + dirTxt + '. 🔴 אזור סיכון · 🟢 אזור רווח · ⚪ כניסה · 🟠 המחיר עכשיו</div>' +
+    '</div>';
+  }
+
+  // Big red/green banner on a signal whose stop was hit (EXIT) or target reached.
+  function exitBanner(s) {
+    var k = signalStatus(s).key;
+    if (k !== 'stopped' && k !== 'hit') return '';
+    var px = s.exit ? s.exit.price : livePrice(s.sym);
+    var when = (s.exit && s.exit.ts) ? ' (' + ageTxt(s.exit.ts) + ')' : '';
+    var pxTxt = px != null ? ' · מחיר ' + fmt(px, s.curr) : '';
+    if (k === 'stopped') {
+      return '<div class="exit-banner stop">🛑 <b>הסטופ נשבר — צא מהעסקה עכשיו.</b> הסטופ ' + fmt(s.stop, s.curr) + pxTxt + when + '</div>';
+    }
+    return '<div class="exit-banner hit">🎯 <b>הגעת ליעד ' + fmt(s.tp, s.curr) + '</b> — שקול לממש רווח' + pxTxt + when + '</div>';
   }
 
   function adminDelBtn(s) {
@@ -561,11 +722,11 @@
     var earn = earningsInfo(s.sym, s.earnDate);
     var setupTxt = SETUP_TXT[s.setup] || s.setup || '';
     var stt = signalStatus(s);
-    var out = '<div class="sr-detail-grid' + (s.planOnly ? ' plan-dim' : '') + '">' +
+    var out = exitBanner(s) + '<div class="sr-detail-grid' + (s.planOnly ? ' plan-dim' : '') + '">' +
       '<div class="sig-lvl entry"><div class="sig-lvl-label">' + (s.planOnly ? 'כניסה מתוכננת' : 'כניסה') + '</div><div class="sig-lvl-val">' + fmt(s.entry, s.curr) + '</div></div>' +
       '<div class="sig-lvl stop"><div class="sig-lvl-label">סטופ</div><div class="sig-lvl-val">' + fmt(s.stop, s.curr) + '</div></div>' +
       '<div class="sig-lvl tp"><div class="sig-lvl-label">יעד</div><div class="sig-lvl-val">' + fmt(s.tp, s.curr) + '</div></div>' +
-    '</div>' + planBlock(s);
+    '</div>' + ruler(s) + planBlock(s);
     var chips = '';
     if (setupTxt) chips += '<span class="sig-setup">' + esc(setupTxt) + '</span> ';
     if (s.trendType) chips += '<span class="sig-setup trend ' + (s.trendType === 'ירידה' ? 'down' : (s.trendType === 'עלייה' ? 'up' : 'flat')) + '">' +
@@ -599,13 +760,15 @@
     var open = !!_expanded[s.key];
     var ready = (st === 'armed' || st === 'active' || st === 'now');
     var isLong = s.dir === 'long';
-    return '<div class="sig-row ' + s.dir + (ready ? ' ready' : '') + (st === 'now' ? ' now' : '') + (st === 'hit' || st === 'stopped' ? ' done' : '') + (open ? ' open' : '') + (inPort(s.sym) ? ' in-port' : '') + '">' +
+    return '<div class="sig-row ' + s.dir + (ready ? ' ready' : '') + (st === 'now' ? ' now' : '') + (st === 'hit' ? ' done' : '') + (st === 'stopped' ? ' exit' : '') + (open ? ' open' : '') + (inPort(s.sym) ? ' in-port' : '') + '">' +
       '<div class="sr-main" data-k="' + esc(s.key) + '" onclick="NTSignals.toggleRow(this.getAttribute(\'data-k\'))">' +
+        '<div class="sr-top">' +
         '<button class="sig-fav sr-fav ' + (fav ? 'on' : '') + '" title="מעקב" onclick="event.stopPropagation();NTSignals.toggleFav(\'' + s.sym + '\')">' + (fav ? '★' : '☆') + '</button>' +
         '<div class="sr-sym" dir="auto"><b>' + esc(dispSym(s.sym)) + '</b>' + mktTag(s.sym) + portTag(s.sym) +
           (isNewSig(s) ? '<span class="sr-new">חדש</span>' : '') +
           '<small>' + esc(s.name) + '</small></div>' +
         '<span class="sr-dir ' + s.dir + '">' + (isLong ? '▲ לונג' : '▼ שורט') + '</span>' +
+        '</div>' +
         '<div class="sr-lv"><small>כניסה</small>' + fmt(s.entry, s.curr) + '</div>' +
         '<div class="sr-lv stop"><small>סטופ</small>' + fmt(s.stop, s.curr) + '</div>' +
         '<div class="sr-lv tp"><small>יעד</small>' + fmt(s.tp, s.curr) + '</div>' +
@@ -647,7 +810,7 @@
       whyTxt = '<div class="sig-why">💡 ' + s.reasons.slice(0, 2).join(' · ') + '</div>';
     }
 
-    return '<div class="sig-card ' + s.dir + ((st === 'armed' || st === 'active' || st === 'now') ? ' ready' : '') + (st === 'now' ? ' now' : '') + (inPort(s.sym) ? ' in-port' : '') + '">' +
+    return '<div class="sig-card ' + s.dir + ((st === 'armed' || st === 'active' || st === 'now') ? ' ready' : '') + (st === 'now' ? ' now' : '') + (st === 'stopped' ? ' exit' : '') + (inPort(s.sym) ? ' in-port' : '') + '">' +
       '<div class="sig-head">' +
         '<div><div class="sig-sym">' + esc(dispSym(s.sym)) + mktTag(s.sym) + portTag(s.sym) +
           (isNewSig(s) ? ' <span class="sr-new">חדש</span>' : '') +
@@ -660,7 +823,8 @@
           '<span class="sig-dir ' + s.dir + '">' + dirTxt + '</span>' +
         '</div>' +
       '</div>' +
-      rangeBar(s) +
+      exitBanner(s) +
+      ruler(s) +
       planBlock(s) +
       '<div class="sig-levels' + (s.planOnly ? ' plan-dim' : '') + '">' +
         '<div class="sig-lvl entry"><div class="sig-lvl-label">' + (s.planOnly ? 'כניסה מתוכננת' : 'כניסה') + '</div><div class="sig-lvl-val">' + fmt(s.entry, s.curr) + '</div></div>' +
@@ -686,25 +850,27 @@
   function heroCard(sigs) {
     var ranked = sigs.slice().map(function (s) {
       var k = signalStatus(s).key;
-      var score = k === 'now' ? 4 : (k === 'active' ? 3 : (k === 'armed' ? 2 : 0));
+      var score = k === 'stopped' && inPort(s.sym) ? 5 : (k === 'now' ? 4 : (k === 'active' ? 3 : (k === 'armed' ? 2 : 0)));
       return { s: s, score: score };
     }).filter(function (x) { return x.score > 0; })
       .sort(function (a, b) { return b.score - a.score || b.s.ts - a.s.ts; });
     if (!ranked.length) return '';
     var s = ranked[0].s;
     var stt = signalStatus(s);
-    var action = stt.key === 'now'
+    var action = stt.key === 'stopped'
+      ? '🛑 הסטופ נשבר — צא מהעסקה עכשיו'
+      : (stt.key === 'now'
       ? '🔥 כל תנאי הכניסה התמלאו — אפשר להיכנס עכשיו'
       : (stt.key === 'active'
         ? 'המחיר בטווח הכניסה — אפשר להוסיף לתיק עכשיו'
-        : 'המחיר קרוב מאוד לכניסה — היכון וקבע התראה');
+        : 'המחיר קרוב מאוד לכניסה — היכון וקבע התראה'));
     return '<div class="sf-hero ' + s.dir + '">' +
       '<div class="sf-hero-tag">⚡ מה עושים עכשיו</div>' +
       '<div class="sf-hero-sym">' + esc(dispSym(s.sym)) + ' · ' + (s.dir === 'long' ? 'לונג' : 'שורט') + '</div>' +
       '<div class="sf-hero-action">' + action + '</div>' +
       '<div class="sf-hero-levels">כניסה ' + fmt(s.entry, s.curr) + ' · סטופ ' + fmt(s.stop, s.curr) + ' · יעד ' + fmt(s.tp, s.curr) + '</div>' +
       '<div class="sf-hero-foot">' +
-        addBtn(s.sym, false) +
+        (stt.key === 'stopped' ? '<button class="sig-btn" onclick="NTSignals.switchTab(\'trades\')">פתח את העסקאות שלי</button>' : addBtn(s.sym, false)) +
         '<button class="sig-btn ghost" onclick="NTSignals.setAlert(\'' + s.sym + '\')">🔔 קבע התראה</button>' +
       '</div>' +
     '</div>';
@@ -851,23 +1017,25 @@
 
     // Group: ready to enter → waiting → finished (hit / stopped)
     function renderGroups(items) {
-      var gNow = [], gReady = [], gWait = [], gPlan = [], gDone = [];
+      var gExit = [], gNow = [], gReady = [], gWait = [], gPlan = [], gDone = [];
       items.forEach(function (s) {
         var k = signalStatus(s).key;
-        if (k === 'now') gNow.push(s);
+        if (k === 'stopped') gExit.push(s);
+        else if (k === 'now') gNow.push(s);
         else if (k === 'armed' || k === 'active') gReady.push(s);
-        else if (k === 'hit' || k === 'stopped') gDone.push(s);
+        else if (k === 'hit') gDone.push(s);
         else if (k === 'plan') gPlan.push(s);
         else gWait.push(s);
       });
       var groups = [
+        { t: '🛑 הסטופ נשבר — צא מהעסקה', cls: 'exit', items: gExit },
         { t: '🔥 כניסה עכשיו', cls: 'now', items: gNow },
-        { t: '⚡ קרובות לכניסה', cls: 'ready', items: gReady },
+        { t: '⚡ קרובות לכניסה / בעסקה', cls: 'ready', items: gReady },
         { t: '👀 ממתינות לכניסה', cls: 'wait', items: gWait },
         { t: '⏳ בהתהוות — לא להיכנס עדיין', cls: 'plan', items: gPlan },
-        { t: '✓ הושלמו / נפגעו', cls: 'done', items: gDone }
+        { t: '✓ הגיעו ליעד', cls: 'done', items: gDone }
       ].filter(function (g) { return g.items.length; });
-      var showHeads = groups.length > 1 || (groups.length === 1 && groups[0].cls === 'now');
+      var showHeads = groups.length > 1 || (groups.length === 1 && (groups[0].cls === 'now' || groups[0].cls === 'exit'));
       return groups.map(function (g) {
         var inner = viewMode === 'cards'
           ? '<div class="sf-grid">' + g.items.map(signalCard).join('') + '</div>'
@@ -959,7 +1127,13 @@
     var cls = (pnl.abs == null) ? '' : (pnl.abs >= 0 ? 'pos' : 'neg');
     var dirTxt = t.dir === 'long' ? 'לונג' : 'שורט';
     var pnlTxt = (pnl.abs == null) ? '--' : (fmtM(pnl.abs, t.curr, true) + ' (' + pct(pnl.pct) + ')');
-    return '<div class="trade-row">' +
+    var exitSt = null;
+    if (isOpen && live != null) {
+      var hitStop = t.dir === 'long' ? live <= t.stop : live >= t.stop;
+      var hitTp = t.dir === 'long' ? live >= t.tp : live <= t.tp;
+      exitSt = hitStop ? 'stop' : (hitTp ? 'tp' : null);
+    }
+    return '<div class="trade-row' + (exitSt === 'stop' ? ' exit' : '') + '">' +
       '<div><span class="tr-sym">' + esc(dispSym(t.sym)) + '</span>' +
         '<br><span class="tr-dir ' + t.dir + '">' + dirTxt + '</span></div>' +
       '<div><div class="tr-cell-label">כניסה</div>' + fmtP(t.entry, t) + '</div>' +
@@ -970,6 +1144,8 @@
           ? '<button class="tr-close-btn" onclick="NTSignals.closeTrade(\'' + t.id + '\')">סגור עסקה</button>'
           : '<span class="tr-cell-label">' + (t.closeDate || '') + '</span>') +
       '</div>' +
+      (exitSt === 'stop' ? '<div class="tr-exit stop">🛑 <b>הסטופ נשבר — צא מהעסקה עכשיו.</b> סטופ ' + fmtP(t.stop, t) + ' · מחיר ' + fmtP(live, t) + '</div>' : '') +
+      (exitSt === 'tp' ? '<div class="tr-exit hit">🎯 <b>הגעת ליעד ' + fmtP(t.tp, t) + '</b> — שקול לממש רווח.</div>' : '') +
     '</div>';
   }
 
@@ -2484,9 +2660,13 @@
   function onAppReady() {
     startRemChecks();
     syncServerSignals(true); // fetch the server feed as soon as we're logged in
-    // Keep polling in the background so stage alerts ("you can enter now") arrive even when the feed is closed.
+    // Watch EVERY minute (feed open or not): signals from the server + open trades vs live price → exit alerts.
     if (!window.__ntSigBg) {
-      window.__ntSigBg = setInterval(function () { try { syncServerSignals(); } catch (e) {} }, 5 * 60 * 1000);
+      window.__ntSigBg = setInterval(function () {
+        try { syncServerSignals(true); } catch (e) {}
+        try { refreshTradePrices(true); } catch (e) {}
+        try { checkExits(); } catch (e) {}
+      }, 60 * 1000);
     }
     // Admins default to the regular (analysis) site — they are not signal-locked.
     if (isAdmin()) { setMode('analysis'); return; }
@@ -2528,6 +2708,7 @@
     aiSavePort: aiSavePort, aiEditPort: aiEditPort, aiSetRisk: aiSetRisk, aiGoRisk: aiGoRisk,
     aiToggleRemind: aiToggleRemind, aiRemoveRemind: aiRemoveRemind, aiNotifPerm: requestNotifPerm, aiOpenHist: aiOpenHist,
     syncServerSignals: syncServerSignals,
+    checkExits: checkExits, exitDismiss: exitDismiss, exitGo: exitGo,
     signalsFor: function (sym) { return loadSignals().filter(function (s) { return s.sym === sym; }); },
     toggleUserMenu: toggleUserMenu,
     openUpgrade: function (ctx) { openUpgrade(ctx); }

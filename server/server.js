@@ -580,6 +580,9 @@ async function seedAndStart() {
     setInterval(() => { loadUsUniverse().catch(() => {}); }, 24 * 3600 * 1000);
     setTimeout(() => { scanSignalsChunk().catch(e => console.error('[Signals] first scan:', e.message)); }, 8000);
     setInterval(() => { scanSignalsChunk().catch(e => console.error('[Signals] cycle:', e.message)); }, SIG_CYCLE_MS);
+    // Stop/target watcher for every published entry — every minute, independent of the (slower) scan rotation.
+    setTimeout(() => { trackOpenSignals().catch(() => {}); }, 20000);
+    setInterval(() => { trackOpenSignals().catch(e => console.error('[Track] cycle:', e.message)); }, TRACK_CYCLE_MS);
     console.log('[NexTrade] ✓ Signal scanner scheduled every', Math.round(SIG_CYCLE_MS / 60000), 'min · universe', scanUniverse().length, 'symbols');
   }
 }
@@ -1070,6 +1073,11 @@ const SIG_CHUNK      = parseInt(process.env.SCAN_CHUNK || '60', 10);   // symbol
 const SIG_CONCURRENCY= parseInt(process.env.SCAN_CONCURRENCY || '6', 10);
 const SIG_CYCLE_MS   = parseInt(process.env.SCAN_CYCLE_MS || String(5 * 60 * 1000), 10);
 const SIG_MAX_AGE_MS = parseInt(process.env.SIGNAL_MAX_AGE_MS || String(7 * 24 * 3600 * 1000), 10);
+// A published ENTRY signal keeps being tracked (its stop/target are watched every minute) until it exits or this age.
+const TRACK_MAX_AGE_MS = parseInt(process.env.TRACK_MAX_AGE_MS || String(30 * 24 * 3600 * 1000), 10);
+const EXIT_KEEP_MS = 3 * 24 * 3600 * 1000;   // how long an exited (stop/target) signal stays visible
+const TRACK_CYCLE_MS = parseInt(process.env.TRACK_CYCLE_MS || String(60 * 1000), 10);
+const isTrackedOpen = (o) => !!(o && o.tracked && !o.exit);
 // No entry alerts from 7 days before earnings through earnings day (no open positions into a report).
 const EARN_BLACKOUT_DAYS = parseInt(process.env.EARN_BLACKOUT_DAYS || '7', 10);
 function daysUntilISO(iso) {
@@ -1134,6 +1142,8 @@ function buildSignalObject(sym, a, liq) {
     sym: sym, name: a.name || sym.replace('.TA', ''), price: a.price, curr: curr,
     condition: isShort ? 'sell_signal' : 'buy_signal', direction: a.direction,
     setup: a.setup, status: a.status, trendType: trendType,
+    tracked: !planOnly && a.status === 'entry' && a.entry != null,
+    lastPrice: a.price, lastPriceTs: now.getTime(), exit: null,
     sma30: a.sma30, atr: a.atr, level: a.level, levelTouches: a.levelTouches,
     entry: pe, stop: ps, target: pt, rr: prr,
     plan: a.plan || null, planOnly: planOnly,
@@ -1151,15 +1161,63 @@ function buildSignalObject(sym, a, liq) {
 function pruneSignals() {
   const cutoff = Date.now() - SIG_MAX_AGE_MS;
   const dualUS = (SYMS && SYMS.US_DUAL_LISTED) || [];
-  _sigStore = _sigStore.filter(s => s.ts >= cutoff && !_sigDismissed.has(s.key) && !/=[FX]$|-USD$/i.test(s.sym || '') &&
-    !(/\.TA$/i.test(s.sym || '') && dualUS.indexOf((s.sym || '').replace(/\.TA$/i, '')) !== -1) &&
-    !(s.direction === 'short' && isTaseStock(s.sym || '')) && !inEarnBlackout(s.earnDate) &&
-    !(s.sma30 != null && s.price != null && ((s.direction === 'short' && s.price >= s.sma30) || (s.direction === 'long' && s.price < s.sma30))) &&
-    (isIndexSym(s.sym || '') || (s.avgTurnover != null && s.avgTurnover >= minTurnoverFor(s.sym || ''))));
+  // Signals stored before tracking existed: a published entry is a trade someone may be in → track it too.
+  _sigStore.forEach(s => {
+    if (s.tracked === undefined && s.status === 'entry' && !s.planOnly && s.entry != null) { s.tracked = true; if (s.lastPrice == null) s.lastPrice = s.price; }
+  });
+  _sigStore = _sigStore.filter(s => {
+    if (_sigDismissed.has(s.key) || /=[FX]$|-USD$/i.test(s.sym || '')) return false;
+    if (s.tracked) {
+      // A tracked entry must NOT vanish when conditions turn bad (price under SMA30, stop broken…):
+      // that is exactly when the user needs the exit message. It leaves 3 days after its exit, or after TRACK_MAX_AGE.
+      return Date.now() < (s.exit ? s.exit.ts + EXIT_KEEP_MS : s.ts + TRACK_MAX_AGE_MS);
+    }
+    return s.ts >= cutoff &&
+      !(/\.TA$/i.test(s.sym || '') && dualUS.indexOf((s.sym || '').replace(/\.TA$/i, '')) !== -1) &&
+      !(s.direction === 'short' && isTaseStock(s.sym || '')) && !inEarnBlackout(s.earnDate) &&
+      !(s.sma30 != null && s.price != null && ((s.direction === 'short' && s.price >= s.sma30) || (s.direction === 'long' && s.price < s.sma30))) &&
+      (isIndexSym(s.sym || '') || (s.avgTurnover != null && s.avgTurnover >= minTurnoverFor(s.sym || '')));
+  });
   _sigByKey = {};
   _sigStore.forEach(s => { _sigByKey[s.key] = s; });
   _sigStore.sort((a, b) => b.ts - a.ts);
   if (_sigStore.length > 400) _sigStore = _sigStore.slice(0, 400);
+}
+
+// Every minute: fetch the live price of every tracked (published-entry) signal and check its stop/target.
+// The moment the stop is hit the signal gets exit={type:'stop'} so every client shows "exit now".
+let _trackBusy = false;
+async function trackOpenSignals() {
+  if (_trackBusy || !NTScanner || isWeekendIL()) return;
+  const open = _sigStore.filter(isTrackedOpen);
+  if (!open.length) return;
+  _trackBusy = true;
+  try {
+    const syms = Array.from(new Set(open.map(s => s.sym)));
+    const px = {};
+    for (let i = 0; i < syms.length; i += 5) {
+      await Promise.all(syms.slice(i, i + 5).map(async (sym) => {
+        try {
+          const j = await fetchYahoo(sym, '1m', '1d');
+          const m = j && j.chart && j.chart.result && j.chart.result[0] && j.chart.result[0].meta;
+          if (m && typeof m.regularMarketPrice === 'number' && isFinite(m.regularMarketPrice)) px[sym] = m.regularMarketPrice;
+        } catch (e) { /* keep last known price */ }
+      }));
+    }
+    const now = Date.now();
+    let exited = 0;
+    open.forEach(s => {
+      const p = px[s.sym];
+      if (p == null) return;
+      s.lastPrice = p; s.lastPriceTs = now;
+      const short = s.direction === 'short';
+      let type = null;
+      if (s.stop != null && (short ? p >= s.stop : p <= s.stop)) type = 'stop';
+      else if (s.target != null && (short ? p <= s.target : p >= s.target)) type = 'target';
+      if (type) { s.exit = { type: type, price: p, ts: now }; exited++; console.log('[Track] EXIT', type, s.sym, s.direction, 'price', p, 'stop', s.stop, 'target', s.target); }
+    });
+    if (exited && supabase) persistSignals().catch(() => {});
+  } finally { _trackBusy = false; }
 }
 
 // No trading on Saturday/Sunday (TASE and US both trade Mon–Fri) → the scanner rests.
@@ -1223,7 +1281,7 @@ async function scanSignalsChunk() {
           const dropStale = (keepDir) => {
             Object.keys(_sigByKey).forEach(k => {
               const o = _sigByKey[k];
-              if (o && o.sym === sym && o.direction !== keepDir) delete _sigByKey[k];
+              if (o && o.sym === sym && o.direction !== keepDir && !isTrackedOpen(o)) delete _sigByKey[k];
             });
           };
           const dropPlan = () => {
@@ -1257,6 +1315,10 @@ async function scanSignalsChunk() {
           if (inEarnBlackout(earnDate)) { dropStale(null); return; }
           dropStale(a.direction);
           dropPlan();
+          // A trade already published and still open keeps its ORIGINAL levels (the user entered at those):
+          // update its live fields and do not publish a second signal for the same position.
+          const openSig = Object.keys(_sigByKey).map(k => _sigByKey[k]).find(o => o && o.sym === sym && o.direction === a.direction && isTrackedOpen(o));
+          if (openSig) { openSig.status = a.status; openSig.lastPrice = a.price; openSig.lastPriceTs = Date.now(); return; }
           const sig = buildSignalObject(sym, a, liq);
           sig.earnDate = earnDate || null;
           if (_sigDismissed.has(sig.key)) return;
