@@ -441,16 +441,6 @@
     return out;
   }
 
-  // Human label for the setup type.
-  var SETUP_TXT = {
-    pullback: 'חזרה לתמיכה',
-    breakout_retest: 'פריצה + ריטסט',
-    breakdown_retest: 'שבירה + ריטסט',
-    range_breakout: 'פריצת טווח',
-    sma30_reclaim: 'החזרת SMA30',
-    sma30_rejection: 'דחייה מ-SMA30'
-  };
-
   // Entry / Stop / TP — prefer the scanner's own levels (SMA30 method), else
   // fall back to the legacy 1:2 computation from price + 5-week structure.
   function computeLevels(a, dir) {
@@ -654,18 +644,6 @@
     return g;
   }
 
-  // Compact bar for list rows.
-  function rangeBar(s) {
-    var g = tradeGeom(s);
-    if (!g) return '';
-    return '<div class="sig-rb" dir="ltr" title="אדום = אזור הסיכון (מהכניסה עד הסטופ) · ירוק = אזור הרווח (מהכניסה עד היעד) · קו לבן = כניסה · נקודה כתומה = המחיר עכשיו. שמאל = הפסד, ימין = רווח">' +
-      '<div class="sig-rb-risk" style="left:0;width:' + g.r.toFixed(1) + '%"></div>' +
-      '<div class="sig-rb-rew" style="left:' + g.r.toFixed(1) + '%;width:' + (100 - g.r).toFixed(1) + '%"></div>' +
-      '<div class="sig-rb-entry" style="left:' + g.r.toFixed(1) + '%"></div>' +
-      (g.live != null ? '<div class="sig-rb-live" style="left:' + g.p.toFixed(1) + '%"></div>' : '') +
-    '</div>';
-  }
-
   // Full, labelled trade ruler (cards + expanded rows): stop · entry · target with prices, the live price pin,
   // risk/reward in %, and a one-line legend. Left = loss side, right = profit side (longs and shorts alike).
   function ruler(s) {
@@ -695,7 +673,13 @@
       '</div>' +
       '<div class="rl-sum"><span class="neg">הפסד אפשרי −' + g.risk.toFixed(1) + '%</span><span class="rr">יחס 1:' + (g.rew / g.risk).toFixed(1) + '</span><span class="pos">רווח אפשרי +' + g.rew.toFixed(1) + '%</span></div>' +
       warn +
-      '<div class="rl-legend" dir="rtl">' + dirTxt + '. 🔴 אזור סיכון · 🟢 אזור רווח · ⚪ כניסה · 🟠 המחיר עכשיו</div>' +
+      '<div class="rl-legend" dir="rtl"><div class="rl-dir">' + dirTxt + '</div>' +
+        '<ul class="rl-keys">' +
+          '<li><i class="k w"></i>כניסה</li>' +
+          '<li><i class="k o"></i>המחיר עכשיו</li>' +
+          '<li><i class="k r"></i>אזור סיכון</li>' +
+          '<li><i class="k g"></i>אזור רווח</li>' +
+        '</ul></div>' +
     '</div>';
   }
 
@@ -717,30 +701,20 @@
     return '<button class="sig-del" title="מחק איתות (מנהל)" onclick="event.stopPropagation();NTSignals.deleteSignal(\'' + s.sym + '\',\'' + s.dir + '\')">🗑</button>';
   }
 
-  // Shared detail block (reasons, earnings, actions) for row expansion.
+  // Trend chip: red ▼ for a downtrend (same look as the short tag), green ▲ for an uptrend, grey ↔ for sideways.
+  function trendChip(s) {
+    if (!s.trendType) return '';
+    var k = s.trendType === 'ירידה' ? 'down' : (s.trendType === 'עלייה' ? 'up' : 'flat');
+    return '<span class="sig-setup trend ' + k + '">' + (k === 'down' ? '▼ ' : (k === 'up' ? '▲ ' : '↔ ')) + 'מגמת ' + esc(s.trendType) + '</span>';
+  }
+
+  // Shared detail block (ruler, plan, trend, earnings, actions) for row expansion.
   function sigDetail(s) {
     var earn = earningsInfo(s.sym, s.earnDate);
-    var setupTxt = SETUP_TXT[s.setup] || s.setup || '';
-    var stt = signalStatus(s);
-    var out = exitBanner(s) + '<div class="sr-detail-grid' + (s.planOnly ? ' plan-dim' : '') + '">' +
-      '<div class="sig-lvl entry"><div class="sig-lvl-label">' + (s.planOnly ? 'כניסה מתוכננת' : 'כניסה') + '</div><div class="sig-lvl-val">' + fmt(s.entry, s.curr) + '</div></div>' +
-      '<div class="sig-lvl stop"><div class="sig-lvl-label">סטופ</div><div class="sig-lvl-val">' + fmt(s.stop, s.curr) + '</div></div>' +
-      '<div class="sig-lvl tp"><div class="sig-lvl-label">יעד</div><div class="sig-lvl-val">' + fmt(s.tp, s.curr) + '</div></div>' +
-    '</div>' + ruler(s) + planBlock(s);
-    var chips = '';
-    if (setupTxt) chips += '<span class="sig-setup">' + esc(setupTxt) + '</span> ';
-    if (s.trendType) chips += '<span class="sig-setup trend ' + (s.trendType === 'ירידה' ? 'down' : (s.trendType === 'עלייה' ? 'up' : 'flat')) + '">' +
-      (s.trendType === 'ירידה' ? '▼ ' : (s.trendType === 'עלייה' ? '▲ ' : '↔ ')) + 'מגמת ' + esc(s.trendType) + '</span> ';
-    if (s.avgTurnover != null) {
-      var tc = s.sym.slice(-3) === '.TA' ? '₪' : '$';
-      chips += ' <span class="sig-setup vol" title="סך המסחר בדולרים/שקלים בשבוע, ממוצע 3 חודשים (מחזור = כמות מניות × מחיר)">מחזור שבועי ממוצע (3 חודשים): ' + fmtBig(s.avgTurnover * 5, tc) + '</span>';
-      if (s.lastWeekTurnover != null) chips += ' <span class="sig-setup vol">שבוע אחרון: ' + fmtBig(s.lastWeekTurnover * 5, tc) + '</span>';
-      if (s.avgVolume != null) chips += ' <span class="sig-setup vol" title="כמות מניות שנסחרו בשבוע, ממוצע 3 חודשים">נפח שבועי ממוצע: ' + fmtBig(s.avgVolume * 5, '') + ' מניות</span>';
-    }
-    if (stt.dist != null) chips += ' <span class="sig-dist ' + (Math.abs(stt.dist) <= 1.5 ? 'near' : '') + '">' + (stt.dist >= 0 ? '+' : '') + stt.dist.toFixed(1) + '% מהכניסה</span>';
+    var out = exitBanner(s) + ruler(s) + planBlock(s);
+    var chips = trendChip(s);
     if (earn && earn.days >= 0 && canUse('earnings')) chips += ' <span class="sig-setup earn' + (earn.days <= 14 ? ' soon' : '') + '">📅 דוחות בעוד ' + earn.days + ' ימים (' + esc(earn.date) + ')</span>';
-    out += '<div class="sr-chips">' + chips + '</div>';
-    if (s.reasons && s.reasons.length) out += '<div class="sig-why">💡 ' + s.reasons.slice(0, 3).map(esc).join(' · ') + '</div>';
+    if (chips) out += '<div class="sr-chips">' + chips + '</div>';
     if (earn && canUse('earnings')) {
       out += '<div class="sig-earn ' + (earn.exitToday ? 'warn' : '') + '">📅 דוח בעוד ' + earn.days + ' ימים' +
         (earn.exitToday ? ' — מומלץ לצאת יום לפני!' : '') + '</div>';
@@ -769,12 +743,6 @@
           '<small>' + esc(s.name) + '</small></div>' +
         '<span class="sr-dir ' + s.dir + '">' + (isLong ? '▲ לונג' : '▼ שורט') + '</span>' +
         '</div>' +
-        '<div class="sr-lv"><small>כניסה</small>' + fmt(s.entry, s.curr) + '</div>' +
-        '<div class="sr-lv stop"><small>סטופ</small>' + fmt(s.stop, s.curr) + '</div>' +
-        '<div class="sr-lv tp"><small>יעד</small>' + fmt(s.tp, s.curr) + '</div>' +
-        '<div class="sr-bar">' + rangeBar(s) + '</div>' +
-        '<div class="sr-rr"><small>R:R</small>' + esc(String(s.rr)) + '</div>' +
-        '<div class="sr-vol" title="מחזור מסחר שבועי ממוצע ל-3 חודשים"><small>מחזור שבועי ממוצע</small>' + (s.avgTurnover != null ? fmtBig(s.avgTurnover * 5, s.sym.slice(-3) === '.TA' ? '₪' : '$') : '—') + '</div>' +
         '<span class="sig-status ' + st + '" title="' + STATUS_HINT[st] + '">' + STATUS_TXT[st] + (s.planOnly && s.plan ? ' · ' + esc(planStageText(s.plan)) : '') + '</span>' +
         '<div class="sr-age">' + ageTxt(s.ts) + '</div>' +
         '<div class="sr-act">' + adminDelBtn(s) + '<span class="sr-chev">' + (open ? '▴' : '▾') + '</span></div>' +
@@ -789,32 +757,19 @@
     var dirTxt = s.dir === 'long' ? '🟢 לונג' : '🔴 שורט';
     var fav = isFav(s.sym);
     var earn = earningsInfo(s.sym, s.earnDate);
-    var setupTxt = SETUP_TXT[s.setup] || s.setup || '';
 
-    // distance-to-entry chip
-    var distTxt = '';
-    if (stt.dist != null) {
-      var near = Math.abs(stt.dist) <= 1.5;
-      distTxt = '<span class="sig-dist ' + (near ? 'near' : '') + '">' +
-        (stt.dist >= 0 ? '+' : '') + stt.dist.toFixed(1) + '% מהכניסה</span>';
-    }
     // earnings warning (exit 1 day before) — premium feature
     var earnTxt = '';
     if (earn && canUse('earnings')) {
       earnTxt = '<div class="sig-earn ' + (earn.exitToday ? 'warn' : '') + '">📅 דוח בעוד ' + earn.days + ' ימים' +
         (earn.exitToday ? ' — מומלץ לצאת יום לפני!' : '') + '</div>';
     }
-    // short explanation (why) from the scanner reasons
-    var whyTxt = '';
-    if (s.reasons && s.reasons.length) {
-      whyTxt = '<div class="sig-why">💡 ' + s.reasons.slice(0, 2).join(' · ') + '</div>';
-    }
 
     return '<div class="sig-card ' + s.dir + ((st === 'armed' || st === 'active' || st === 'now') ? ' ready' : '') + (st === 'now' ? ' now' : '') + (st === 'stopped' ? ' exit' : '') + (inPort(s.sym) ? ' in-port' : '') + '">' +
       '<div class="sig-head">' +
         '<div><div class="sig-sym">' + esc(dispSym(s.sym)) + mktTag(s.sym) + portTag(s.sym) +
           (isNewSig(s) ? ' <span class="sr-new">חדש</span>' : '') +
-          (setupTxt ? ' <span class="sig-setup">' + setupTxt + '</span>' : '') +
+          (s.trendType ? ' ' + trendChip(s) : '') +
           (earn && earn.days >= 0 && canUse('earnings') ? ' <span class="sig-setup earn' + (earn.days <= 14 ? ' soon' : '') + '">📅 דוחות בעוד ' + earn.days + ' ימים</span>' : '') + '</div>' +
         '<div class="sig-name">' + s.name + ' · ' + ageTxt(s.ts) + '</div></div>' +
         '<div class="sig-head-right">' +
@@ -826,17 +781,8 @@
       exitBanner(s) +
       ruler(s) +
       planBlock(s) +
-      '<div class="sig-levels' + (s.planOnly ? ' plan-dim' : '') + '">' +
-        '<div class="sig-lvl entry"><div class="sig-lvl-label">' + (s.planOnly ? 'כניסה מתוכננת' : 'כניסה') + '</div><div class="sig-lvl-val">' + fmt(s.entry, s.curr) + '</div></div>' +
-        '<div class="sig-lvl stop"><div class="sig-lvl-label">סטופ</div><div class="sig-lvl-val">' + fmt(s.stop, s.curr) + '</div></div>' +
-        '<div class="sig-lvl tp"><div class="sig-lvl-label">יעד</div><div class="sig-lvl-val">' + fmt(s.tp, s.curr) + '</div></div>' +
-      '</div>' +
-      whyTxt +
       earnTxt +
       '<div class="sig-meta">' +
-        '<span class="sig-rr">יחס סיכוי/סיכון ' + s.rr + '</span>' +
-        (s.avgTurnover != null ? '<span class="sig-dist" title="מחזור מסחר שבועי ממוצע ל-3 חודשים">💵 מחזור שבועי: ' + fmtBig(s.avgTurnover * 5, s.sym.slice(-3) === '.TA' ? '₪' : '$') + '</span>' : '') +
-        distTxt +
         '<span class="sig-status ' + st + '">' + STATUS_TXT[st] + '</span>' +
       '</div>' +
       '<div class="sig-card-foot">' +
