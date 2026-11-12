@@ -44,6 +44,9 @@
     peakTargetHaircut: 0.01,// pullback target = prior 52-week peak less 1% (the peak itself rarely fills)
     pullbackMinDepth: 0.05, // a stock counts as "in a pullback" once it is >= 5% under its 52-week peak
     lostAtr: 0.3,           // "closed through a level" = a weekly close under it by more than max(2%, 0.3×ATR)
+    touchLookback: 52,      // support touches are counted over the last 52 weeks
+    touchBandAtr: 0.3,      // a weekly low within 0.3 ATR under the zone (or up to 0.5% above its top) is a touch
+    touchBounceAtr: 0.4,    // ...and a new touch needs a bounce of >= 0.4 ATR above the zone in between
     planZoneAtr: 1.5,       // a not-yet-broken level within 1.5 ATR of price is shown to the user as a "plan" (do NOT enter yet)
     pullbackLookback: 8,    // weeks to inspect a pullback leg
     volContractRatio: 0.9,  // recent vol <= 0.9x of pullback-start vol = contracting
@@ -339,16 +342,61 @@
     return best;
   }
 
-  // Touches of a level = clustered swings, re-counted from weekly lows that reach it from above (or
-  // pierce it slightly), because the most recent touches are not yet confirmed swings (a fractal needs
-  // bars on its right) but a trader still counts them.
+  // Touches of a support zone as a trader counts them: how many separate times in the last 52 weeks price came
+  // back DOWN to the zone and reacted from it. A weekly low inside [zone low - 0.3 ATR, zone top + 0.5%] is a touch;
+  // the next touch only counts after price has bounced at least 0.4 ATR above the zone (several weeks sitting on
+  // the zone are one touch, a fresh visit after a bounce is another).
   function countTouches(l, bars, atrVal) {
-    var band = Math.max(l.price * CFG.levelTol * 0.5, 0.35 * (atrVal || 0)), up = l.price * 0.005, t = 0;
-    for (var i = 0; i < bars.length; i++) {
-      var dLow = bars[i].low - l.price;           // wick that reaches (or pierces) the level from above
-      if (dLow <= up && dLow >= -band) t++;
+    var lo = l.lo != null ? l.lo : l.price, hi = l.hi != null ? l.hi : l.price, atr = atrVal || (hi * 0.03);
+    var zlo = lo - CFG.touchBandAtr * atr, zhi = hi * 1.005, from = Math.max(0, bars.length - CFG.touchLookback);
+    var count = 0, bounced = true, mx = -1;
+    for (var i = from; i < bars.length; i++) {
+      var b = bars[i];
+      if (b.low <= zhi && b.low >= zlo) { if (bounced) { count++; bounced = false; } mx = b.high; }
+      else {
+        if (b.high > mx) mx = b.high;
+        if (mx >= hi + CFG.touchBounceAtr * atr) bounced = true;
+      }
     }
-    return Math.max(l.touches, t);
+    return count;
+  }
+  // Same level, but carrying the trader-style touch count (raw swing-cluster count kept in .raw).
+  function counted(l, bars, atrVal) {
+    if (!l || l.raw != null) return l;
+    return { price: l.price, touches: Math.max(countTouches(l, bars, atrVal), l.touches), raw: l.touches, lastIdx: l.lastIdx, hi: l.hi, lo: l.lo };
+  }
+
+  // Fibonacci confluence for a pullback: retracements (0.382/0.5/0.618/0.786) of the last up-leg
+  // (lowest low in the 26 weeks before the 52-week peak -> that peak). Returns the retracement that falls
+  // inside / right next to the support zone, or null. It is an EXTRA confirmation, never a gate.
+  function fibConfluence(bars, zlo, zhi, atrVal) {
+    var n = bars.length, from = Math.max(0, n - 52), pi = from, i;
+    for (i = from; i < n; i++) { if (bars[i].high >= bars[pi].high) pi = i; }
+    var lowFrom = Math.max(0, pi - 26), li = lowFrom;
+    for (i = lowFrom; i < pi; i++) { if (bars[i].low <= bars[li].low) li = i; }
+    var hi = bars[pi].high, lo = bars[li].low;
+    if (li >= pi || hi - lo < 2 * (atrVal || 0)) return null;
+    var tol = Math.max(zhi * 0.01, 0.15 * (atrVal || 0)), best = null;
+    [0.382, 0.5, 0.618, 0.786].forEach(function (r) {
+      var p = hi - r * (hi - lo);
+      if (p >= zlo - tol && p <= zhi + tol) {
+        var d = Math.abs(p - (zlo + zhi) / 2);
+        if (!best || d < best.d) best = { ratio: r, price: p, d: d };
+      }
+    });
+    return best ? { ratio: best.ratio, price: best.price, legLow: lo, legHigh: hi } : null;
+  }
+
+  // The level closest to price (either side, within nearLevel).
+  function nearLevelAny(levels, price, bars, atrVal) {
+    var best = null;
+    levels.forEach(function (l) {
+      var d = Math.abs(price - l.price) / l.price;
+      if (d > CFG.nearLevel) return;
+      if (!best || d < best.d) best = { l: l, d: d };
+    });
+    if (!best) return null;
+    return counted(best.l, bars, atrVal);
   }
 
   // A stronger support (more touches) BELOW the chosen one that the current pullback has already reached and
@@ -367,18 +415,6 @@
       if (!best || l.price > best.price) best = l;
     });
     return best || sup;
-  }
-
-  // The level closest to price (either side, within nearLevel).
-  function nearLevelAny(levels, price, bars, atrVal) {
-    var best = null;
-    levels.forEach(function (l) {
-      var d = Math.abs(price - l.price) / l.price;
-      if (d > CFG.nearLevel) return;
-      if (!best || d < best.d) best = { l: l, d: d };
-    });
-    if (!best) return null;
-    return { price: best.l.price, touches: countTouches(best.l, bars, atrVal), raw: best.l.touches, lastIdx: best.l.lastIdx, hi: best.l.hi, lo: best.l.lo };
   }
 
   // A significant resistance that price is approaching (not yet broken) or has cleared by 1-4 weekly
@@ -620,7 +656,7 @@
 
       // (B) Pullback to a support confluence (SMA30 + historical support). If the pullback already reached and
       // bounced from a STRONGER zone below the nearest level, that zone is the support (see testedStrongerSupport).
-      var sup = testedStrongerSupport(levels, supNear || nearestLevelBelow(levels, price), bars, atrVal);
+      var sup = counted(testedStrongerSupport(levels, supNear || nearestLevelBelow(levels, price), bars, atrVal), bars, atrVal);
       var nearSMA = Math.abs(price - sma30) / sma30 <= CFG.nearLevel;
       var nearSup = sup && Math.abs(price - sup.price) / sup.price <= CFG.nearLevel;
       var confluence = (nearSMA ? 1 : 0) + (nearSup ? 1 : 0);
@@ -650,12 +686,12 @@
           res.disq.push('low_entry_volume');
         }
         if (!(rev && volOk) && nearSup && sup.touches >= CFG.touchSignificant) {
-          res.plan = makePlan('pullback', 'long', sup.price, sup.touches, 0, 'await_reversal', { volContracting: !!vol.contracting, volRatio: +vol.ratio.toFixed(2) });
+          res.plan = makePlan('pullback', 'long', sup.price, sup.touches, 0, 'await_reversal', { volContracting: !!vol.contracting, volRatio: +vol.ratio.toFixed(2), zoneLo: sup.lo, zoneHi: sup.hi });
           res.reasons.push('כניסה רק כשהמחיר עולה מהתמיכה עם נר היפוך ומחזור מסחר מעל הממוצע');
         }
         if (rev && volOk) {
           if (vMA > 0) res.reasons.push('מחזור מסחר מעל הממוצע (' + Math.round(volNow / vMA * 100) + '% מ-Vol MA)');
-          if (nearSup) res.plan = makePlan('pullback', 'long', sup.price, sup.touches, 0, 'entry', { volContracting: !!vol.contracting, volRatio: +vol.ratio.toFixed(2) });
+          if (nearSup) res.plan = makePlan('pullback', 'long', sup.price, sup.touches, 0, 'entry', { volContracting: !!vol.contracting, volRatio: +vol.ratio.toFixed(2), zoneLo: sup.lo, zoneHi: sup.hi });
           var r2 = finalizeEntry(res, 'long', price, stopRef, atrVal * CFG.retestStopAtr, price);
           // Strong ceiling (>=3 touches) above price and inside the 1:2 target path?
           var ceil = null;
@@ -684,11 +720,11 @@
       // "come back to the support" BEFORE any breakout-approach read of a resistance above.
       var inPullback = price <= peak52 * (1 - CFG.pullbackMinDepth);
       if (sup && inPullback) {
-        var supT0 = countTouches(sup, bars, atrVal), supTop0 = sup.hi != null ? sup.hi : sup.price;
+        var supT0 = sup.touches, supTop0 = sup.hi != null ? sup.hi : sup.price;
         if (supT0 >= CFG.touchSignificant && (price - supTop0) <= CFG.planZoneAtr * atrVal) {
           res.direction = 'long'; res.setup = 'pullback'; res.status = 'watch';
           res.level = supTop0; res.levelTouches = supT0;
-          res.plan = makePlan('pullback', 'long', supTop0, supT0, 0, 'approach', { volContracting: !!vol.contracting, volRatio: +vol.ratio.toFixed(2) });
+          res.plan = makePlan('pullback', 'long', supTop0, supT0, 0, 'approach', { volContracting: !!vol.contracting, volRatio: +vol.ratio.toFixed(2), zoneLo: sup.lo, zoneHi: sup.hi });
           res.reasons.push('חזרה לתמיכה במגמת עלייה: תמיכה ' + fmt(supTop0) + ' (' + supT0 + ' נגיעות)' + (vol.contracting ? ' | התכנסות עם מחזורי מסחר מתכווצים' : ''));
           res.reasons.push('כניסה רק בחזרה אל התמיכה (' + fmt(res.plan.entry) + ') עם נר היפוך ומחזור מעל הממוצע');
           return finalizeWatch(res, res.plan.entry, price);
@@ -714,9 +750,9 @@
       res.reasons.push('מגמת עלייה אך המחיר רחוק מהתמיכה — לא לרדוף, להמתין לחזרה לתמיכה');
       if (sup) {
         res.level = sup.price; res.levelTouches = sup.touches;
-        var supT = countTouches(sup, bars, atrVal);
+        var supT = sup.touches;
         if (supT >= CFG.touchSignificant && (price - sup.price) <= CFG.planZoneAtr * atrVal) {
-          res.plan = makePlan('pullback', 'long', sup.price, supT, 0, 'approach', { volContracting: !!vol.contracting, volRatio: +vol.ratio.toFixed(2) });
+          res.plan = makePlan('pullback', 'long', sup.price, supT, 0, 'approach', { volContracting: !!vol.contracting, volRatio: +vol.ratio.toFixed(2), zoneLo: sup.lo, zoneHi: sup.hi });
           res.reasons.push('התמיכה ' + fmt(sup.price) + ' (' + supT + ' נגיעות) — כניסה רק בחזרה אליה עם נר היפוך ומחזור מעל הממוצע');
         }
         return finalizeWatch(res, sup.price, price);
@@ -838,6 +874,14 @@
         entry: t.entry, stop: t.stop, target: t.target, rr: t.rr
       };
       if (extra) { for (var k in extra) { if (extra.hasOwnProperty(k)) p[k] = extra[k]; } }
+      if (kind === 'pullback' && dir === 'long') {
+        var fz = fibConfluence(bars, (p.zoneLo != null ? p.zoneLo : level), (p.zoneHi != null ? p.zoneHi : level), atrVal);
+        if (fz) {
+          p.fib = fz;
+          var fibTxt = 'מתלכד עם פיבונאצי ' + fz.ratio + ' (' + fmt(fz.price) + ') של הגל העולה ' + fmt(fz.legLow) + '→' + fmt(fz.legHigh);
+          if (res.reasons.indexOf(fibTxt) === -1) res.reasons.push(fibTxt);
+        }
+      }
       return p;
     }
     function finalizeEntry(r, dir, entry, stopRef, a, px) {

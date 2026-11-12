@@ -3102,6 +3102,29 @@
     .tm-ok:disabled { opacity:.45; cursor:not-allowed; }
     .tm-ok.done { background:#1f9d55; color:#fff; opacity:1; cursor:default; }
     .tm-cancel { background:var(--surface2); color:var(--text); flex:0 0 32%; }
+
+    /* ===== Signal alert control: 🔔 button → ✔ "התראה פעילה" → green ✔ trigger box ===== */
+    .sig-btn.al-on, .sig-btn.al-on:disabled { background:rgba(38,166,154,.14); color:#4ee0c4; border:1px solid rgba(38,166,154,.45); cursor:default; opacity:1; }
+    .sig-btn.al-on .al-ok { display:inline-block; margin-inline-end:.25rem; color:#26a69a; font-weight:900; font-size:1.05em; }
+    .al-trig { flex:1; display:flex; align-items:center; gap:.7rem; padding:.55rem .75rem; border-radius:10px; direction:rtl; text-align:right;
+      background:rgba(38,166,154,.12); border:1px solid rgba(38,166,154,.55); }
+    .al-trig-ic { flex:0 0 auto; width:32px; height:32px; border-radius:8px; background:#26a69a; color:#fff; font-size:1.2rem; font-weight:900;
+      display:flex; align-items:center; justify-content:center; }
+    .al-trig-txt { display:flex; flex-direction:column; gap:.1rem; min-width:0; }
+    .al-trig-txt b { font-size:1rem; font-weight:900; color:#fff; }
+    .al-trig-txt span { font-size:.88rem; font-weight:700; color:#6fe0d2; }
+    .plan-fib { margin:.2rem 0 .5rem; padding:.45rem .7rem; border-radius:9px; font-size:.82rem; font-weight:700; line-height:1.5;
+      color:#c9b8ff; background:rgba(124,77,255,.12); border:1px solid rgba(124,77,255,.4); }
+    .plan-fib b { color:#fff; }
+
+    /* ===== Right-align the signal rows / cards (Latin tickers were drifting to the left) ===== */
+    .sr-sym, .sig-head > div:first-child { direction:rtl; text-align:right; }
+
+    /* ===== Desktop only: signal cards 25% narrower (phones/app unchanged) ===== */
+    @media (min-width:761px) {
+      .sig-rows, .sig-group, .sig-market, .sf-grid, .sf-toolbar, .sf-chips, .sf-live-bar, .rk-banner, .trial-strip, .earn-banner { max-width:825px; }
+      .sf-hero, .sf-upsell { max-width:750px; }
+    }
     .trade-row .tr-pnl.pos { color:var(--green); font-weight:900; }
     .trade-row .tr-pnl.neg { color:var(--red); font-weight:900; }
     .tr-close-btn { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:.35rem .6rem; font-size:.74rem; font-weight:700; cursor:pointer; font-family:Heebo,sans-serif; }
@@ -3779,13 +3802,13 @@
 </div>
 
 <script src="scanner-symbols.js?v=20261024a"></script>
-<script src="scanner-engine.js?v=20261112a"></script>
+<script src="scanner-engine.js?v=20261112b"></script>
 <script src="plan.js?v=20261019g"></script>
 <script src="main.js?v=20261101b"></script>
 <script src="stockpanel.js?v=20261030a"></script>
 <script src="drawing.js?v=20261019b"></script>
 <script src="features.js?v=20261018j"></script>
-<script src="signals.js?v=20261112a"></script>
+<script src="signals.js?v=20261112b"></script>
 <script src="plan-overlay.js?v=20261030c"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->

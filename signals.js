@@ -214,45 +214,33 @@
     try { return JSON.parse(localStorage.getItem(SERVER_KEY) || 'null'); } catch (e) { return null; }
   }
 
-  // ---- stage alerts: tell the user when a forming setup moves to its next step ----
-  var STAGE_KEY = 'nt_plan_stage';
-  function stageCode(a) {
-    if (!a) return null;
-    var p = a.plan;
-    if (p && a.planOnly) return p.stage === 'holding' ? 'holding:' + p.closes : p.stage;
-    if (p && p.stage === 'entry' && a.status === 'entry') return 'entry';
-    return null;
-  }
-  function stageAlerts(newSigs) {
-    var prev = null;
-    try { prev = JSON.parse(localStorage.getItem(STAGE_KEY) || 'null'); } catch (e) { prev = null; }
-    var cur = {}, msgs = [];
-    (newSigs || []).forEach(function (a) {
-      var code = stageCode(a);
-      if (!code) return;
-      var k = a.sym + '_' + a.direction;
-      cur[k] = code;
-      if (!prev) return;                       // first run on this device: just record
-      var was = prev[k];
-      if (was === code) return;
-      var p = a.plan || {};
-      var sym = dispSym(a.sym), lvl = fmt(p.level, a.curr), bd = p.kind === 'breakdown';
-      if (code === 'entry') {
-        if (was) msgs.push('✅ ' + sym + ': עכשיו אפשר להיכנס ' + (a.direction === 'short' ? 'שורט' : 'לונג') + ' — כניסה ' + fmt(a.entry, a.curr));
-      } else if (isFav(a.sym) || was) {
-        if (code === 'approach') msgs.push('⏳ ' + sym + ' מתקרבת ל' + ((bd || p.kind === 'pullback') ? 'תמיכה ' : 'התנגדות ') + lvl + ' — אל תיכנס עדיין');
-        else if (code.indexOf('holding:') === 0) msgs.push('⏳ ' + sym + ': נר ' + code.split(':')[1] + ' מתוך ' + p.needed + (bd ? ' מתחת ל-' : ' מעל ') + lvl);
-        else if (code === 'await_retest') msgs.push('⏳ ' + sym + ': 5 הנרות הושלמו — ממתינים לריטסט ל-' + lvl);
-        else if (code === 'await_reversal') msgs.push('⏳ ' + sym + ' חזרה לתמיכה ' + lvl + ' — ממתינים לנר היפוך + מחזור מעל הממוצע');
+  // ---- SIGNAL ALERTS ("קבע התראה"): the user arms an alert on a signal card; when the scanner confirms the
+  // entry (every condition met) the card shows a green ✔ trigger box with the stock, direction and entry price.
+  // The trigger stays on the card until the card itself disappears. Nothing pops up anywhere else.
+  var ALERTS_STORE = 'nt_sig_alerts';
+  function loadSigAlerts() { try { return JSON.parse(localStorage.getItem(ALERTS_STORE) || '{}') || {}; } catch (e) { return {}; } }
+  function saveSigAlerts(m) { try { localStorage.setItem(ALERTS_STORE, JSON.stringify(m)); } catch (e) {} }
+  function alertKey(sym, dir) { return sym + '|' + dir; }
+  function feedVisible() { var f = document.getElementById('signalFeed'); return !!(f && f.getClientRects().length > 0); }
+
+  // Arm triggers, and drop alerts whose card is gone (signal expired / moved to the portfolio).
+  function checkAlertTriggers(allSigs, haveFeed) {
+    var m = loadSigAlerts(), changed = false;
+    Object.keys(m).forEach(function (k) {
+      var a = m[k];
+      var s = null;
+      for (var i = 0; i < allSigs.length; i++) { if (alertKey(allSigs[i].sym, allSigs[i].dir) === k && !allSigs[i].planOnly) { s = allSigs[i]; break; } }
+      if (!s) {
+        // the plan card is replaced by the entry card under a new key — only forget once the feed itself is loaded
+        var anyForm = allSigs.some(function (x) { return alertKey(x.sym, x.dir) === k; });
+        if (!anyForm && haveFeed) { delete m[k]; changed = true; }
+        return;
+      }
+      if (!a.trig && s.scanStatus === 'entry' && s.entry != null) {
+        a.trig = { price: s.entry, ts: Date.now() }; changed = true;
       }
     });
-    try { localStorage.setItem(STAGE_KEY, JSON.stringify(cur)); } catch (e) {}
-    msgs.slice(0, 4).forEach(function (m, i) {
-      setTimeout(function () {
-        try { if (typeof window.ntToast === 'function') window.ntToast(m); } catch (e) {}
-        try { if (window.Notification && Notification.permission === 'granted') new Notification('NexTrade', { body: m }); } catch (e) {}
-      }, i * 1500);
-    });
+    if (changed) saveSigAlerts(m);
   }
 
   // ---- EXIT ALERTS: tell the user to get OUT when a stop breaks (or a target is reached) ----
@@ -267,6 +255,9 @@
     try { localStorage.setItem(EXIT_SEEN_KEY, JSON.stringify(m)); } catch (e) {}
   }
   function checkExits() {
+    // Alerts live ONLY on the signals site: nothing pops up over the technical-analysis site. Events are not
+    // marked "seen" while the feed is closed, so they appear the moment the user opens the signals site.
+    if (!feedVisible()) return;
     var seen = loadExitSeen(), fresh = [], changed = false, now = Date.now();
     function once(a, uniq) {
       if (seen[uniq]) return;
@@ -294,13 +285,6 @@
     if (changed) saveExitSeen(seen);
     if (!fresh.length) return;
     showExitModal(fresh);
-    fresh.slice(0, 3).forEach(function (a, i) {
-      var msg = (a.type === 'stop' ? '🛑 הסטופ נשבר — צא מ-' : '🎯 היעד הושג ב-') + dispSym(a.sym);
-      setTimeout(function () {
-        try { if (typeof window.ntToast === 'function') window.ntToast(msg); } catch (e) {}
-        try { if (window.Notification && Notification.permission === 'granted') new Notification('NexTrade', { body: msg, requireInteraction: a.type === 'stop' }); } catch (e) {}
-      }, i * 800);
-    });
   }
   var _exitQueue = [];
   function showExitModal(list) {
@@ -344,7 +328,6 @@
     }).then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (!d || !Array.isArray(d.signals)) return;
-        try { stageAlerts(d.signals); } catch (e) {}
         setTimeout(function () { try { if (window.NTPlanOverlay) window.NTPlanOverlay.refresh(); } catch (e) {} }, 50);
         try {
           localStorage.setItem(SERVER_KEY, JSON.stringify({
@@ -588,7 +571,13 @@
     }
     return '<div class="plan-banner ' + cls + '">' + msg + '</div>';
   }
-  function planBlock(s) { return s.plan ? planBanner(s) + planSteps(s) : ''; }
+  function planBlock(s) { return s.plan ? planBanner(s) + planFib(s) + planSteps(s) : ''; }
+  // Fibonacci confluence = an extra confirmation that the support is real.
+  function planFib(s) {
+    var f = s.plan && s.plan.fib;
+    if (!f) return '';
+    return '<div class="plan-fib">📐 מתלכד עם פיבונאצי <b>' + f.ratio + '</b> (' + fmt(f.price, s.curr) + ') של הגל העולה ' + fmt(f.legLow, s.curr) + ' ← ' + fmt(f.legHigh, s.curr) + ' — אינדיקציה נוספת לתמיכה</div>';
+  }
 
   // ---------- rendering ----------
   var STATUS_HINT = {
@@ -721,7 +710,7 @@
     }
     out += '<div class="sig-card-foot">' +
       (s.planOnly ? '' : addBtn(s.sym, true)) +
-      '<button class="sig-btn ghost" onclick="event.stopPropagation();NTSignals.setAlert(\'' + s.sym + '\')">🔔 קבע התראה</button>' +
+      alertBlock(s) +
     '</div>';
     return out;
   }
@@ -787,7 +776,7 @@
       '</div>' +
       '<div class="sig-card-foot">' +
         (s.planOnly ? '' : addBtn(s.sym, false)) +
-        '<button class="sig-btn ghost" onclick="NTSignals.setAlert(\'' + s.sym + '\')">🔔 קבע התראה</button>' +
+        alertBlock(s) +
       '</div>' +
     '</div>';
   }
@@ -817,7 +806,7 @@
       '<div class="sf-hero-levels">כניסה ' + fmt(s.entry, s.curr) + ' · סטופ ' + fmt(s.stop, s.curr) + ' · יעד ' + fmt(s.tp, s.curr) + '</div>' +
       '<div class="sf-hero-foot">' +
         (stt.key === 'stopped' ? '<button class="sig-btn" onclick="NTSignals.switchTab(\'trades\')">פתח את העסקאות שלי</button>' : addBtn(s.sym, false)) +
-        '<button class="sig-btn ghost" onclick="NTSignals.setAlert(\'' + s.sym + '\')">🔔 קבע התראה</button>' +
+        alertBlock(s) +
       '</div>' +
     '</div>';
   }
@@ -865,6 +854,7 @@
   var _portHidden = 0;
   function dedupedSignals() {
     var sigs = loadSignals();
+    try { checkAlertTriggers(sigs, !!loadServerCache()); } catch (e) {}
     _portSet = portfolioSet();
     var seen = {}, uniq = [];
     _portHidden = 0;
@@ -2143,7 +2133,7 @@
     if (!r) r = m[a.symbol] = { sym: a.symbol, name: a.name, date: a.earnings.date, on: false, notified: false };
     r.on = !r.on;
     remSave(m);
-    if (r.on) { requestNotifPerm(); toast('🔔 נתריע לך יום לפני הדוחות של ' + dispSym(a.symbol)); }
+    if (r.on) { requestNotifPerm(); }
     var w = document.getElementById('aiEarnWrap');
     if (w) w.innerHTML = earnCardInner(a);
     aiRefreshLists();
@@ -2193,11 +2183,7 @@
       if (r.on && !r.notified && d >= 0 && d <= 1) { r.notified = true; changed = true; due.push({ r: r, d: d }); }
     });
     if (changed) remSave(m);
-    due.forEach(function (x) {
-      var msg = '📅 ' + dayTxt(x.d) + ' דוחות ' + dispSym(x.r.sym) + ' — מומלץ לצאת מהפוזיציה יום לפני';
-      toast(msg);
-      try { if (window.Notification && Notification.permission === 'granted') new Notification('NexTrade · תזכורת דוחות', { body: msg }); } catch (e) {}
-    });
+    // the reminder is shown as the earnings banner inside the signals site (no pop-ups)
     if (due.length) { var f = document.getElementById('signalFeed'); if (f && f.style.display !== 'none') render(); }
   }
   var _remTimer = null;
@@ -2236,11 +2222,10 @@
     if (!a) return;
     var lvl = entryLevel(a);
     if (lvl == null) return;
-    if (typeof window.ntAddEntryAlert !== 'function') { toast('התראות אינן זמינות כרגע'); return; }
+    if (typeof window.ntAddEntryAlert !== 'function') return;
     if (!isFav(a.symbol)) { var f = loadFavs(); if (f.length < favCap()) { f.push(a.symbol); saveFavs(f); } }
-    var r = window.ntAddEntryAlert(a.symbol, lvl, a.price);
+    window.ntAddEntryAlert(a.symbol, lvl, a.price);
     requestNotifPerm();
-    toast(r && r.dup ? 'ההתראה כבר קיימת' : ('🔔 נקבעה התראה: ' + dispSym(a.symbol) + (r && r.cond === 'above' ? ' מעל ' : ' מתחת ל') + fmt(lvl, a.curr)));
     aiRefreshActions();
   }
   function aiToggleWatch() {
@@ -2655,8 +2640,9 @@
     });
   }
 
-  // "Set alert" — mark the symbol as a favorite (so it's watched) and confirm.
-  function setAlert(sym) {
+  // "Set alert": the symbol becomes a favorite (plan limit applies) and the alert is armed on this signal.
+  // The button turns into a green ✔ "התראה פעילה"; when the entry is confirmed the card shows the trigger box.
+  function setAlert(sym, dir) {
     if (!isFav(sym)) {
       var f = loadFavs();
       if (f.length >= favCap()) {
@@ -2665,8 +2651,24 @@
       }
       f.push(sym); saveFavs(f);
     }
-    try { if (typeof window.ntToast === 'function') window.ntToast('התראה נקבעה על ' + (sym || '').replace('.TA', '') + ' 🔔'); } catch (e) {}
+    dir = dir === 'short' ? 'short' : 'long';
+    var m = loadSigAlerts(), k = alertKey(sym, dir);
+    if (!m[k]) { m[k] = { ts: Date.now(), trig: null }; saveSigAlerts(m); }
     render();
+  }
+
+  // The alert control on a signal card: 🔔 button → ✔ "התראה פעילה" → green ✔ trigger box.
+  function alertBlock(s) {
+    var a = loadSigAlerts()[alertKey(s.sym, s.dir)];
+    var sym = esc(dispSym(s.sym));
+    if (a && a.trig) {
+      return '<div class="al-trig" role="status">' +
+        '<span class="al-trig-ic">✔</span>' +
+        '<div class="al-trig-txt"><b>' + sym + '</b><span>עכשיו אפשר להיכנס ל' + (s.dir === 'short' ? 'שורט' : 'לונג') + ' — כניסה ' + fmt(a.trig.price, s.curr) + '</span></div>' +
+      '</div>';
+    }
+    if (a) return '<button class="sig-btn ghost al-on" disabled><span class="al-ok">✔</span> התראה פעילה</button>';
+    return '<button class="sig-btn ghost" onclick="event.stopPropagation();NTSignals.setAlert(\'' + s.sym + '\',\'' + s.dir + '\')">🔔 קבע התראה</button>';
   }
 
   function show() { setMode('signals'); }
@@ -2698,6 +2700,7 @@
       feed.style.display = 'flex';
       render();
       startAutoRefresh();
+      try { checkExits(); } catch (e) {}
     } else {
       feed.style.display = 'none';
       stopAutoRefresh();
