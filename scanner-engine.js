@@ -525,11 +525,32 @@
     };
   }
 
+  // Yahoo sometimes returns the CURRENT week twice: the weekly bar (Mon..yesterday) plus a separate bar for today.
+  // Left as is, the engine counts a phantom extra week (wrong 5-candle counts, decline days, SMA30, volume).
+  // Two bars less than minGapDays apart belong to the same period -> merge them into one candle.
+  function mergeSplitBars(bars, minGapDays) {
+    if (!bars || bars.length < 2) return bars;
+    function day(b) { return Date.parse(typeof b.time === 'string' ? b.time.slice(0, 10) + 'T00:00:00Z' : b.time * 1000) / 86400000; }
+    var out = [bars[0]];
+    for (var i = 1; i < bars.length; i++) {
+      var prev = out[out.length - 1], b = bars[i];
+      if (day(b) - day(prev) < minGapDays) {
+        out[out.length - 1] = {
+          time: prev.time, open: prev.open,
+          high: Math.max(prev.high, b.high), low: Math.min(prev.low, b.low),
+          close: b.close, volume: (prev.volume || 0) + (b.volume || 0)
+        };
+      } else out.push(b);
+    }
+    return out;
+  }
+
   // ============================================================================
   //   MAIN: analyze one symbol's weekly bars
   // ============================================================================
   function analyze(bars, meta) {
     meta = meta || {};
+    bars = mergeSplitBars(bars, 5);
     var res = {
       symbol: meta.symbol || null,
       name: meta.name || null,
@@ -831,6 +852,27 @@
     var lower = nearestLevelBelow(levels, price);
     var strongRange = upper && lower && upper.touches >= CFG.touchSignificant && lower.touches >= CFG.touchSignificant;
     res.reasons.push('דשדוש' + (strongRange ? ' (Range קלאסי)' : ' (Range חלש — tradeable רק עם פריצה איכותית)'));
+    // A decline that is still too young to be a downtrend (< minDownDays) may not be shorted now, but a strong
+    // support just below price is the natural trigger: show the "break + 5 candles + retest" plan so the user can wait for it.
+    if (res.disq.indexOf('decline_too_short') !== -1 && !aboveSMA) {
+      var unbY = unbrokenSupport(bars, levels, price, atrVal);
+      if (!unbY && lower) {
+        // a tested-and-held support (2 touches) just under price is enough to WATCH for a break
+        var lc = counted(lower, bars, atrVal);
+        if (lc.touches >= 2 && (price - lower.price) / lower.price <= Math.max(CFG.nearLevel * 2, 2 * atrVal / price)) unbY = lc;
+      }
+      if (unbY) {
+        res.direction = 'short'; res.setup = 'breakdown_retest'; res.status = 'watch';
+        // the plan is anchored on the TOP of the support zone: price retests it from below after the break
+        var zTop = unbY.hi != null ? Math.max(unbY.hi, unbY.price) : unbY.price;
+        res.level = zTop; res.levelTouches = unbY.touches;
+        res.disq.push('support_not_broken');
+        res.plan = makePlan('breakdown', 'short', zTop, unbY.touches, 0, 'approach');
+        res.reasons.push('התמיכה ' + fmt(zTop) + ' (' + unbY.touches + ' נגיעות) עדיין לא נשברה — שורט רק אחרי שבירה + ' + CFG.holdCandles + ' נרות מתחתיה + ריטסט מלמטה');
+        if (upper) res.reasons.push('תרחיש הפוך: אם המחיר נבלם בהתנגדות ' + fmt(upper.price) + ' — לונג רק אחרי ' + CFG.holdCandles + ' נרות שבועיים מעליה');
+        return finalizeWatch(res, zTop, price);
+      }
+    }
     if (upper) {
       var boU = breakoutRetest(bars, upper.price, 'above');
       if (boU.held && boU.retesting && (boU.qualityBreakout || strongRange)) {
@@ -1102,6 +1144,7 @@
   // so the exact same method runs client-side and on the server.
   var NTScanner = {
     analyze: analyze,
+    mergeSplitBars: mergeSplitBars,
     describe: describe,
     config: CFG,
     // low-level helpers exposed for testing / tuning

@@ -835,6 +835,17 @@ app.put('/api/userstate', requireAuth, async (req, res) => {
     Object.keys(items).forEach(k => {
       const it = items[k], def = US_KEYS[k];
       if (!def || !it || typeof it !== 'object' || typeof it.t !== 'number' || !def.check(it.v)) return;
+      if (k === 'trades' && state.trades && Array.isArray(state.trades.v)) {
+        // never lose a trade added or closed on another device: union by id, a closed copy wins
+        const by = {};
+        state.trades.v.forEach(t => { if (t && t.id) by[t.id] = t; });
+        it.v.forEach(t => { if (t && t.id && (!by[t.id] || t.status === 'closed' || by[t.id].status !== 'closed')) by[t.id] = t; });
+        const merged = Object.keys(by).map(id => by[id]).sort((a, b) => (b.openTs || 0) - (a.openTs || 0)).slice(0, 1000);
+        const same = merged.length === it.v.length && merged.every(t => it.v.some(x => x && x.id === t.id && x.status === t.status));
+        // a bumped stamp makes the pushing device adopt the merged list it did not have
+        state.trades = { v: merged, t: Math.max(it.t, state.trades.t || 0) + (same ? 0 : 1) };
+        return;
+      }
       if (state[k] && typeof state[k].t === 'number' && state[k].t > it.t) return; // stored copy is newer
       if (JSON.stringify(it.v).length > 400000) return;
       state[k] = { v: it.v, t: it.t };
@@ -1159,6 +1170,13 @@ function barsFromYahoo(json) {
     const time = d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
     out.push({ time: time, open: q.open[i], high: q.high[i], low: q.low[i], close: q.close[i], volume: q.volume[i] || 0 });
   }
+  // weekly series: fold Yahoo's extra "today" bar back into the current week (see mergeSplitBars)
+  if (NTScanner && out.length > 10) {
+    const gaps = [];
+    for (let i = out.length - 10; i < out.length; i++) gaps.push(Date.parse(out[i].time) - Date.parse(out[i - 1].time));
+    gaps.sort((a, b) => a - b);
+    if (gaps[5] / 86400000 >= 6) return NTScanner.mergeSplitBars(out, 5);
+  }
   return out;
 }
 
@@ -1349,6 +1367,7 @@ async function scanSignalsChunk() {
             dropStale(null);
             const psig = buildSignalObject(sym, a, liq);
             psig.earnDate = pEarn || null;
+            psig.earnEst = pEarn ? earnIsEst(sym) : false;
             psig.key = pkey;
             if (prev && prev.plan && prev.plan.level != null && Math.abs(prev.plan.level - a.plan.level) / a.plan.level < 0.03) psig.ts = prev.ts;
             if (_sigDismissed.has(psig.key)) return;
@@ -1371,6 +1390,7 @@ async function scanSignalsChunk() {
           if (openSig) { openSig.status = a.status; openSig.lastPrice = a.price; openSig.lastPriceTs = Date.now(); return; }
           const sig = buildSignalObject(sym, a, liq);
           sig.earnDate = earnDate || null;
+          sig.earnEst = earnDate ? earnIsEst(sym) : false;
           if (_sigDismissed.has(sig.key)) return;
           if (!_sigByKey[sig.key]) added++;
           _sigByKey[sig.key] = sig;
@@ -1581,6 +1601,8 @@ async function yahooAuth(force) {
 
 // Next earnings date (YYYY-MM-DD) or null. Best-effort: Yahoo may refuse; never throws.
 const _earnCache = new Map();   // sym -> { ts, ttl, val }
+const _earnEst = new Map();     // sym -> true when Yahoo flags the date as an estimate (not confirmed by the company)
+function earnIsEst(sym) { return _earnEst.get(sym) === true; }
 async function fetchEarningsDate(sym) {
   if (sym.indexOf('=') !== -1 || sym.charAt(0) === '^' || sym.indexOf('-USD') !== -1) return null; // no earnings for commodities/indices/crypto
   const c = _earnCache.get(sym);
@@ -1598,6 +1620,7 @@ async function fetchEarningsDate(sym) {
         const res = j.quoteSummary && j.quoteSummary.result && j.quoteSummary.result[0];
         const arr = res && res.calendarEvents && res.calendarEvents.earnings && res.calendarEvents.earnings.earningsDate;
         if (arr && arr.length && arr[0].raw) val = new Date(arr[0].raw * 1000).toISOString().slice(0, 10);
+        _earnEst.set(sym, !!(res.calendarEvents.earnings.isEarningsDateEstimate));
       }
       break;
     }

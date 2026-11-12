@@ -273,6 +273,40 @@
     }
     return Object.assign({}, loc && typeof loc === 'object' ? loc : {}, srv && typeof srv === 'object' ? srv : {});
   }
+  // Visible sync status (shown on the signals and "my trades" pages) so a failure is never silent.
+  var US_BUILD = '20261113a';
+  var _usSt = { state: 'idle', t: 0, msg: '' };
+  function usLine() {
+    var s = _usSt, txt, cls = s.state;
+    var hm = s.t ? new Date(s.t).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '';
+    if (!authToken()) { txt = '⚠️ לא מחובר לחשבון — הנתונים נשמרים רק במכשיר הזה'; cls = 'err'; }
+    else if (s.state === 'busy') txt = '⏳ מסנכרן עם החשבון…';
+    else if (s.state === 'ok') txt = '☁️ מסונכרן עם החשבון · ' + hm + ' · לחץ לרענון';
+    else if (s.state === 'err') txt = '⚠️ הסנכרון נכשל (' + s.msg + ') · לחץ לנסות שוב';
+    else txt = '☁️ סנכרון חשבון · לחץ לרענון';
+    return '<div id="usSyncLine" class="us-sync ' + cls + '" title="גרסה ' + US_BUILD + '" onclick="NTSignals.syncNow()">' + txt + '</div>';
+  }
+  function usSetSt(state, msg) {
+    _usSt = { state: state, t: Date.now(), msg: msg || '' };
+    var el = document.getElementById('usSyncLine');
+    if (el) el.outerHTML = usLine();
+  }
+  // fetch with a timeout (a stalled request must never block the next sync); resolves { status, data }
+  function usFetch(url, opts) {
+    opts = opts || {};
+    var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+    if (ctl) opts.signal = ctl.signal;
+    var timer = setTimeout(function () { try { if (ctl) ctl.abort(); } catch (e) {} }, 25000);
+    return fetch(url, opts).then(function (r) {
+      return r.json().catch(function () { return null; }).then(function (d) { clearTimeout(timer); return { status: r.status, data: d }; });
+    }, function () { clearTimeout(timer); return { status: 0, data: null }; });
+  }
+  // the service worker answers failed requests with a fake 200 "{}", so success requires the server's {ok:true}
+  function usErr(res) {
+    if (res.status === 401 || res.status === 403) return 'ההתחברות פגה — התנתק והתחבר מחדש';
+    if (res.status === 0 || !res.data || !res.data.ok) return res.status > 200 ? 'שגיאת שרת ' + res.status : 'אין חיבור לשרת';
+    return '';
+  }
   function usPush() {
     clearTimeout(_usTimer); _usTimer = null;
     var tok = authToken(); if (!tok) return Promise.resolve();
@@ -283,18 +317,20 @@
       keys.push(k);
     });
     if (!keys.length) return Promise.resolve();
-    return fetch(apiBase() + '/api/userstate', {
+    usSetSt('busy');
+    return usFetch(apiBase() + '/api/userstate', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
       body: JSON.stringify({ items: items })
-    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
-      // the service worker answers failed requests with a fake 200 "{}", so require the server's {ok:true}
-      if (!d || !d.ok) return;
+    }).then(function (res) {
+      var e = usErr(res);
+      if (e) { usSetSt('err', e); return; }
       var m2 = usMeta();
       keys.forEach(function (k) { if ((m2.t[k] || 0) === items[k].t) delete m2.dirty[k]; });
       usSaveMeta(m2);
-      usApply(d.items);
-    }).catch(function () {});
+      usSetSt('ok');
+      usApply(res.data.items);
+    });
   }
   function usApply(items) {
     var m = usMeta(), changed = false, up = false;
@@ -326,13 +362,27 @@
     if (!usEnsureOwner()) return;
     if (_usTimer) return;                        // a push is about to run and will bring the merged copy back
     _usPulling = true; _usLastPull = Date.now();
-    fetch(apiBase() + '/api/userstate', { headers: { 'Authorization': 'Bearer ' + tok }, cache: 'no-store' })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (d) { _usPulling = false; if (d && d.ok) usApply(d.items); })
-      .catch(function () { _usPulling = false; });
+    if (_usSt.state !== 'ok') usSetSt('busy');
+    usFetch(apiBase() + '/api/userstate', { headers: { 'Authorization': 'Bearer ' + tok }, cache: 'no-store' })
+      .then(function (res) {
+        _usPulling = false;
+        var e = usErr(res);
+        if (e) { usSetSt('err', e); return; }
+        usSetSt('ok');
+        usApply(res.data.items);
+      });
   }
-  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') usPull(true); });
-  window.addEventListener('focus', function () { usPull(); });
+  function syncNow() {
+    if (!authToken()) { render(); return; }
+    usSetSt('busy');
+    Promise.resolve(usPush()).then(function () {
+      _usPulling = false; _usLastPull = 0;
+      usPull(true);
+      syncServerSignals(true);
+    });
+  }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { usPull(true); try { syncServerSignals(true); } catch (e) {} } });
+  window.addEventListener('focus', function () { usPull(); try { syncServerSignals(); } catch (e) {} });
 
   // ---- SIGNAL ALERTS ("קבע התראה"): the user arms an alert on a signal card; when the scanner confirms the
   // entry (every condition met) the card shows a green ✔ trigger box with the stock, direction and entry price.
@@ -532,6 +582,7 @@
         alertSide: a.alertSide || '',
         avgTurnover: (a.avgTurnover != null ? a.avgTurnover : null),
         earnDate: a.earnDate || '',
+        earnEst: !!a.earnEst,
         avgVolume: (a.avgVolume != null ? a.avgVolume : null),
         lastWeekTurnover: (a.lastWeekTurnover != null ? a.lastWeekTurnover : null),
         scanStatus: a.status || '',
@@ -823,11 +874,11 @@
     var earn = earningsInfo(s.sym, s.earnDate);
     var out = exitBanner(s) + ruler(s) + planBlock(s);
     var chips = trendChip(s);
-    if (earn && earn.days >= 0 && canUse('earnings')) chips += ' <span class="sig-setup earn' + (earn.days <= 14 ? ' soon' : '') + '">📅 דוחות בעוד ' + earn.days + ' ימים (' + esc(earn.date) + ')</span>';
+    if (earn && earn.days >= 0 && canUse('earnings')) chips += ' <span class="sig-setup earn' + (earn.days <= 14 ? ' soon' : '') + '">📅 דוחות בעוד ' + earn.days + ' ימים (' + esc(earn.date) + (s.earnEst ? ' · משוער' : '') + ')</span>';
     if (chips) out += '<div class="sr-chips">' + chips + '</div>';
-    if (earn && canUse('earnings')) {
-      out += '<div class="sig-earn ' + (earn.exitToday ? 'warn' : '') + '">📅 דוח בעוד ' + earn.days + ' ימים' +
-        (earn.exitToday ? ' — מומלץ לצאת יום לפני!' : '') + '</div>';
+    // the countdown is already in the chip above — only the "exit before the report" warning is added here
+    if (earn && earn.exitToday && canUse('earnings')) {
+      out += '<div class="sig-earn warn">📅 דוח בעוד ' + earn.days + ' ימים — מומלץ לצאת יום לפני!</div>';
     }
     out += '<div class="sig-card-foot">' +
       (s.planOnly ? '' : addBtn(s.sym, true)) +
@@ -868,11 +919,10 @@
     var fav = isFav(s.sym);
     var earn = earningsInfo(s.sym, s.earnDate);
 
-    // earnings warning (exit 1 day before) — premium feature
+    // earnings warning (exit 1 day before) — premium feature; the countdown itself is already in the header chip
     var earnTxt = '';
-    if (earn && canUse('earnings')) {
-      earnTxt = '<div class="sig-earn ' + (earn.exitToday ? 'warn' : '') + '">📅 דוח בעוד ' + earn.days + ' ימים' +
-        (earn.exitToday ? ' — מומלץ לצאת יום לפני!' : '') + '</div>';
+    if (earn && earn.exitToday && canUse('earnings')) {
+      earnTxt = '<div class="sig-earn warn">📅 דוח בעוד ' + earn.days + ' ימים — מומלץ לצאת יום לפני!</div>';
     }
 
     return '<div class="sig-card ' + s.dir + ((st === 'armed' || st === 'active' || st === 'now') ? ' ready' : '') + (st === 'now' ? ' now' : '') + (st === 'stopped' ? ' exit' : '') + (inPort(s.sym) ? ' in-port' : '') + '">' +
@@ -902,72 +952,55 @@
     '</div>';
   }
 
-  // "What to do now" hero: the single most actionable signal (armed/active).
-  function heroCard(sigs) {
-    var ranked = sigs.slice().map(function (s) {
-      var k = signalStatus(s).key;
-      var score = k === 'stopped' && inPort(s.sym) ? 5 : (k === 'now' ? 4 : (k === 'active' ? 3 : (k === 'armed' ? 2 : 0)));
-      return { s: s, score: score };
-    }).filter(function (x) { return x.score > 0; })
-      .sort(function (a, b) { return b.score - a.score || b.s.ts - a.s.ts; });
-    if (!ranked.length) return '';
-    var s = ranked[0].s;
-    var stt = signalStatus(s);
-    var action = stt.key === 'stopped'
-      ? '🛑 הסטופ נשבר — צא מהעסקה עכשיו'
-      : (stt.key === 'now'
-      ? '🔥 כל תנאי הכניסה התמלאו — אפשר להיכנס עכשיו'
-      : (stt.key === 'active'
-        ? 'המחיר בטווח הכניסה — אפשר להוסיף לתיק עכשיו'
-        : 'המחיר קרוב מאוד לכניסה — היכון וקבע התראה'));
-    return '<div class="sf-hero ' + s.dir + '">' +
-      '<div class="sf-hero-tag">⚡ מה עושים עכשיו</div>' +
-      '<div class="sf-hero-sym">' + esc(dispSym(s.sym)) + ' · ' + (s.dir === 'long' ? 'לונג' : 'שורט') + '</div>' +
-      '<div class="sf-hero-action">' + action + '</div>' +
-      '<div class="sf-hero-levels">כניסה ' + fmt(s.entry, s.curr) + ' · סטופ ' + fmt(s.stop, s.curr) + ' · יעד ' + fmt(s.tp, s.curr) + '</div>' +
-      '<div class="sf-hero-foot">' +
-        (stt.key === 'stopped' ? '<button class="sig-btn" onclick="NTSignals.switchTab(\'trades\')">פתח את העסקאות שלי</button>' : addBtn(s.sym, false)) +
-        alertBlock(s) +
-      '</div>' +
-    '</div>';
+  // ---------- "my trades" dashboard: winners / losers / success rate + two donut charts ----------
+  // Open trades count by their current P&L, closed trades by their realized P&L.
+  function tradeStats() {
+    var trades = loadTrades(), s = { win: 0, lose: 0, openUs: 0, openIl: 0, open: 0 };
+    trades.forEach(function (t) {
+      var v;
+      if (t.status === 'open') {
+        s.open++;
+        if (tGroup(t) === 'il') s.openIl++; else s.openUs++;
+        var p = tradePnl(t, livePrice(t.sym)); v = p.abs;
+      } else v = (t.pnl == null) ? null : tClosedPnl(t);
+      if (v == null) return;
+      if (v >= 0) s.win++; else s.lose++;
+    });
+    s.rate = (s.win + s.lose) ? Math.round(s.win / (s.win + s.lose) * 100) : null;
+    return s;
+  }
+  function donut(title, parts, centerTxt) {
+    var total = parts.reduce(function (a, p) { return a + p.n; }, 0), acc = 0, stops = [];
+    parts.forEach(function (p) {
+      if (!p.n) return;
+      var from = acc / total * 100; acc += p.n; var to = acc / total * 100;
+      stops.push(p.c + ' ' + from.toFixed(2) + '% ' + to.toFixed(2) + '%');
+    });
+    var ring = total ? 'conic-gradient(' + stops.join(',') + ')' : 'rgba(255,255,255,.08)';
+    return '<div class="td-card"><div class="td-title">' + title + '</div>' +
+      '<div class="td-ring" style="background:' + ring + '"><div class="td-hole"><b>' + (total ? centerTxt : '--') + '</b></div></div>' +
+      '<div class="td-legend">' + parts.map(function (p) {
+        return '<div><i style="background:' + p.c + '"></i>' + p.t + '<b>' + p.n + '</b></div>';
+      }).join('') + '</div></div>';
+  }
+  function tradeSideLeft() {
+    var s = tradeStats();
+    return donut('עסקאות בתהליך לפי שוק', [
+      { t: 'ארצות הברית', n: s.openUs, c: '#3d7fff' },
+      { t: 'ישראל', n: s.openIl, c: '#f5a623' }
+    ], s.open) +
+    donut('עסקאות מרוויחות מול מפסידות', [
+      { t: 'מרוויחות', n: s.win, c: '#26a69a' },
+      { t: 'מפסידות', n: s.lose, c: '#ef5350' }
+    ], s.win + s.lose);
+  }
+  function tradeSideRight() {
+    var s = tradeStats();
+    return '<div class="ts-box win"><div class="ts-l">עסקאות מרוויחות</div><div class="ts-v">' + s.win + '</div></div>' +
+      '<div class="ts-box lose"><div class="ts-l">עסקאות מפסידות</div><div class="ts-v">' + s.lose + '</div></div>' +
+      '<div class="ts-box rate"><div class="ts-l">אחוזי הצלחה</div><div class="ts-v">' + (s.rate == null ? '--' : s.rate + '%') + '</div></div>';
   }
 
-  // Performance summary: win rate, avg R, current win streak (from closed trades).
-  function perfSummary() {
-    var closed = loadTrades().filter(function (t) { return t.status === 'closed'; })
-                             .sort(function (a, b) { return (a.closeTs || 0) - (b.closeTs || 0); });
-    if (!closed.length) return '';
-    // Advanced performance summary is a premium feature.
-    if (!canUse('perf')) {
-      return '<div class="sf-upsell">' +
-        '<div class="sf-upsell-txt">' +
-          '<div class="sf-upsell-title">📊 סיכום ביצועים</div>' +
-          '<div class="sf-upsell-sub">אחוז הצלחה, ממוצע R ורצף נצחונות — זמין בפרימיום.</div>' +
-        '</div>' +
-        '<button class="sf-upsell-btn" onclick="NTSignals.openUpgrade()">⭐ שדרג</button>' +
-      '</div>';
-    }
-    var wins = 0, rSum = 0, rCount = 0, streak = 0, bestStreak = 0, cur = 0;
-    closed.forEach(function (t) {
-      var win = (t.pnl || 0) >= 0;
-      if (win) wins++;
-      // R multiple = pnl% / risk%; approximate R from entry/stop if available
-      if (t.entry != null && t.stop != null && t.pnlPct != null) {
-        var riskPct = Math.abs((t.entry - t.stop) / t.entry) * 100;
-        if (riskPct > 0) { rSum += (t.pnlPct / riskPct); rCount++; }
-      }
-      if (win) { cur++; if (cur > bestStreak) bestStreak = cur; } else { cur = 0; }
-    });
-    streak = cur;
-    var winRate = Math.round(wins / closed.length * 100);
-    var avgR = rCount ? (rSum / rCount) : null;
-    return '<div class="sf-perf">' +
-      '<div class="sf-perf-item"><div class="sf-perf-label">אחוז הצלחה</div><div class="sf-perf-val">' + winRate + '%</div></div>' +
-      '<div class="sf-perf-item"><div class="sf-perf-label">ממוצע R</div><div class="sf-perf-val ' + (avgR != null && avgR >= 0 ? 'pos' : 'neg') + '">' + (avgR != null ? (avgR >= 0 ? '+' : '') + avgR.toFixed(2) + 'R' : '--') + '</div></div>' +
-      '<div class="sf-perf-item"><div class="sf-perf-label">רצף נצחונות</div><div class="sf-perf-val">' + streak + '</div></div>' +
-      '<div class="sf-perf-item"><div class="sf-perf-label">רצף שיא</div><div class="sf-perf-val">' + bestStreak + '</div></div>' +
-    '</div>';
-  }
 
   // De-duped (symbol+direction, newest wins) normalized signals. A signal whose position is already open in
   // the user's portfolio is NOT listed here any more — it lives only in "העסקאות שלי". _portHidden counts them
@@ -1126,8 +1159,6 @@
   function renderSignals() {
     _portSet = portfolioSet();
     var uniq = dedupedSignals();   // also refreshes _serverInfo
-    var perf = perfSummary();
-    var hero = (filterKey === 'all' && !textFilter && marketFilter === 'all') ? heroCard(uniq) : '';
 
     // (status strip removed; keep only the admin clear-all button)
     var live = (isAdmin() && uniq.length)
@@ -1162,7 +1193,7 @@
       '<span class="rk-banner-ic">🛡️</span>' +
       '<span class="rk-banner-txt"><b>לפני שנכנסים לעסקה - נהל סיכונים</b><small>כלל ה-1%, סטופ לוס ויחס סיכוי/סיכון · לחץ לקריאה</small></span>' +
       '<span class="rk-banner-go">←</span></button>';
-    return trialStripHtml() + earnBannerHtml() + riskBanner + perf + hero + live + toolbar + '<div id="sigDyn">' + renderSigDyn() + '</div>';
+    return trialStripHtml() + earnBannerHtml() + riskBanner + usLine() + live + toolbar + '<div id="sigDyn">' + renderSigDyn() + '</div>';
   }
 
   // TASE stocks are quoted in agorot by Yahoo: show/compute everything in shekels (÷100).
@@ -1228,6 +1259,14 @@
   }
 
   function renderTrades() {
+    var list = renderTradesList();
+    if (!loadTrades().length) return usLine() + list;
+    return usLine() + '<div class="td-wrap"><div class="td-left">' + tradeSideLeft() + '</div>' +
+      '<div class="td-main">' + list + '</div>' +
+      '<div class="td-right">' + tradeSideRight() + '</div></div>';
+  }
+
+  function renderTradesList() {
     var trades = loadTrades();
     var open = trades.filter(function (t) { return t.status === 'open'; });
     var html = '<div class="sf-trades">';
@@ -1549,6 +1588,7 @@
     if (sb) sb.scrollTop = 0;
     render();
     if (tab === 'trades') refreshTradePrices(true);
+    if (tab === 'trades' || tab === 'signals') { usPull(); syncServerSignals(); }
   }
 
   // ---------- AI stock analysis (tab + popup) ----------
@@ -2884,7 +2924,7 @@
   window.NTSignals = {
     onAppReady: onAppReady,
     show: show, hide: hide, setMode: setMode,
-    switchTab: switchTab, openTradeModal: openTradeModal, tmCalc: tmCalc, tmFill: tmFill, tmConfirm: tmConfirm, tmClose: tmClose, closeTrade: closeTrade, toggleTradeChart: toggleTradeChart,
+    switchTab: switchTab, openTradeModal: openTradeModal, tmCalc: tmCalc, tmFill: tmFill, tmConfirm: tmConfirm, tmClose: tmClose, closeTrade: closeTrade, toggleTradeChart: toggleTradeChart, syncNow: syncNow,
     riskCalc: riskCalc, toggleDisc: toggleDisc,
     aiSuggest: aiSuggest, aiKey: aiKey, aiPick: aiPick, aiNext: aiNext, aiSugHideLater: aiSugHideLater,
     analyze: analyze, render: render,

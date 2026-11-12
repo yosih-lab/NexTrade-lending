@@ -1832,6 +1832,21 @@ async function fetchYahooChartDirect(symbol, tf) {
       bars.push({ time: time, open: quote.open[j], high: quote.high[j],
         low: quote.low[j], close: quote.close[j], volume: quote.volume[j] || 0 });
     }
+    // Yahoo can return the current week/month twice (the period bar + a separate bar for today): fold them into one candle.
+    if (!intraday && (tf === '1W' || tf === '1M' || tf === '3M' || tf === '6M') && bars.length > 1) {
+      var merged = [bars[0]];
+      for (var mi = 1; mi < bars.length; mi++) {
+        var pb = merged[merged.length - 1], cb = bars[mi];
+        var sameP = tf === '1W'
+          ? (Date.parse(cb.time) - Date.parse(pb.time)) / 86400000 < 5
+          : cb.time.slice(0, 7) === pb.time.slice(0, 7);
+        if (sameP) {
+          merged[merged.length - 1] = { time: pb.time, open: pb.open, high: Math.max(pb.high, cb.high),
+            low: Math.min(pb.low, cb.low), close: cb.close, volume: (pb.volume || 0) + (cb.volume || 0) };
+        } else merged.push(cb);
+      }
+      bars = merged;
+    }
     candleCache[cacheKey] = { ts: Date.now(), data: bars };
     return bars;
   } catch(e) { return []; }

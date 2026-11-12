@@ -3133,6 +3133,31 @@
     .tr-chart-btn { background:rgba(61,127,255,.12); border:1px solid rgba(61,127,255,.5); color:#8fb4ff; border-radius:8px; padding:.35rem .6rem; font-size:.74rem; font-weight:700; cursor:pointer; font-family:Heebo,sans-serif; white-space:nowrap; }
     .tr-chart-btn:hover, .tr-chart-btn.on { background:rgba(61,127,255,.28); color:#fff; }
     .tr-chart { grid-column:1 / -1; padding:.6rem .5rem .3rem; border-top:1px solid var(--border); }
+    .us-sync { margin:0 auto .6rem; max-width:1000px; text-align:center; font-size:.72rem; font-weight:700; color:var(--text-muted); cursor:pointer; opacity:.85; }
+    .us-sync.err { color:#ffb347; opacity:1; }
+    .us-sync.busy { color:#8fb4ff; }
+    .td-wrap { display:flex; flex-direction:column; gap:1rem; }
+    .td-main { order:2; min-width:0; } .td-right { order:1; } .td-left { order:3; }
+    .td-right { display:flex; gap:.6rem; } .td-left { display:flex; gap:.8rem; flex-wrap:wrap; justify-content:center; }
+    .ts-box { flex:1; border-radius:12px; padding:.9rem 1rem; text-align:center; color:#fff; box-shadow:0 2px 10px rgba(0,0,0,.25); }
+    .ts-box.win { background:#1f9d72; } .ts-box.lose { background:#d6453d; } .ts-box.rate { background:#c99a14; }
+    .ts-l { font-size:.82rem; font-weight:800; opacity:.95; }
+    .ts-v { font-size:1.9rem; font-weight:900; line-height:1.2; margin-top:.2rem; }
+    .td-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:.9rem 1rem; text-align:center; min-width:200px; flex:1; }
+    .td-title { font-size:.82rem; font-weight:800; color:#fff; margin-bottom:.7rem; }
+    .td-ring { width:140px; height:140px; border-radius:50%; margin:0 auto .7rem; display:flex; align-items:center; justify-content:center; }
+    .td-hole { width:86px; height:86px; border-radius:50%; background:var(--surface); display:flex; align-items:center; justify-content:center; }
+    .td-hole b { font-size:1.5rem; font-weight:900; color:#fff; }
+    .td-legend { display:flex; flex-direction:column; gap:.3rem; font-size:.78rem; font-weight:700; color:var(--text); }
+    .td-legend > div { display:flex; align-items:center; gap:.45rem; }
+    .td-legend i { width:11px; height:11px; border-radius:50%; flex:0 0 auto; }
+    .td-legend b { margin-inline-start:auto; font-weight:900; }
+    @media (min-width:1280px) {
+      .td-wrap { display:grid; direction:ltr; grid-template-columns:250px minmax(0,1000px) 250px; justify-content:center; align-items:start; gap:1.2rem; }
+      .td-wrap > div { direction:rtl; order:0; }
+      .td-right { flex-direction:column; } .td-left { flex-direction:column; flex-wrap:nowrap; }
+      .td-card { flex:none; }
+    }
     .sf-rows-head { display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr 1fr auto; gap:.6rem; padding:0 .9rem .4rem; font-size:.68rem; color:var(--text-muted); font-weight:700; }
     /* ---- Paywall: upgrade banner + locked panels ---- */
     .sf-upsell { max-width:1000px; margin:0 auto 1rem; display:flex; align-items:center; gap:.8rem;
@@ -3808,13 +3833,13 @@
 </div>
 
 <script src="scanner-symbols.js?v=20261024a"></script>
-<script src="scanner-engine.js?v=20261112b"></script>
+<script src="scanner-engine.js?v=20261113a"></script>
 <script src="plan.js?v=20261019g"></script>
-<script src="main.js?v=20261101b"></script>
+<script src="main.js?v=20261113a"></script>
 <script src="stockpanel.js?v=20261030a"></script>
 <script src="drawing.js?v=20261019b"></script>
 <script src="features.js?v=20261018j"></script>
-<script src="signals.js?v=20261112c"></script>
+<script src="signals.js?v=20261113a"></script>
 <script src="plan-overlay.js?v=20261030c"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
