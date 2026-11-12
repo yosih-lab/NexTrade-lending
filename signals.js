@@ -227,7 +227,7 @@
     var m = null;
     try { m = JSON.parse(localStorage.getItem(US_META) || 'null'); } catch (e) {}
     if (!m || typeof m !== 'object') m = {};
-    m.t = m.t || {}; m.dirty = m.dirty || {};
+    m.t = m.t || {}; m.dirty = m.dirty || {}; m.n = m.n || {};
     return m;
   }
   function usSaveMeta(m) { try { localStorage.setItem(US_META, JSON.stringify(m)); } catch (e) {} }
@@ -237,7 +237,7 @@
     var m = usMeta();
     if (m.owner && m.owner !== scope) {
       Object.keys(US_KEYS).forEach(function (k) { try { localStorage.removeItem(US_KEYS[k]); } catch (e) {} });
-      m = { owner: scope, t: {}, dirty: {} };
+      m = { owner: scope, t: {}, dirty: {}, n: {} };
       usSaveMeta(m);
     } else if (!m.owner) { m.owner = scope; usSaveMeta(m); }
     return m;
@@ -252,7 +252,7 @@
     var m = usMeta();
     if (!m.owner) { m.owner = usScope(); }
     if (!m.owner || m.owner !== usScope()) return;
-    m.t[k] = Date.now(); m.dirty[k] = 1; usSaveMeta(m);
+    m.t[k] = Math.max(Date.now(), (m.t[k] || 0) + 1); m.dirty[k] = 1; usSaveMeta(m);
     clearTimeout(_usTimer); _usTimer = setTimeout(usPush, 700);
   }
   function usMerge(k, srv, loc) {
@@ -274,14 +274,14 @@
     return Object.assign({}, loc && typeof loc === 'object' ? loc : {}, srv && typeof srv === 'object' ? srv : {});
   }
   // Visible sync status (shown on the signals and "my trades" pages) so a failure is never silent.
-  var US_BUILD = '20261113a';
+  var US_BUILD = '20261113b';
   var _usSt = { state: 'idle', t: 0, msg: '' };
   function usLine() {
     var s = _usSt, txt, cls = s.state;
     var hm = s.t ? new Date(s.t).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '';
     if (!authToken()) { txt = '⚠️ לא מחובר לחשבון — הנתונים נשמרים רק במכשיר הזה'; cls = 'err'; }
     else if (s.state === 'busy') txt = '⏳ מסנכרן עם החשבון…';
-    else if (s.state === 'ok') txt = '☁️ מסונכרן עם החשבון · ' + hm + ' · לחץ לרענון';
+    else if (s.state === 'ok') txt = '☁️ מסונכרן עם החשבון · ' + hm + ' · v' + US_BUILD + ' · לחץ לרענון';
     else if (s.state === 'err') txt = '⚠️ הסנכרון נכשל (' + s.msg + ') · לחץ לנסות שוב';
     else txt = '☁️ סנכרון חשבון · לחץ לרענון';
     return '<div id="usSyncLine" class="us-sync ' + cls + '" title="גרסה ' + US_BUILD + '" onclick="NTSignals.syncNow()">' + txt + '</div>';
@@ -310,10 +310,11 @@
   function usPush() {
     clearTimeout(_usTimer); _usTimer = null;
     var tok = authToken(); if (!tok) return Promise.resolve();
-    var m = usMeta(), items = {}, keys = [];
+    var m = usMeta(), items = {}, keys = [], sent = {};
     Object.keys(m.dirty).forEach(function (k) {
       if (!US_KEYS[k]) return;
-      items[k] = { v: usLocal(k), t: m.t[k] || Date.now() };
+      items[k] = { v: usLocal(k) };
+      sent[k] = m.t[k] || 0;
       keys.push(k);
     });
     if (!keys.length) return Promise.resolve();
@@ -325,31 +326,41 @@
     }).then(function (res) {
       var e = usErr(res);
       if (e) { usSetSt('err', e); return; }
-      var m2 = usMeta();
-      keys.forEach(function (k) { if ((m2.t[k] || 0) === items[k].t) delete m2.dirty[k]; });
+      var m2 = usMeta(), changed = false, srvItems = res.data.items || {};
+      keys.forEach(function (k) {
+        var srv = srvItems[k]; if (!srv) return;
+        if ((m2.t[k] || 0) === sent[k]) {
+          // untouched since the push: take the server's merged copy (it may hold trades from another device)
+          delete m2.dirty[k];
+          if (JSON.stringify(srv.v) !== JSON.stringify(usLocal(k))) { try { localStorage.setItem(US_KEYS[k], JSON.stringify(srv.v)); changed = true; } catch (er) {} }
+        }
+        m2.n[k] = srv.n;
+      });
       usSaveMeta(m2);
       usSetSt('ok');
-      usApply(res.data.items);
+      if (changed) { try { if (feedVisible()) render(); } catch (er) {} }
+      usApply(srvItems);
     });
   }
+  // Compare the server's versions with the ones this device has seen; adopt whatever changed elsewhere.
   function usApply(items) {
     var m = usMeta(), changed = false, up = false;
     items = items || {};
     Object.keys(US_KEYS).forEach(function (k) {
-      var srv = items[k], lsKey = US_KEYS[k], lt = m.t[k] || 0;
+      var srv = items[k], lsKey = US_KEYS[k];
       if (m.dirty[k]) { up = true; return; }
       var hasLocal = localStorage.getItem(lsKey) != null;
       if (!srv) {
-        if (hasLocal && !lt) { m.t[k] = Date.now(); m.dirty[k] = 1; up = true; }   // first upload from this device
+        if (hasLocal && m.n[k] === undefined) { m.t[k] = Date.now(); m.dirty[k] = 1; up = true; }   // first upload from this device
         return;
       }
-      if (!lt) {
-        if (!hasLocal) { localStorage.setItem(lsKey, JSON.stringify(srv.v)); m.t[k] = srv.t; changed = true; return; }
-        localStorage.setItem(lsKey, JSON.stringify(usMerge(k, srv.v, usLocal(k))));
-        m.t[k] = Date.now(); m.dirty[k] = 1; up = true; changed = true;
+      if (m.n[k] === undefined) {   // first sync of this device: merge what it holds with the account copy
+        if (!hasLocal) { localStorage.setItem(lsKey, JSON.stringify(srv.v)); }
+        else { localStorage.setItem(lsKey, JSON.stringify(usMerge(k, srv.v, usLocal(k)))); m.t[k] = Date.now(); m.dirty[k] = 1; up = true; }
+        m.n[k] = srv.n; changed = true;
         return;
       }
-      if (srv.t > lt) { localStorage.setItem(lsKey, JSON.stringify(srv.v)); m.t[k] = srv.t; changed = true; }
+      if (srv.n !== m.n[k]) { localStorage.setItem(lsKey, JSON.stringify(srv.v)); m.n[k] = srv.n; changed = true; }
     });
     usSaveMeta(m);
     if (up) { clearTimeout(_usTimer); _usTimer = setTimeout(usPush, 300); }
@@ -953,17 +964,16 @@
   }
 
   // ---------- "my trades" dashboard: winners / losers / success rate + two donut charts ----------
-  // Open trades count by their current P&L, closed trades by their realized P&L.
+  // Winners / losers count REALIZED (closed) trades only, so closing a trade moves these numbers immediately.
   function tradeStats() {
     var trades = loadTrades(), s = { win: 0, lose: 0, openUs: 0, openIl: 0, open: 0 };
     trades.forEach(function (t) {
-      var v;
       if (t.status === 'open') {
         s.open++;
         if (tGroup(t) === 'il') s.openIl++; else s.openUs++;
-        var p = tradePnl(t, livePrice(t.sym)); v = p.abs;
-      } else v = (t.pnl == null) ? null : tClosedPnl(t);
-      if (v == null) return;
+        return;
+      }
+      var v = tClosedPnl(t);
       if (v >= 0) s.win++; else s.lose++;
     });
     s.rate = (s.win + s.lose) ? Math.round(s.win / (s.win + s.lose) * 100) : null;
@@ -989,7 +999,7 @@
       { t: 'ארצות הברית', n: s.openUs, c: '#3d7fff' },
       { t: 'ישראל', n: s.openIl, c: '#f5a623' }
     ], s.open) +
-    donut('עסקאות מרוויחות מול מפסידות', [
+    donut('עסקאות סגורות: מרוויחות מול מפסידות', [
       { t: 'מרוויחות', n: s.win, c: '#26a69a' },
       { t: 'מפסידות', n: s.lose, c: '#ef5350' }
     ], s.win + s.lose);
@@ -1005,6 +1015,21 @@
   // De-duped (symbol+direction, newest wins) normalized signals. A signal whose position is already open in
   // the user's portfolio is NOT listed here any more — it lives only in "העסקאות שלי". _portHidden counts them
   // so the plan-upsell arithmetic (server total vs. shown) stays right.
+  // A signal is worth showing only while it can still be ACTED on: not about to report earnings (7 days),
+  // not already stopped / at target, not a stale entry, and price not already far from the entry zone.
+  var REL_EARN_DAYS = 7, REL_MAX_AGE_DAYS = 21, REL_ACTIVE_PCT = 3, REL_WAIT_PCT = 4;
+  function isRelevantSig(s) {
+    var earn = earningsInfo(s.sym, s.earnDate);
+    if (earn && earn.days >= 0 && earn.days <= REL_EARN_DAYS) return false;
+    var st = signalStatus(s), k = st.key;
+    if (k === 'stopped' || k === 'hit') return false;
+    if (s.planOnly) return true;
+    if (s.ts && Date.now() - s.ts > REL_MAX_AGE_DAYS * 86400000) return false;
+    if (k === 'now' || k === 'armed') return true;
+    if (st.dist == null) return true;
+    return Math.abs(st.dist) <= (k === 'active' ? REL_ACTIVE_PCT : REL_WAIT_PCT);
+  }
+
   var _portHidden = 0;
   function dedupedSignals() {
     var sigs = loadSignals();
@@ -1017,6 +1042,7 @@
       var k = s.sym + '_' + s.dir;
       if (seen[k]) return; seen[k] = true;
       if (_portSet[s.sym + '|' + s.dir]) { _portHidden++; return; }
+      if (!isRelevantSig(s)) { _portHidden++; return; }
       uniq.push(s);
     });
     return uniq;
@@ -1270,14 +1296,11 @@
     var trades = loadTrades();
     var open = trades.filter(function (t) { return t.status === 'open'; });
     var html = '<div class="sf-trades">';
-    if (!open.length) {
-      html += '<div class="sf-empty">אין עסקאות פתוחות. הוסף עסקה מלוח האיתותים.</div></div>';
-      return html;
-    }
+    if (!open.length) html += '<div class="sf-empty">אין עסקאות פתוחות. הוסף עסקה מלוח האיתותים.</div>';
     T_GROUPS.forEach(function (g) {
       var gOpen = open.filter(function (t) { return tGroup(t) === g.k; });
-      if (!gOpen.length) return;
       var gClosed = trades.filter(function (t) { return t.status === 'closed' && tGroup(t) === g.k; });
+      if (!gOpen.length && !gClosed.length) return;
       var openPnl = 0, haveLive = false;
       gOpen.forEach(function (t) { var p = tradePnl(t, livePrice(t.sym)); if (p.abs != null) { openPnl += p.abs; haveLive = true; } });
       var realized = gClosed.reduce(function (s, t) { return s + tClosedPnl(t); }, 0);
@@ -1290,10 +1313,12 @@
         statBox('רווח/הפסד ממומש', fmtM(realized, g.cur, true), realized >= 0 ? 'pos' : 'neg') +
         statBox('אחוז הצלחה', winRate) +
       '</div>';
-      html += '<div class="sf-rows-head"><div>מניה</div><div>כניסה</div><div>מחיר נוכחי</div><div>סטופ / יעד</div><div>רווח/הפסד</div><div></div></div>';
-      html += gOpen.map(function (t) { return tradeRow(t, true); }).join('');
+      if (gOpen.length) {
+        html += '<div class="sf-rows-head"><div>מניה</div><div>כניסה</div><div>מחיר נוכחי</div><div>סטופ / יעד</div><div>רווח/הפסד</div><div></div></div>';
+        html += gOpen.map(function (t) { return tradeRow(t, true); }).join('');
+      }
     });
-    if (_tradePxTs) html += '<div class="tr-cell-label" style="text-align:center;margin-top:.6rem">🟢 מחירים בזמן אמת · עודכן ' + new Date(_tradePxTs).toLocaleTimeString('he-IL') + '</div>';
+    if (open.length && _tradePxTs) html += '<div class="tr-cell-label" style="text-align:center;margin-top:.6rem">🟢 מחירים בזמן אמת · עודכן ' + new Date(_tradePxTs).toLocaleTimeString('he-IL') + '</div>';
     html += '</div>';
     return html;
   }

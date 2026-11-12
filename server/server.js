@@ -806,19 +806,25 @@ app.put('/api/watchlist', requireAuth, async (req, res) => {
 
 // ── SIGNALS-SITE STATE (trades / favorites / alerts) ─────────────
 // Per-user, so the signals site and the installed app (and every device) show the same portfolio.
-// Each key is { v: value, t: client timestamp }; the newest write wins per key.
+// Each key is { v: value, n: version }. The SERVER owns the version (+1 on every real change), so a device
+// with a wrong clock can never hide another device's update. Trades are union-merged by id.
 const US_KEYS = {
   trades:   { check: v => Array.isArray(v) && v.length <= 1000 },
   favs:     { check: v => Array.isArray(v) && v.length <= 500 && v.every(x => typeof x === 'string' && x.length <= 24) },
   alerts:   { check: v => v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length <= 500 },
   exitseen: { check: v => v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length <= 2000 }
 };
+function usOut(state) {
+  const out = {};
+  Object.keys(state || {}).forEach(k => { if (state[k] && state[k].v !== undefined) out[k] = { v: state[k].v, n: state[k].n || 1 }; });
+  return out;
+}
 app.get('/api/userstate', requireAuth, async (req, res) => {
   try {
     const stored = await getWatchlist(req.user.id);
     if (stored === null) return res.status(503).json({ error: 'המידע אינו זמין כרגע' });
     res.setHeader('Cache-Control', 'no-store');
-    res.json({ ok: true, items: normWl(stored).state });
+    res.json({ ok: true, items: usOut(normWl(stored).state) });
   } catch (e) {
     console.error('[NexTrade] GET /api/userstate error:', e.message);
     res.status(500).json({ error: 'שגיאה בטעינת הנתונים' });
@@ -832,29 +838,31 @@ app.put('/api/userstate', requireAuth, async (req, res) => {
     if (raw === null) return res.status(503).json({ error: 'המידע אינו זמין כרגע' });
     const prev = normWl(raw);
     const state = Object.assign({}, prev.state);
+    let changed = false;
     Object.keys(items).forEach(k => {
       const it = items[k], def = US_KEYS[k];
-      if (!def || !it || typeof it !== 'object' || typeof it.t !== 'number' || !def.check(it.v)) return;
-      if (k === 'trades' && state.trades && Array.isArray(state.trades.v)) {
+      if (!def || !it || typeof it !== 'object' || !def.check(it.v)) return;
+      if (JSON.stringify(it.v).length > 400000) return;
+      const old = state[k];
+      let val = it.v;
+      if (k === 'trades' && old && Array.isArray(old.v)) {
         // never lose a trade added or closed on another device: union by id, a closed copy wins
         const by = {};
-        state.trades.v.forEach(t => { if (t && t.id) by[t.id] = t; });
+        old.v.forEach(t => { if (t && t.id) by[t.id] = t; });
         it.v.forEach(t => { if (t && t.id && (!by[t.id] || t.status === 'closed' || by[t.id].status !== 'closed')) by[t.id] = t; });
-        const merged = Object.keys(by).map(id => by[id]).sort((a, b) => (b.openTs || 0) - (a.openTs || 0)).slice(0, 1000);
-        const same = merged.length === it.v.length && merged.every(t => it.v.some(x => x && x.id === t.id && x.status === t.status));
-        // a bumped stamp makes the pushing device adopt the merged list it did not have
-        state.trades = { v: merged, t: Math.max(it.t, state.trades.t || 0) + (same ? 0 : 1) };
-        return;
+        val = Object.keys(by).map(id => by[id]).sort((a, b) => (b.openTs || 0) - (a.openTs || 0)).slice(0, 1000);
       }
-      if (state[k] && typeof state[k].t === 'number' && state[k].t > it.t) return; // stored copy is newer
-      if (JSON.stringify(it.v).length > 400000) return;
-      state[k] = { v: it.v, t: it.t };
+      if (old && JSON.stringify(old.v) === JSON.stringify(val)) return;   // nothing new
+      state[k] = { v: val, n: ((old && old.n) || 1) + (old ? 1 : 0), t: Date.now() };
+      changed = true;
     });
-    const row = prev.hasMeta
-      ? { l: prev.symbols, c: prev.colors, n: prev.names, s: state }
-      : { l: prev.symbols, s: state, nm: 1 };
-    await setWatchlist(req.user.id, row);
-    res.json({ ok: true, items: state });
+    if (changed) {
+      const row = prev.hasMeta
+        ? { l: prev.symbols, c: prev.colors, n: prev.names, s: state }
+        : { l: prev.symbols, s: state, nm: 1 };
+      await setWatchlist(req.user.id, row);
+    }
+    res.json({ ok: true, items: usOut(state) });
   } catch (e) {
     console.error('[NexTrade] PUT /api/userstate error:', e.message);
     res.status(500).json({ error: 'שגיאה בשמירת הנתונים' });
@@ -1134,6 +1142,8 @@ const SIG_CHUNK      = parseInt(process.env.SCAN_CHUNK || '60', 10);   // symbol
 const SIG_CONCURRENCY= parseInt(process.env.SCAN_CONCURRENCY || '6', 10);
 const SIG_CYCLE_MS   = parseInt(process.env.SCAN_CYCLE_MS || String(5 * 60 * 1000), 10);
 const SIG_MAX_AGE_MS = parseInt(process.env.SIGNAL_MAX_AGE_MS || String(7 * 24 * 3600 * 1000), 10);
+// An un-tracked signal the scanner has not re-confirmed for this long is dropped (the weekend rest is covered).
+const SIG_STALE_MS = parseInt(process.env.SIGNAL_STALE_MS || String(80 * 3600 * 1000), 10);
 // A published ENTRY signal keeps being tracked (its stop/target are watched every minute) until it exits or this age.
 const TRACK_MAX_AGE_MS = parseInt(process.env.TRACK_MAX_AGE_MS || String(30 * 24 * 3600 * 1000), 10);
 const EXIT_KEEP_MS = 3 * 24 * 3600 * 1000;   // how long an exited (stop/target) signal stays visible
@@ -1240,12 +1250,20 @@ function pruneSignals() {
       // that is exactly when the user needs the exit message. It leaves 3 days after its exit, or after TRACK_MAX_AGE.
       return Date.now() < (s.exit ? s.exit.ts + EXIT_KEEP_MS : s.ts + TRACK_MAX_AGE_MS);
     }
-    return s.ts >= cutoff &&
+    return s.ts >= cutoff && (Date.now() - (s.seen || s.ts)) < SIG_STALE_MS &&
       !(/\.TA$/i.test(s.sym || '') && dualUS.indexOf((s.sym || '').replace(/\.TA$/i, '')) !== -1) &&
       !(s.direction === 'short' && isTaseStock(s.sym || '')) && !inEarnBlackout(s.earnDate) &&
       !(s.sma30 != null && s.price != null && ((s.direction === 'short' && s.price >= s.sma30) || (s.direction === 'long' && s.price < s.sma30))) &&
       (isIndexSym(s.sym || '') || (s.avgTurnover != null && s.avgTurnover >= minTurnoverFor(s.sym || '')));
   });
+  // one signal per symbol + direction: keep the open tracked entry, otherwise the newest
+  const bestBy = {};
+  _sigStore.forEach(s => {
+    const k = (s.sym || '') + '|' + s.direction;
+    const b = bestBy[k];
+    if (!b || (isTrackedOpen(s) && !isTrackedOpen(b)) || (isTrackedOpen(s) === isTrackedOpen(b) && s.ts > b.ts)) bestBy[k] = s;
+  });
+  _sigStore = _sigStore.filter(s => bestBy[(s.sym || '') + '|' + s.direction] === s || (s.tracked && s.exit));
   _sigByKey = {};
   _sigStore.forEach(s => { _sigByKey[s.key] = s; });
   _sigStore.sort((a, b) => b.ts - a.ts);
@@ -1369,6 +1387,7 @@ async function scanSignalsChunk() {
             psig.earnDate = pEarn || null;
             psig.earnEst = pEarn ? earnIsEst(sym) : false;
             psig.key = pkey;
+            psig.seen = Date.now();
             if (prev && prev.plan && prev.plan.level != null && Math.abs(prev.plan.level - a.plan.level) / a.plan.level < 0.03) psig.ts = prev.ts;
             if (_sigDismissed.has(psig.key)) return;
             if (!prev) added++;
@@ -1389,6 +1408,7 @@ async function scanSignalsChunk() {
           const openSig = Object.keys(_sigByKey).map(k => _sigByKey[k]).find(o => o && o.sym === sym && o.direction === a.direction && isTrackedOpen(o));
           if (openSig) { openSig.status = a.status; openSig.lastPrice = a.price; openSig.lastPriceTs = Date.now(); return; }
           const sig = buildSignalObject(sym, a, liq);
+          sig.seen = Date.now();
           sig.earnDate = earnDate || null;
           sig.earnEst = earnDate ? earnIsEst(sym) : false;
           if (_sigDismissed.has(sig.key)) return;

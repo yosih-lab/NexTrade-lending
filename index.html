@@ -2917,7 +2917,8 @@
     @keyframes sfGlow { 0%,100%{box-shadow:0 0 0 1px rgba(245,166,35,.3), 0 0 10px rgba(245,166,35,.08);} 50%{box-shadow:0 0 0 1px rgba(245,166,35,.6), 0 0 22px rgba(245,166,35,.22);} }
     .sig-card.ready { box-shadow:0 0 0 1px rgba(245,166,35,.4), 0 4px 22px rgba(245,166,35,.12); }
     .sr-main { display:grid; align-items:center; gap:.6rem; padding:.55rem .75rem; cursor:pointer;
-      grid-template-columns:26px minmax(120px,1fr) 70px auto 90px auto; }
+      grid-template-columns:26px 170px 70px auto 1fr auto; }
+    .sr-main > .sig-status { justify-self:start; }
     .sr-sym b { display:block; font-size:.98rem; font-weight:900; color:#fff; line-height:1.1; }
     .sr-sym small { display:block; font-size:.66rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px; }
     .sr-new { display:inline-block; margin-inline-start:.35rem; font-size:.58rem; font-weight:900; color:#fff; background:linear-gradient(135deg,#2962ff,#7c4dff);
@@ -3776,8 +3777,8 @@
   <nav class="sf-tabs">
     <button class="sf-tab" data-tab="risk" onclick="NTSignals.switchTab('risk')"><span class="sf-tab-risk">🛡️ ניהול סיכונים</span></button>
     <button class="sf-tab active" data-tab="signals" onclick="NTSignals.switchTab('signals')">איתותים</button>
-    <button class="sf-tab" data-tab="ai" onclick="NTSignals.switchTab('ai')">🤖 ניתוח AI למניות</button>
     <button class="sf-tab" data-tab="trades" onclick="NTSignals.switchTab('trades')">העסקאות שלי</button>
+    <button class="sf-tab" data-tab="ai" onclick="NTSignals.switchTab('ai')">🤖 ניתוח AI למניות</button>
     <button class="sf-tab" data-tab="history" onclick="NTSignals.switchTab('history')">היסטוריה</button>
     <button class="sf-tab" data-tab="alerts" onclick="NTSignals.switchTab('alerts')">🔔 יומן</button>
   </nav>
@@ -3839,7 +3840,7 @@
 <script src="stockpanel.js?v=20261030a"></script>
 <script src="drawing.js?v=20261019b"></script>
 <script src="features.js?v=20261018j"></script>
-<script src="signals.js?v=20261113a"></script>
+<script src="signals.js?v=20261113b"></script>
 <script src="plan-overlay.js?v=20261030c"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
