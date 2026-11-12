@@ -39,7 +39,11 @@
     ranAwayPct: 0.06,       // >6% past the entry level => don't chase (watch)
     holdCandles: 5,         // 5 weekly candles must hold past a broken level
     retestStopAtr: 0.75,    // retest setups: the flipped level is strong, so the stop sits only 0.75 ATR beyond it
-    retestStopPct: 0.05,    // ...but never closer than 5% of the level for SHORT retests (room for a weekly wick)
+    minStopPct: 0.06,       // the stop is never closer than 6% of the entry price (weekly chart needs room for a normal wick)
+    entryBufferPct: 0.0008, // pullback entry sits a hair (~0.08%, ≈10 cents on a $130 stock) ABOVE the support zone
+    peakTargetHaircut: 0.01,// pullback target = prior 52-week peak less 1% (the peak itself rarely fills)
+    pullbackMinDepth: 0.05, // a stock counts as "in a pullback" once it is >= 5% under its 52-week peak
+    lostAtr: 0.3,           // "closed through a level" = a weekly close under it by more than max(2%, 0.3×ATR)
     planZoneAtr: 1.5,       // a not-yet-broken level within 1.5 ATR of price is shown to the user as a "plan" (do NOT enter yet)
     pullbackLookback: 8,    // weeks to inspect a pullback leg
     volContractRatio: 0.9,  // recent vol <= 0.9x of pullback-start vol = contracting
@@ -197,15 +201,17 @@
       var placed = false;
       for (var k = 0; k < levels.length; k++) {
         if (Math.abs(pts[i].price - levels[k].price) / levels[k].price <= CFG.levelTol) {
-          // merge: running average + touch count
+          // merge: running average + touch count (+ the outer edges of the zone)
           levels[k].price = (levels[k].price * levels[k].touches + pts[i].price) / (levels[k].touches + 1);
           levels[k].touches++;
+          if (pts[i].price > levels[k].hi) levels[k].hi = pts[i].price;
+          if (pts[i].price < levels[k].lo) levels[k].lo = pts[i].price;
           if (pts[i].idx > levels[k].lastIdx) levels[k].lastIdx = pts[i].idx;
           placed = true;
           break;
         }
       }
-      if (!placed) levels.push({ price: pts[i].price, touches: 1, lastIdx: pts[i].idx });
+      if (!placed) levels.push({ price: pts[i].price, touches: 1, lastIdx: pts[i].idx, hi: pts[i].price, lo: pts[i].price });
     }
     levels.sort(function (a, b) { return a.price - b.price; });
     return levels;
@@ -345,6 +351,24 @@
     return Math.max(l.touches, t);
   }
 
+  // A stronger support (more touches) BELOW the chosen one that the current pullback has already reached and
+  // bounced from is the real floor: e.g. CHRD's 3-touch shelf at 140.9 sits above the 4-touch 132.4 zone price
+  // just dipped into (week low 131) and bounced off — the buy is at 132.4, not at the minor shelf above it.
+  function testedStrongerSupport(levels, sup, bars, atrVal) {
+    if (!sup) return sup;
+    var from = Math.max(0, bars.length - CFG.pullbackLookback), pbLow = Infinity, i;
+    for (i = from; i < bars.length; i++) { if (bars[i].low < pbLow) pbLow = bars[i].low; }
+    var best = null, supTouches = sup.raw != null ? sup.raw : sup.touches;
+    levels.forEach(function (l) {
+      if (l.price >= sup.price || l.touches <= supTouches) return;
+      var top = l.hi != null ? l.hi : l.price;
+      if (pbLow > top * (1 + 0.005)) return;                        // the pullback never reached this zone
+      for (i = from; i < bars.length; i++) { if (bars[i].close < l.price - Math.max(l.price * CFG.levelTol, CFG.lostAtr * (atrVal || 0))) return; }   // closed through it: not a floor
+      if (!best || l.price > best.price) best = l;
+    });
+    return best || sup;
+  }
+
   // The level closest to price (either side, within nearLevel).
   function nearLevelAny(levels, price, bars, atrVal) {
     var best = null;
@@ -354,7 +378,7 @@
       if (!best || d < best.d) best = { l: l, d: d };
     });
     if (!best) return null;
-    return { price: best.l.price, touches: countTouches(best.l, bars, atrVal), lastIdx: best.l.lastIdx };
+    return { price: best.l.price, touches: countTouches(best.l, bars, atrVal), raw: best.l.touches, lastIdx: best.l.lastIdx, hi: best.l.hi, lo: best.l.lo };
   }
 
   // A significant resistance that price is approaching (not yet broken) or has cleared by 1-4 weekly
@@ -425,10 +449,11 @@
   // Target = the 1:2 minimum, but when a known level (e.g. a historical low/high) sits beyond that
   // point (within CFG.maxTargetR) the target is placed ON that level: it is where price realistically
   // stalls, and a reward past it would be fantasy. The R:R is then recomputed from the real target.
-  function buildTrade(dir, entry, stopRef, atrVal, levels) {
+  function buildTrade(dir, entry, stopRef, atrVal, levels, goal) {
     var stop, target, risk, min;
     if (dir === 'long') {
       stop = stopRef - atrVal;
+      if (entry - stop < entry * CFG.minStopPct) stop = entry * (1 - CFG.minStopPct);
       risk = entry - stop;
       min = entry + CFG.rrTarget * risk;
       target = min;
@@ -437,8 +462,11 @@
         if (l.price >= min * (1 - CFG.targetSnapTol) && l.price <= entry + CFG.maxTargetR * risk && (up == null || l.price < up)) up = l.price;
       });
       if (up != null) target = Math.max(up, min);
+      // An explicit goal (e.g. the prior peak for a pullback) wins when it is at least ~1:2 away.
+      if (goal != null && goal >= min * (1 - CFG.targetSnapTol) && goal <= entry + CFG.maxTargetR * risk) target = goal;
     } else {
       stop = stopRef + atrVal;
+      if (stop - entry < entry * CFG.minStopPct) stop = entry * (1 + CFG.minStopPct);
       risk = stop - entry;
       min = entry - CFG.rrTarget * risk;
       target = min;
@@ -503,6 +531,8 @@
     var smaRising = sma30prev != null && sma30 > sma30prev;
     var smaFalling = sma30prev != null && sma30 < sma30prev;
     var aboveSMA = price >= sma30;
+    var peak52 = 0;
+    for (var pk = Math.max(0, n - 52); pk < n; pk++) { if (bars[pk].high > peak52) peak52 = bars[pk].high; }
 
     // Use a confirmed-swing window (drop the still-forming last bar for structure)
     var swingBars = bars.slice(0, n - 1);
@@ -588,8 +618,9 @@
         }
       }
 
-      // (B) Pullback to a support confluence (SMA30 + historical support).
-      var sup = supNear || nearestLevelBelow(levels, price);
+      // (B) Pullback to a support confluence (SMA30 + historical support). If the pullback already reached and
+      // bounced from a STRONGER zone below the nearest level, that zone is the support (see testedStrongerSupport).
+      var sup = testedStrongerSupport(levels, supNear || nearestLevelBelow(levels, price), bars, atrVal);
       var nearSMA = Math.abs(price - sma30) / sma30 <= CFG.nearLevel;
       var nearSup = sup && Math.abs(price - sup.price) / sup.price <= CFG.nearLevel;
       var confluence = (nearSMA ? 1 : 0) + (nearSup ? 1 : 0);
@@ -625,7 +656,7 @@
         if (rev && volOk) {
           if (vMA > 0) res.reasons.push('מחזור מסחר מעל הממוצע (' + Math.round(volNow / vMA * 100) + '% מ-Vol MA)');
           if (nearSup) res.plan = makePlan('pullback', 'long', sup.price, sup.touches, 0, 'entry', { volContracting: !!vol.contracting, volRatio: +vol.ratio.toFixed(2) });
-          var r2 = finalizeEntry(res, 'long', price, stopRef, atrVal, price);
+          var r2 = finalizeEntry(res, 'long', price, stopRef, atrVal * CFG.retestStopAtr, price);
           // Strong ceiling (>=3 touches) above price and inside the 1:2 target path?
           var ceil = null;
           levels.forEach(function (l) {
@@ -647,6 +678,21 @@
         }
         res.status = 'watch';
         return finalizeWatch(res, res.level, price);
+      }
+
+      // Pullback in progress (price >= 5% under its peak) and an intact strong support just below: show the plan
+      // "come back to the support" BEFORE any breakout-approach read of a resistance above.
+      var inPullback = price <= peak52 * (1 - CFG.pullbackMinDepth);
+      if (sup && inPullback) {
+        var supT0 = countTouches(sup, bars, atrVal), supTop0 = sup.hi != null ? sup.hi : sup.price;
+        if (supT0 >= CFG.touchSignificant && (price - supTop0) <= CFG.planZoneAtr * atrVal) {
+          res.direction = 'long'; res.setup = 'pullback'; res.status = 'watch';
+          res.level = supTop0; res.levelTouches = supT0;
+          res.plan = makePlan('pullback', 'long', supTop0, supT0, 0, 'approach', { volContracting: !!vol.contracting, volRatio: +vol.ratio.toFixed(2) });
+          res.reasons.push('חזרה לתמיכה במגמת עלייה: תמיכה ' + fmt(supTop0) + ' (' + supT0 + ' נגיעות)' + (vol.contracting ? ' | התכנסות עם מחזורי מסחר מתכווצים' : ''));
+          res.reasons.push('כניסה רק בחזרה אל התמיכה (' + fmt(res.plan.entry) + ') עם נר היפוך ומחזור מעל הממוצע');
+          return finalizeWatch(res, res.plan.entry, price);
+        }
       }
 
       // Breakout still forming: a strong resistance just above price (approach) or broken 1-4 weekly
@@ -713,7 +759,7 @@
           res.level = supLvl.price; res.levelTouches = supLvl.touches;
           res.reasons.push('שבירה מתחת ' + fmt(supLvl.price) + ' + ' + bd.heldCount + ' נרות מתחת + ריטסט מלמטה' + (vol.expanding ? ' | נפח מתרחב מחזק שורט' : ''));
           res.plan = makePlan('breakdown', 'short', supLvl.price, supLvl.touches, bd.heldCount, 'entry');
-          return finalizeEntry(res, 'short', supLvl.price, supLvl.price, Math.max(atrVal * CFG.retestStopAtr, supLvl.price * CFG.retestStopPct), price);
+          return finalizeEntry(res, 'short', supLvl.price, supLvl.price, Math.max(atrVal * CFG.retestStopAtr, supLvl.price * CFG.minStopPct), price);
         }
         if (bd.held && !bd.retesting) {
           res.direction = 'short'; res.setup = 'breakdown_retest'; res.status = 'watch';
@@ -764,7 +810,7 @@
         res.direction = 'short'; res.setup = 'range_breakout';
         res.level = lower.price; res.levelTouches = lower.touches;
         res.reasons.push('שבירת גבול תחתון ' + fmt(lower.price) + ' + 5 נרות + ריטסט = שורט');
-        return finalizeEntry(res, 'short', lower.price, lower.price, Math.max(atrVal * CFG.retestStopAtr, lower.price * CFG.retestStopPct), price);
+        return finalizeEntry(res, 'short', lower.price, lower.price, Math.max(atrVal * CFG.retestStopAtr, lower.price * CFG.minStopPct), price);
       }
     }
     res.status = 'watch';
@@ -776,9 +822,15 @@
     // "Plan" = the level-based trade the user must WAIT for: break -> 5 closes beyond -> retest -> entry.
     // Carries the progress so the app can show a stepper, chart overlay and stage alerts.
     function makePlan(kind, dir, level, touches, closes, stage, extra) {
-      var stopDist = Math.max(atrVal * CFG.retestStopAtr, dir === 'short' ? level * CFG.retestStopPct : 0);
-      if (kind === 'pullback') stopDist = atrVal;
-      var t = buildTrade(dir, level, level, stopDist, levels);
+      var stopDist = Math.max(atrVal * CFG.retestStopAtr, dir === 'short' ? level * CFG.minStopPct : 0);
+      var entryPx = level, goal = null;
+      if (kind === 'pullback') {
+        // buy a hair ABOVE the support zone; stop = 0.75 ATR (never < 6%) under that entry; target = prior peak
+        entryPx = level * (1 + CFG.entryBufferPct);
+        stopDist = atrVal * CFG.retestStopAtr;
+        goal = peak52 * (1 - CFG.peakTargetHaircut);
+      }
+      var t = buildTrade(dir, entryPx, entryPx, stopDist, levels, goal);
       var p = {
         kind: kind, dir: dir, level: level, touches: touches,
         closes: closes, needed: CFG.holdCandles, stage: stage,
@@ -806,7 +858,8 @@
         return r;
       }
       var ranAway = Math.abs(px - entry) / entry > CFG.ranAwayPct;
-      var t = buildTrade(dir, entry, stopRef, a, levels);
+      var goal = (dir === 'long' && r.setup === 'pullback') ? peak52 * (1 - CFG.peakTargetHaircut) : null;
+      var t = buildTrade(dir, entry, stopRef, a, levels, goal);
       r.entry = t.entry; r.stop = t.stop; r.target = t.target; r.rr = t.rr;
       var al = alertFor(entry, px);
       r.alertLevel = al.level; r.alertSide = al.side;
