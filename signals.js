@@ -88,7 +88,7 @@
   function loadFavs() {
     try { return JSON.parse(localStorage.getItem(FAVS_KEY) || '[]') || []; } catch (e) { return []; }
   }
-  function saveFavs(a) { try { localStorage.setItem(FAVS_KEY, JSON.stringify(a)); } catch (e) {} }
+  function saveFavs(a) { try { localStorage.setItem(FAVS_KEY, JSON.stringify(a)); } catch (e) {} usTouch('favs'); }
   function isFav(sym) { return loadFavs().indexOf(sym) !== -1; }
   function toggleFav(sym) {
     var f = loadFavs();
@@ -161,7 +161,7 @@
   function loadTrades() {
     try { return JSON.parse(localStorage.getItem(TRADES_KEY) || '[]'); } catch (e) { return []; }
   }
-  function saveTrades(t) { localStorage.setItem(TRADES_KEY, JSON.stringify(t)); }
+  function saveTrades(t) { localStorage.setItem(TRADES_KEY, JSON.stringify(t)); usTouch('trades'); }
 
   // Open trades in the user's portfolio, keyed by symbol and by symbol|direction.
   function portfolioSet() {
@@ -214,12 +214,132 @@
     try { return JSON.parse(localStorage.getItem(SERVER_KEY) || 'null'); } catch (e) { return null; }
   }
 
+  // ---- CLOUD SYNC: trades, favorites, alerts and seen-exits are stored per user on the server so the signals
+  // site and the installed app (and every device) show the same data. Newest write wins per key; the first
+  // sync of a device merges what it already holds with the server copy, so nothing is lost.
+  var US_KEYS = { trades: 'nt_trades', favs: 'nt_sig_favs', alerts: 'nt_sig_alerts', exitseen: 'nt_exit_seen' };
+  var US_META = 'nt_us_meta';            // { owner, t: {key: ts}, dirty: {key: 1} }
+  var _usTimer = null, _usLastPull = 0, _usPulling = false;
+  function usScope() {
+    try { var u = JSON.parse(localStorage.getItem('nt_user') || 'null'); return u && u.username ? String(u.username).toLowerCase() : ''; } catch (e) { return ''; }
+  }
+  function usMeta() {
+    var m = null;
+    try { m = JSON.parse(localStorage.getItem(US_META) || 'null'); } catch (e) {}
+    if (!m || typeof m !== 'object') m = {};
+    m.t = m.t || {}; m.dirty = m.dirty || {};
+    return m;
+  }
+  function usSaveMeta(m) { try { localStorage.setItem(US_META, JSON.stringify(m)); } catch (e) {} }
+  // Data on this device belongs to one account — never carry it over to a different login.
+  function usEnsureOwner() {
+    var scope = usScope(); if (!scope) return null;
+    var m = usMeta();
+    if (m.owner && m.owner !== scope) {
+      Object.keys(US_KEYS).forEach(function (k) { try { localStorage.removeItem(US_KEYS[k]); } catch (e) {} });
+      m = { owner: scope, t: {}, dirty: {} };
+      usSaveMeta(m);
+    } else if (!m.owner) { m.owner = scope; usSaveMeta(m); }
+    return m;
+  }
+  function usDefault(k) { return (k === 'trades' || k === 'favs') ? [] : {}; }
+  function usLocal(k) {
+    try { var v = JSON.parse(localStorage.getItem(US_KEYS[k])); if (v != null) return v; } catch (e) {}
+    return usDefault(k);
+  }
+  function usTouch(k) {
+    if (!authToken()) return;
+    var m = usMeta();
+    if (!m.owner) { m.owner = usScope(); }
+    if (!m.owner || m.owner !== usScope()) return;
+    m.t[k] = Date.now(); m.dirty[k] = 1; usSaveMeta(m);
+    clearTimeout(_usTimer); _usTimer = setTimeout(usPush, 700);
+  }
+  function usMerge(k, srv, loc) {
+    if (k === 'trades') {
+      var by = {}, out = [];
+      (Array.isArray(srv) ? srv : []).forEach(function (t) { if (t && t.id) by[t.id] = t; });
+      (Array.isArray(loc) ? loc : []).forEach(function (t) {
+        if (!t || !t.id) return;
+        if (!by[t.id] || (t.status === 'closed' && by[t.id].status !== 'closed')) by[t.id] = t;
+      });
+      Object.keys(by).forEach(function (id) { out.push(by[id]); });
+      return out.sort(function (a, b) { return (b.openTs || 0) - (a.openTs || 0); });
+    }
+    if (k === 'favs') {
+      var f = Array.isArray(srv) ? srv.slice() : [];
+      (Array.isArray(loc) ? loc : []).forEach(function (s) { if (f.indexOf(s) === -1) f.push(s); });
+      return f;
+    }
+    return Object.assign({}, loc && typeof loc === 'object' ? loc : {}, srv && typeof srv === 'object' ? srv : {});
+  }
+  function usPush() {
+    clearTimeout(_usTimer); _usTimer = null;
+    var tok = authToken(); if (!tok) return Promise.resolve();
+    var m = usMeta(), items = {}, keys = [];
+    Object.keys(m.dirty).forEach(function (k) {
+      if (!US_KEYS[k]) return;
+      items[k] = { v: usLocal(k), t: m.t[k] || Date.now() };
+      keys.push(k);
+    });
+    if (!keys.length) return Promise.resolve();
+    return fetch(apiBase() + '/api/userstate', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+      body: JSON.stringify({ items: items })
+    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      // the service worker answers failed requests with a fake 200 "{}", so require the server's {ok:true}
+      if (!d || !d.ok) return;
+      var m2 = usMeta();
+      keys.forEach(function (k) { if ((m2.t[k] || 0) === items[k].t) delete m2.dirty[k]; });
+      usSaveMeta(m2);
+      usApply(d.items);
+    }).catch(function () {});
+  }
+  function usApply(items) {
+    var m = usMeta(), changed = false, up = false;
+    items = items || {};
+    Object.keys(US_KEYS).forEach(function (k) {
+      var srv = items[k], lsKey = US_KEYS[k], lt = m.t[k] || 0;
+      if (m.dirty[k]) { up = true; return; }
+      var hasLocal = localStorage.getItem(lsKey) != null;
+      if (!srv) {
+        if (hasLocal && !lt) { m.t[k] = Date.now(); m.dirty[k] = 1; up = true; }   // first upload from this device
+        return;
+      }
+      if (!lt) {
+        if (!hasLocal) { localStorage.setItem(lsKey, JSON.stringify(srv.v)); m.t[k] = srv.t; changed = true; return; }
+        localStorage.setItem(lsKey, JSON.stringify(usMerge(k, srv.v, usLocal(k))));
+        m.t[k] = Date.now(); m.dirty[k] = 1; up = true; changed = true;
+        return;
+      }
+      if (srv.t > lt) { localStorage.setItem(lsKey, JSON.stringify(srv.v)); m.t[k] = srv.t; changed = true; }
+    });
+    usSaveMeta(m);
+    if (up) { clearTimeout(_usTimer); _usTimer = setTimeout(usPush, 300); }
+    if (changed) { try { if (feedVisible()) render(); } catch (e) {} }
+  }
+  function usPull(force) {
+    var tok = authToken();
+    if (!tok || _usPulling) return;
+    if (!force && Date.now() - _usLastPull < 10000) return;
+    if (!usEnsureOwner()) return;
+    if (_usTimer) return;                        // a push is about to run and will bring the merged copy back
+    _usPulling = true; _usLastPull = Date.now();
+    fetch(apiBase() + '/api/userstate', { headers: { 'Authorization': 'Bearer ' + tok }, cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { _usPulling = false; if (d && d.ok) usApply(d.items); })
+      .catch(function () { _usPulling = false; });
+  }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') usPull(true); });
+  window.addEventListener('focus', function () { usPull(); });
+
   // ---- SIGNAL ALERTS ("קבע התראה"): the user arms an alert on a signal card; when the scanner confirms the
   // entry (every condition met) the card shows a green ✔ trigger box with the stock, direction and entry price.
   // The trigger stays on the card until the card itself disappears. Nothing pops up anywhere else.
   var ALERTS_STORE = 'nt_sig_alerts';
   function loadSigAlerts() { try { return JSON.parse(localStorage.getItem(ALERTS_STORE) || '{}') || {}; } catch (e) { return {}; } }
-  function saveSigAlerts(m) { try { localStorage.setItem(ALERTS_STORE, JSON.stringify(m)); } catch (e) {} }
+  function saveSigAlerts(m) { try { localStorage.setItem(ALERTS_STORE, JSON.stringify(m)); } catch (e) {} usTouch('alerts'); }
   function alertKey(sym, dir) { return sym + '|' + dir; }
   function feedVisible() { var f = document.getElementById('signalFeed'); return !!(f && f.getClientRects().length > 0); }
 
@@ -253,6 +373,7 @@
     var cut = Date.now() - 14 * 24 * 3600e3;
     Object.keys(m).forEach(function (k) { if (m[k] < cut) delete m[k]; });
     try { localStorage.setItem(EXIT_SEEN_KEY, JSON.stringify(m)); } catch (e) {}
+    usTouch('exitseen');
   }
   function checkExits() {
     // Alerts live ONLY on the signals site: nothing pops up over the technical-analysis site. Events are not
@@ -655,9 +776,9 @@
         '<div class="rl-entry" style="left:' + r + '%"></div>' +
         (g.live != null ? '<div class="rl-dot" style="left:' + g.p.toFixed(1) + '%"></div>' : '') +
       '</div>' +
-      '<div class="rl-ticks' + (g.r < 28 || g.r > 72 ? ' low' : '') + '">' +
+      '<div class="rl-ticks">' +
         '<div class="rl-t stop"><span>סטופ</span><b>' + fmt(s.stop, c) + '</b></div>' +
-        '<div class="rl-t entry" style="left:' + r + '%"><span>' + (s.planOnly ? 'כניסה מתוכננת' : 'כניסה') + '</span><b>' + fmt(s.entry, c) + '</b></div>' +
+        '<div class="rl-t entry"><span>' + (s.planOnly ? 'כניסה מתוכננת' : 'כניסה') + '</span><b>' + fmt(s.entry, c) + '</b></div>' +
         '<div class="rl-t tp"><span>יעד</span><b>' + fmt(s.tp, c) + '</b></div>' +
       '</div>' +
       '<div class="rl-sum"><span class="neg">הפסד אפשרי −' + g.risk.toFixed(1) + '%</span><span class="rr">יחס 1:' + (g.rew / g.risk).toFixed(1) + '</span><span class="pos">רווח אפשרי +' + g.rew.toFixed(1) + '%</span></div>' +
@@ -1064,6 +1185,9 @@
     return { abs: abs, pct: p };
   }
 
+  var _trChartOpen = {};
+  function toggleTradeChart(id) { _trChartOpen[id] = !_trChartOpen[id]; render(); }
+
   function tradeRow(t, isOpen) {
     var live = isOpen ? livePrice(t.sym) : t.closePrice;
     var pnl = isOpen ? tradePnl(t, live) : { abs: t.pnl == null ? null : tClosedPnl(t), pct: t.pnlPct };
@@ -1084,10 +1208,12 @@
       '<div><div class="tr-cell-label">' + (isOpen ? 'מחיר נוכחי' : 'מחיר סגירה') + '</div>' + fmtP(live, t) + '</div>' +
       '<div><div class="tr-cell-label">סטופ / יעד</div>' + fmtP(t.stop, t) + ' / ' + fmtP(t.tp, t) + '</div>' +
       '<div><div class="tr-cell-label">רווח/הפסד</div><span class="tr-pnl ' + cls + '">' + pnlTxt + '</span></div>' +
-      '<div>' + (isOpen
-          ? '<button class="tr-close-btn" onclick="NTSignals.closeTrade(\'' + t.id + '\')">סגור עסקה</button>'
+      '<div class="tr-actions">' + (isOpen
+          ? '<button class="tr-close-btn" onclick="NTSignals.closeTrade(\'' + t.id + '\')">סגור עסקה</button>' +
+            '<button class="tr-chart-btn' + (_trChartOpen[t.id] ? ' on' : '') + '" onclick="NTSignals.toggleTradeChart(\'' + t.id + '\')">📊 גרף עסקה</button>'
           : '<span class="tr-cell-label">' + (t.closeDate || '') + '</span>') +
       '</div>' +
+      (isOpen && _trChartOpen[t.id] ? '<div class="tr-chart">' + (ruler(t) || '<div class="tr-cell-label">אין מספיק נתונים להצגת הגרף</div>') + '</div>' : '') +
       (exitSt === 'stop' ? '<div class="tr-exit stop">🛑 <b>הסטופ נשבר — צא מהעסקה עכשיו.</b> סטופ ' + fmtP(t.stop, t) + ' · מחיר ' + fmtP(live, t) + '</div>' : '') +
       (exitSt === 'tp' ? '<div class="tr-exit hit">🎯 <b>הגעת ליעד ' + fmtP(t.tp, t) + '</b> — שקול לממש רווח.</div>' : '') +
     '</div>';
@@ -2712,7 +2838,7 @@
     syncServerSignals(true); // pull the authoritative feed immediately
     refreshTimer = setInterval(function () {
       var feed = document.getElementById('signalFeed');
-      if (feed && feed.style.display !== 'none') { syncServerSignals(); render(); refreshTradePrices(); }
+      if (feed && feed.style.display !== 'none') { syncServerSignals(); render(); refreshTradePrices(); usPull(); }
     }, 20000);
   }
   function stopAutoRefresh() { if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; } }
@@ -2721,9 +2847,11 @@
   function onAppReady() {
     startRemChecks();
     syncServerSignals(true); // fetch the server feed as soon as we're logged in
+    usPull(true);            // portfolio, favorites and alerts follow the account across devices
     // Watch EVERY minute (feed open or not): signals from the server + open trades vs live price → exit alerts.
     if (!window.__ntSigBg) {
       window.__ntSigBg = setInterval(function () {
+        try { usPull(); } catch (e) {}
         try { syncServerSignals(true); } catch (e) {}
         try { refreshTradePrices(true); } catch (e) {}
         try { checkExits(); } catch (e) {}
@@ -2756,7 +2884,7 @@
   window.NTSignals = {
     onAppReady: onAppReady,
     show: show, hide: hide, setMode: setMode,
-    switchTab: switchTab, openTradeModal: openTradeModal, tmCalc: tmCalc, tmFill: tmFill, tmConfirm: tmConfirm, tmClose: tmClose, closeTrade: closeTrade,
+    switchTab: switchTab, openTradeModal: openTradeModal, tmCalc: tmCalc, tmFill: tmFill, tmConfirm: tmConfirm, tmClose: tmClose, closeTrade: closeTrade, toggleTradeChart: toggleTradeChart,
     riskCalc: riskCalc, toggleDisc: toggleDisc,
     aiSuggest: aiSuggest, aiKey: aiKey, aiPick: aiPick, aiNext: aiNext, aiSugHideLater: aiSugHideLater,
     analyze: analyze, render: render,

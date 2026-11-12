@@ -2969,14 +2969,14 @@
     .rl-entry { position:absolute; top:-5px; bottom:-5px; width:3px; background:#fff; transform:translateX(-1.5px); border-radius:2px; }
     .rl-dot { position:absolute; top:50%; width:18px; height:18px; border-radius:50%; background:#f5a623; border:3px solid #131722;
       transform:translate(-50%,-50%); box-shadow:0 0 10px rgba(245,166,35,.95); }
-    .rl-ticks { position:relative; min-height:46px; margin-top:9px; }
-    .rl-t { position:absolute; top:0; max-width:34%; font-size:.66rem; line-height:1.25; font-weight:700; color:var(--text-muted); white-space:nowrap; }
-    .rl-ticks.low { min-height:84px; }
-    .rl-ticks.low .rl-t.entry { top:42px; }
+    .rl-ticks { display:grid; grid-template-columns:1fr auto 1fr; align-items:end; gap:.4rem; margin-top:12px; }
+    .rl-t { font-size:.66rem; line-height:1.25; font-weight:700; color:var(--text-muted); white-space:nowrap; min-width:0; }
     .rl-t b { display:block; font-size:.95rem; font-weight:900; }
-    .rl-t.stop { left:0; text-align:left; } .rl-t.stop b { color:var(--red); }
-    .rl-t.entry { transform:translateX(-50%); text-align:center; } .rl-t.entry b { color:#fff; }
-    .rl-t.tp { right:0; text-align:right; } .rl-t.tp b { color:var(--green); }
+    .rl-t.stop { text-align:left; } .rl-t.stop b { color:var(--red); }
+    .rl-t.entry { text-align:center; padding:.3rem .9rem .35rem; border:2px solid #fff; border-radius:10px; background:rgba(255,255,255,.1); box-shadow:0 0 12px rgba(255,255,255,.25); }
+    .rl-t.entry span { color:#fff; font-size:.72rem; font-weight:800; }
+    .rl-t.entry b { color:#fff; font-size:1.25rem; }
+    .rl-t.tp { text-align:right; } .rl-t.tp b { color:var(--green); }
     .rl-sum { display:flex; justify-content:space-between; gap:.5rem; flex-wrap:wrap; margin-top:.25rem; font-size:.8rem; font-weight:800; }
     .rl-sum .neg { color:var(--red); } .rl-sum .pos { color:var(--green); } .rl-sum .rr { color:var(--gold); }
     .rl-warn { margin-top:.4rem; padding:.3rem; text-align:center; font-size:.82rem; font-weight:900; color:#fff; background:rgba(239,83,80,.55); border-radius:8px; }
@@ -3129,6 +3129,10 @@
     .trade-row .tr-pnl.neg { color:var(--red); font-weight:900; }
     .tr-close-btn { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:.35rem .6rem; font-size:.74rem; font-weight:700; cursor:pointer; font-family:Heebo,sans-serif; }
     .tr-close-btn:hover { border-color:var(--red); color:var(--red); }
+    .tr-actions { display:flex; flex-direction:column; gap:.4rem; align-items:stretch; }
+    .tr-chart-btn { background:rgba(61,127,255,.12); border:1px solid rgba(61,127,255,.5); color:#8fb4ff; border-radius:8px; padding:.35rem .6rem; font-size:.74rem; font-weight:700; cursor:pointer; font-family:Heebo,sans-serif; white-space:nowrap; }
+    .tr-chart-btn:hover, .tr-chart-btn.on { background:rgba(61,127,255,.28); color:#fff; }
+    .tr-chart { grid-column:1 / -1; padding:.6rem .5rem .3rem; border-top:1px solid var(--border); }
     .sf-rows-head { display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr 1fr auto; gap:.6rem; padding:0 .9rem .4rem; font-size:.68rem; color:var(--text-muted); font-weight:700; }
     /* ---- Paywall: upgrade banner + locked panels ---- */
     .sf-upsell { max-width:1000px; margin:0 auto 1rem; display:flex; align-items:center; gap:.8rem;
@@ -3243,7 +3247,9 @@
       .trade-row > div:first-child { grid-column:1 / -1; display:flex; align-items:center; gap:.5rem; }
       .trade-row .tr-dir { margin-top:0; }
       .trade-row > div:last-child { grid-column:1 / -1; }
-      .tr-close-btn { width:100%; padding:.55rem; font-size:.82rem; }
+      .tr-close-btn, .tr-chart-btn { width:100%; padding:.55rem; font-size:.82rem; }
+      .tr-actions { grid-column:1 / -1; flex-direction:row; }
+      .tr-actions > button { flex:1; }
     }
     /* Very small phones (iPhone SE, older Android) */
     @media (max-width:360px) {
@@ -3808,7 +3814,7 @@
 <script src="stockpanel.js?v=20261030a"></script>
 <script src="drawing.js?v=20261019b"></script>
 <script src="features.js?v=20261018j"></script>
-<script src="signals.js?v=20261112b"></script>
+<script src="signals.js?v=20261112c"></script>
 <script src="plan-overlay.js?v=20261030c"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->

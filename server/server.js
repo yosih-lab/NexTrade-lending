@@ -236,7 +236,7 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
 });
 
 // ── BODY PARSER ──────────────────────────────────────────────────
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 // ── CORS ─────────────────────────────────────────────────────────
 app.use(function(req, res, next) {
@@ -528,12 +528,14 @@ async function getWatchlist(userId) {
   return map[userId] || [];
 }
 // Stored value is either a legacy array of symbols or { l: symbols, c: colors, n: names }.
+// `s` carries the signals-site state (trades, favorites, alerts); `nm` marks a row that has state but no
+// watchlist metadata yet, so clients still treat the watchlist as "first time" and upload their own.
 function normWl(v) {
-  if (Array.isArray(v)) return { symbols: v, colors: {}, names: {}, hasMeta: false };
+  if (Array.isArray(v)) return { symbols: v, colors: {}, names: {}, hasMeta: false, state: {} };
   if (v && typeof v === 'object') {
-    return { symbols: Array.isArray(v.l) ? v.l : [], colors: v.c || {}, names: v.n || {}, hasMeta: true };
+    return { symbols: Array.isArray(v.l) ? v.l : [], colors: v.c || {}, names: v.n || {}, hasMeta: !v.nm, state: (v.s && typeof v.s === 'object') ? v.s : {} };
   }
-  return { symbols: [], colors: {}, names: {}, hasMeta: false };
+  return { symbols: [], colors: {}, names: {}, hasMeta: false, state: {} };
 }
 async function setWatchlist(userId, symbols) {
   if (supabase) {
@@ -792,11 +794,59 @@ app.put('/api/watchlist', requireAuth, async (req, res) => {
     };
     const colors = body.colors !== undefined ? cleanMap(body.colors, 16) : prev.colors;
     const names  = body.names  !== undefined ? cleanMap(body.names, 40)  : prev.names;
-    await setWatchlist(req.user.id, { l: clean, c: colors, n: names });
+    const row = { l: clean, c: colors, n: names };
+    if (Object.keys(prev.state).length) row.s = prev.state;
+    await setWatchlist(req.user.id, row);
     res.json({ ok: true, count: clean.length });
   } catch (e) {
     console.error('[NexTrade] PUT /api/watchlist error:', e.message);
     res.status(500).json({ error: 'שגיאה בשמירת רשימת המעקב' });
+  }
+});
+
+// ── SIGNALS-SITE STATE (trades / favorites / alerts) ─────────────
+// Per-user, so the signals site and the installed app (and every device) show the same portfolio.
+// Each key is { v: value, t: client timestamp }; the newest write wins per key.
+const US_KEYS = {
+  trades:   { check: v => Array.isArray(v) && v.length <= 1000 },
+  favs:     { check: v => Array.isArray(v) && v.length <= 500 && v.every(x => typeof x === 'string' && x.length <= 24) },
+  alerts:   { check: v => v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length <= 500 },
+  exitseen: { check: v => v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length <= 2000 }
+};
+app.get('/api/userstate', requireAuth, async (req, res) => {
+  try {
+    const stored = await getWatchlist(req.user.id);
+    if (stored === null) return res.status(503).json({ error: 'המידע אינו זמין כרגע' });
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ ok: true, items: normWl(stored).state });
+  } catch (e) {
+    console.error('[NexTrade] GET /api/userstate error:', e.message);
+    res.status(500).json({ error: 'שגיאה בטעינת הנתונים' });
+  }
+});
+app.put('/api/userstate', requireAuth, async (req, res) => {
+  const items = req.body && req.body.items;
+  if (!items || typeof items !== 'object' || Array.isArray(items)) return res.status(400).json({ error: 'items לא תקין' });
+  try {
+    const raw = await getWatchlist(req.user.id);
+    if (raw === null) return res.status(503).json({ error: 'המידע אינו זמין כרגע' });
+    const prev = normWl(raw);
+    const state = Object.assign({}, prev.state);
+    Object.keys(items).forEach(k => {
+      const it = items[k], def = US_KEYS[k];
+      if (!def || !it || typeof it !== 'object' || typeof it.t !== 'number' || !def.check(it.v)) return;
+      if (state[k] && typeof state[k].t === 'number' && state[k].t > it.t) return; // stored copy is newer
+      if (JSON.stringify(it.v).length > 400000) return;
+      state[k] = { v: it.v, t: it.t };
+    });
+    const row = prev.hasMeta
+      ? { l: prev.symbols, c: prev.colors, n: prev.names, s: state }
+      : { l: prev.symbols, s: state, nm: 1 };
+    await setWatchlist(req.user.id, row);
+    res.json({ ok: true, items: state });
+  } catch (e) {
+    console.error('[NexTrade] PUT /api/userstate error:', e.message);
+    res.status(500).json({ error: 'שגיאה בשמירת הנתונים' });
   }
 });
 
