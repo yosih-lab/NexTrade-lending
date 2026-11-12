@@ -1144,6 +1144,7 @@ const SIG_CYCLE_MS   = parseInt(process.env.SCAN_CYCLE_MS || String(5 * 60 * 100
 const SIG_MAX_AGE_MS = parseInt(process.env.SIGNAL_MAX_AGE_MS || String(7 * 24 * 3600 * 1000), 10);
 // An un-tracked signal the scanner has not re-confirmed for this long is dropped (the weekend rest is covered).
 const SIG_STALE_MS = parseInt(process.env.SIGNAL_STALE_MS || String(80 * 3600 * 1000), 10);
+const MAX_PLAN_SIGNALS = parseInt(process.env.MAX_PLAN_SIGNALS || '40', 10);   // cap on "forming setup" cards
 // A published ENTRY signal keeps being tracked (its stop/target are watched every minute) until it exits or this age.
 const TRACK_MAX_AGE_MS = parseInt(process.env.TRACK_MAX_AGE_MS || String(30 * 24 * 3600 * 1000), 10);
 const EXIT_KEEP_MS = 3 * 24 * 3600 * 1000;   // how long an exited (stop/target) signal stays visible
@@ -1264,6 +1265,13 @@ function pruneSignals() {
     if (!b || (isTrackedOpen(s) && !isTrackedOpen(b)) || (isTrackedOpen(s) === isTrackedOpen(b) && s.ts > b.ts)) bestBy[k] = s;
   });
   _sigStore = _sigStore.filter(s => bestBy[(s.sym || '') + '|' + s.direction] === s || (s.tracked && s.exit));
+  // "Plan" (not-yet-enterable) signals are only worth a glance when few: keep the most advanced and closest ones.
+  const stageScore = (s) => { const g = s.plan && s.plan.stage; return g === 'entry' ? 4 : (g === 'await_retest' ? 3 : (g === 'holding' ? 2 : 1)); };
+  const planDist = (s) => (s.plan && s.plan.level && s.price) ? Math.abs(s.price - s.plan.level) / s.price : 1;
+  const plans = _sigStore.filter(s => s.planOnly && !s.tracked)
+    .sort((a, b) => stageScore(b) - stageScore(a) || planDist(a) - planDist(b));
+  const dropPlans = new Set(plans.slice(MAX_PLAN_SIGNALS));
+  _sigStore = _sigStore.filter(s => !dropPlans.has(s));
   _sigByKey = {};
   _sigStore.forEach(s => { _sigByKey[s.key] = s; });
   _sigStore.sort((a, b) => b.ts - a.ts);
