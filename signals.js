@@ -163,17 +163,17 @@
   }
   function saveTrades(t) { localStorage.setItem(TRADES_KEY, JSON.stringify(t)); }
 
-  // Symbols that already have an OPEN trade in the user's portfolio.
+  // Open trades in the user's portfolio, keyed by symbol and by symbol|direction.
   function portfolioSet() {
     var m = {};
-    loadTrades().forEach(function (t) { if (t.status === 'open') m[t.sym] = true; });
+    loadTrades().forEach(function (t) { if (t.status === 'open') { m[t.sym] = true; m[t.sym + '|' + t.dir] = true; } });
     return m;
   }
   var _portSet = {};
   function inPort(sym) { return !!_portSet[sym]; }
   function addBtn(sym, extraEvt) {
     if (inPort(sym)) return '<button class="sig-btn in-port" disabled title="המניה כבר בתיק שלך">✔ כבר בתיק</button>';
-    return '<button class="sig-btn" onclick="' + (extraEvt ? 'event.stopPropagation();' : '') + 'NTSignals.addTrade(\'' + sym + '\')">הוסף לתיק</button>';
+    return '<button class="sig-btn" onclick="' + (extraEvt ? 'event.stopPropagation();' : '') + 'NTSignals.openTradeModal(\'' + sym + '\')">הוסף לתיק</button>';
   }
   function portTag(sym) { return inPort(sym) ? ' <span class="sr-inport">✔ בתיק</span>' : ''; }
 
@@ -859,14 +859,21 @@
     '</div>';
   }
 
-  // De-duped (symbol+direction, newest wins) normalized signals.
+  // De-duped (symbol+direction, newest wins) normalized signals. A signal whose position is already open in
+  // the user's portfolio is NOT listed here any more — it lives only in "העסקאות שלי". _portHidden counts them
+  // so the plan-upsell arithmetic (server total vs. shown) stays right.
+  var _portHidden = 0;
   function dedupedSignals() {
     var sigs = loadSignals();
+    _portSet = portfolioSet();
     var seen = {}, uniq = [];
+    _portHidden = 0;
     sigs.sort(function (a, b) { return b.ts - a.ts; });
     sigs.forEach(function (s) {
       var k = s.sym + '_' + s.dir;
-      if (seen[k]) return; seen[k] = true; uniq.push(s);
+      if (seen[k]) return; seen[k] = true;
+      if (_portSet[s.sym + '|' + s.dir]) { _portHidden++; return; }
+      uniq.push(s);
     });
     return uniq;
   }
@@ -933,14 +940,14 @@
     // reported. Otherwise (local fallback) we cap client-side.
     var upsell = '';
     if (_serverInfo) {
-      if (!_serverInfo.isPremium && _serverInfo.total > uniq.length && filterKey !== 'fav') {
-        var hiddenS = _serverInfo.total - uniq.length;
+      if (!_serverInfo.isPremium && _serverInfo.total > uniq.length + _portHidden && filterKey !== 'fav') {
+        var hiddenS = _serverInfo.total - uniq.length - _portHidden;
         var goldTier = _serverInfo.tier === 'gold';
         upsell = '<div class="sf-upsell">' +
           '<div class="sf-upsell-txt">' +
             '<div class="sf-upsell-title">🔒 יש עוד ' + hiddenS + ' איתותים</div>' +
             '<div class="sf-upsell-sub">' + (goldTier
-              ? 'במסלול גולד מוצגים עד ' + uniq.length + ' איתותים בזמן אמת. שדרג לפרימיום לקבל את הכל ללא הגבלה.'
+              ? 'במסלול גולד מוצגים עד ' + (uniq.length + _portHidden) + ' איתותים בזמן אמת. שדרג לפרימיום לקבל את הכל ללא הגבלה.'
               : 'במסלול הבסיסי האיתותים מוצגים בעיכוב ובכמות מוגבלת. שדרג כדי לקבל את הכל בזמן אמת.') + '</div>' +
           '</div>' +
           '<button class="sf-upsell-btn" onclick="NTSignals.openUpgrade()">⭐ שדרג</button>' +
@@ -1081,7 +1088,8 @@
     }
     return '<div class="trade-row' + (exitSt === 'stop' ? ' exit' : '') + '">' +
       '<div><span class="tr-sym">' + esc(dispSym(t.sym)) + '</span>' +
-        '<br><span class="tr-dir ' + t.dir + '">' + dirTxt + '</span></div>' +
+        '<br><span class="tr-dir ' + t.dir + '">' + dirTxt + '</span>' +
+        '<div class="tr-sub">' + (t.shares || 1) + ' מניות · שווי ' + fmtM((t.shares || 1) * t.entry / tDiv(t), t.curr) + '</div></div>' +
       '<div><div class="tr-cell-label">כניסה</div>' + fmtP(t.entry, t) + '</div>' +
       '<div><div class="tr-cell-label">' + (isOpen ? 'מחיר נוכחי' : 'מחיר סגירה') + '</div>' + fmtP(live, t) + '</div>' +
       '<div><div class="tr-cell-label">סטופ / יעד</div>' + fmtP(t.stop, t) + ' / ' + fmtP(t.tp, t) + '</div>' +
@@ -2415,26 +2423,130 @@
       '<div class="aim-actions" id="aiActBar">' + actionsInner() + '</div>';
   }
 
-  function addTrade(sym) {
-    var sigs = loadSignals();
-    var s = null;
-    for (var i = 0; i < sigs.length; i++) { if (sigs[i].sym === sym) { s = sigs[i]; break; } }
+  // ---------- "Add to portfolio" window: shares + price → total value and total profit / loss ----------
+  var _tm = null;
+  function tmMoney(n, curr, plus) {
+    if (n == null || !isFinite(n)) return '--';
+    var body = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return '<span dir="ltr">' + (n < 0 ? '−' : (plus ? '+' : '')) + (curr || '') + body + '</span>';
+  }
+  function tmPx(n, s) {   // a share price as the card shows it; TASE stocks are quoted in agorot (₪ = ÷100)
+    if (n == null || !isFinite(n)) return '--';
+    return tDiv(s) === 100 ? '<span dir="ltr">' + n.toFixed(2) + ' אג׳</span>' : '<span dir="ltr">' + (s.curr || '') + n.toFixed(2) + '</span>';
+  }
+  function tmTradeSignal(sym) {
+    var sigs = loadSignals().filter(function (x) { return x.sym === sym && !x.planOnly; });
+    sigs.sort(function (a, b) { return b.ts - a.ts; });
+    return sigs[0] || null;
+  }
+
+  function openTradeModal(sym) {
+    var s = tmTradeSignal(sym);
     if (!s) return;
+    if (loadTrades().some(function (t) { return t.status === 'open' && t.sym === s.sym && t.dir === s.dir; })) {
+      alert('כבר קיימת עסקה פתוחה על ' + sym.replace('.TA', '')); return;
+    }
+    var live = livePrice(s.sym);
+    var start = live != null ? live : s.entry;
+    _tm = { s: s, live: live, done: false };
+    var ov = document.getElementById('ntTradeOv');
+    if (!ov) { ov = document.createElement('div'); ov.id = 'ntTradeOv'; document.body.appendChild(ov); ov.onclick = function (e) { if (e.target === ov) tmClose(); }; }
+    var unit = tDiv(s) === 100 ? 'אג׳' : (s.curr || '');
+    ov.innerHTML = '<div class="tm-box" dir="rtl" role="dialog">' +
+      '<div class="tm-head"><span>הוספה לתיק</span><button class="tm-x" onclick="NTSignals.tmClose()" aria-label="סגור">✕</button></div>' +
+      '<div class="tm-sym"><b>' + esc(dispSym(s.sym)) + '</b><span class="tr-dir ' + s.dir + '">' + (s.dir === 'long' ? '▲ לונג' : '▼ שורט') + '</span><small>' + esc(s.name) + '</small></div>' +
+      '<label class="tm-lbl" for="tmPrice">באיזה מחיר? (מחיר למניה' + (unit ? ', ' + unit : '') + ')</label>' +
+      '<div class="tm-inp"><input id="tmPrice" type="number" step="any" min="0" inputmode="decimal" value="' + start.toFixed(2) + '" oninput="NTSignals.tmCalc()"><span class="tm-unit">' + esc(unit) + '</span></div>' +
+      '<div class="tm-hint">' +
+        '<button type="button" onclick="NTSignals.tmFill(\'entry\')">כניסה מתוכננת ' + tmPx(s.entry, s) + '</button>' +
+        (live != null ? '<button type="button" onclick="NTSignals.tmFill(\'live\')">מחיר נוכחי ' + tmPx(live, s) + '</button>' : '') +
+      '</div>' +
+      '<label class="tm-lbl" for="tmShares">כמה מניות אתה רוצה להכניס?</label>' +
+      '<div class="tm-inp"><input id="tmShares" type="number" step="1" min="1" inputmode="numeric" value="1" oninput="NTSignals.tmCalc()"><span class="tm-unit">מניות</span></div>' +
+      '<div class="tm-card tm-total"><div class="tm-row"><span>סכום העסקה הכולל</span><b id="tmTotal">--</b></div></div>' +
+      '<div class="tm-sect">יציאות</div>' +
+      '<div class="tm-card">' +
+        '<div class="tm-row"><span>יעד (רווח)</span><b class="pos">' + tmPx(s.tp, s) + '</b></div>' +
+        '<div class="tm-row"><span>רווח כולל ביעד</span><b class="pos" id="tmProfit">--</b></div>' +
+        '<div class="tm-row sep"><span>סטופ (הפסד)</span><b class="neg">' + tmPx(s.stop, s) + '</b></div>' +
+        '<div class="tm-row"><span>הפסד כולל בסטופ</span><b class="neg" id="tmLoss">--</b></div>' +
+        '<div class="tm-row sep"><span>יחס סיכוי/סיכון</span><b id="tmRR">--</b></div>' +
+      '</div>' +
+      '<div class="tm-err" id="tmErr"></div>' +
+      '<div class="tm-foot"><button id="tmOk" class="tm-ok" onclick="NTSignals.tmConfirm()">הוסף לתיק</button>' +
+      '<button class="tm-cancel" onclick="NTSignals.tmClose()">ביטול</button></div>' +
+    '</div>';
+    ov.style.display = 'flex';
+    tmCalc();
+    setTimeout(function () { var el = document.getElementById('tmShares'); if (el) { el.focus(); el.select(); } }, 60);
+  }
+
+  function tmRead() {
+    var m = _tm; if (!m) return null;
+    var price = parseFloat((document.getElementById('tmPrice') || {}).value);
+    var shares = parseFloat((document.getElementById('tmShares') || {}).value);
+    var err = '';
+    if (!isFinite(price) || price <= 0) err = 'הזן מחיר גדול מאפס';
+    else if (!isFinite(shares) || shares < 1 || Math.floor(shares) !== shares) err = 'הזן כמות מניות — מספר שלם, לפחות 1';
+    return { price: price, shares: shares, err: err };
+  }
+
+  function tmCalc() {
+    var m = _tm; if (!m || m.done) return;
+    var s = m.s, v = tmRead(), div = tDiv(s), sign = s.dir === 'long' ? 1 : -1;
+    function set(id, html) { var e = document.getElementById(id); if (e) e.innerHTML = html; }
+    var ok = !v.err;
+    set('tmErr', v.err);
+    var ob = document.getElementById('tmOk'); if (ob) ob.disabled = !ok;
+    if (!ok) { set('tmTotal', '--'); set('tmProfit', '--'); set('tmLoss', '--'); set('tmRR', '--'); return; }
+    var total = v.shares * v.price / div;
+    var profit = (s.tp - v.price) * sign * v.shares / div;
+    var loss = (s.stop - v.price) * sign * v.shares / div;
+    var pP = (s.tp - v.price) / v.price * 100 * sign, pL = (s.stop - v.price) / v.price * 100 * sign;
+    var risk = Math.abs(v.price - s.stop), rew = Math.abs(s.tp - v.price);
+    set('tmTotal', tmMoney(total, s.curr));
+    set('tmProfit', tmMoney(profit, s.curr, true) + ' <small dir="ltr">(' + (pP >= 0 ? '+' : '−') + Math.abs(pP).toFixed(1) + '%)</small>');
+    set('tmLoss', tmMoney(loss, s.curr, true) + ' <small dir="ltr">(' + (pL >= 0 ? '+' : '−') + Math.abs(pL).toFixed(1) + '%)</small>');
+    set('tmRR', (profit > 0 && loss < 0 && risk > 0) ? '<span dir="ltr">1:' + (rew / risk).toFixed(1) + '</span>' : '--');
+  }
+
+  function tmFill(which) {
+    var m = _tm; if (!m || m.done) return;
+    var val = which === 'live' ? m.live : m.s.entry;
+    var el = document.getElementById('tmPrice');
+    if (el && val != null) { el.value = val.toFixed(2); tmCalc(); }
+  }
+
+  function tmClose() {
+    _tm = null;
+    var ov = document.getElementById('ntTradeOv');
+    if (ov) { ov.style.display = 'none'; ov.innerHTML = ''; }
+  }
+
+  function tmConfirm() {
+    var m = _tm; if (!m || m.done) return;
+    var s = m.s, v = tmRead();
+    if (v.err) { tmCalc(); return; }
     var trades = loadTrades();
-    // avoid duplicate open trade for same symbol+direction
-    var dup = trades.some(function (t) { return t.status === 'open' && t.sym === s.sym && t.dir === s.dir; });
-    if (dup) { alert('כבר קיימת עסקה פתוחה על ' + sym.replace('.TA', '')); return; }
+    if (trades.some(function (t) { return t.status === 'open' && t.sym === s.sym && t.dir === s.dir; })) { alert('כבר קיימת עסקה פתוחה על ' + s.sym.replace('.TA', '')); tmClose(); return; }
+    var risk = Math.abs(v.price - s.stop), rew = Math.abs(s.tp - v.price);
     trades.unshift({
       id: 'tr_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
       sym: s.sym, name: s.name, dir: s.dir, curr: s.curr,
-      entry: s.entry, stop: s.stop, tp: s.tp, rr: s.rr, shares: 1,
+      entry: v.price, stop: s.stop, tp: s.tp, rr: '1:' + (risk > 0 ? (rew / risk).toFixed(1) : '2'), shares: v.shares,
       status: 'open', openTs: Date.now(),
       openDate: new Date().toLocaleDateString('he-IL')
     });
     saveTrades(trades);
+    m.done = true;
+    var ob = document.getElementById('tmOk');
+    if (ob) { ob.disabled = true; ob.classList.add('done'); ob.textContent = '✔ נוסף לתיק'; }
+    ['tmPrice', 'tmShares'].forEach(function (id) { var e = document.getElementById(id); if (e) e.disabled = true; });
+    try { render(); } catch (e) {}          // the signal leaves the signals page right away
     refreshTradePrices(true);
-    switchTab('trades');
+    setTimeout(function () { tmClose(); switchTab('trades'); }, 900);
   }
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && _tm && !_tm.done) tmClose(); });
 
   function closeTrade(id) {
     var trades = loadTrades();
@@ -2641,7 +2753,7 @@
   window.NTSignals = {
     onAppReady: onAppReady,
     show: show, hide: hide, setMode: setMode,
-    switchTab: switchTab, addTrade: addTrade, closeTrade: closeTrade,
+    switchTab: switchTab, openTradeModal: openTradeModal, tmCalc: tmCalc, tmFill: tmFill, tmConfirm: tmConfirm, tmClose: tmClose, closeTrade: closeTrade,
     riskCalc: riskCalc, toggleDisc: toggleDisc,
     aiSuggest: aiSuggest, aiKey: aiKey, aiPick: aiPick, aiNext: aiNext, aiSugHideLater: aiSugHideLater,
     analyze: analyze, render: render,

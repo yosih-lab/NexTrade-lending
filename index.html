@@ -3064,6 +3064,44 @@
     .trade-row .tr-dir.long { background:rgba(38,166,154,.16); color:var(--green); }
     .trade-row .tr-dir.short { background:rgba(239,83,80,.16); color:var(--red); }
     .trade-row .tr-cell-label { font-size:.62rem; color:var(--text-muted); font-weight:700; }
+    .trade-row .tr-sub { margin-top:.25rem; font-size:.7rem; color:var(--text-muted); font-weight:700; }
+
+    /* ===== "Add to portfolio" window ===== */
+    #ntTradeOv { position:fixed; inset:0; z-index:100001; display:none; align-items:center; justify-content:center; padding:1rem; background:rgba(0,0,0,.7); }
+    .tm-box { width:min(420px,100%); max-height:92vh; overflow:auto; padding:1rem 1.1rem 1.1rem; border-radius:16px; background:#131722;
+      border:1px solid var(--border); box-shadow:0 20px 60px rgba(0,0,0,.7); }
+    .tm-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:.7rem; font-size:1.15rem; font-weight:900; color:#fff; }
+    .tm-x { background:none; border:none; color:var(--text-muted); font-size:1.1rem; cursor:pointer; padding:.2rem .4rem; }
+    .tm-sym { display:flex; align-items:center; gap:.5rem; margin-bottom:.8rem; flex-wrap:wrap; }
+    .tm-sym b { font-size:1.15rem; color:#fff; }
+    .tm-sym small { color:var(--text-muted); }
+    .tm-sym .tr-dir { font-size:.7rem; font-weight:800; padding:.15rem .5rem; border-radius:12px; }
+    .tm-sym .tr-dir.long { background:rgba(38,166,154,.16); color:var(--green); }
+    .tm-sym .tr-dir.short { background:rgba(239,83,80,.16); color:var(--red); }
+    .tm-lbl { display:block; margin:.6rem 0 .3rem; font-size:.82rem; font-weight:700; color:var(--text-muted); }
+    .tm-inp { display:flex; align-items:center; background:var(--surface2); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+    .tm-inp:focus-within { border-color:var(--accent); }
+    .tm-inp input { flex:1; min-width:0; padding:.7rem .8rem; background:transparent; border:none; outline:none; color:#fff; font-size:1.05rem; font-weight:800; font-family:Heebo,sans-serif; direction:ltr; text-align:left; }
+    .tm-inp input:disabled { opacity:.6; }
+    .tm-unit { padding:0 .8rem; font-size:.8rem; font-weight:700; color:var(--text-muted); white-space:nowrap; }
+    .tm-hint { display:flex; gap:.4rem; flex-wrap:wrap; margin-top:.35rem; }
+    .tm-hint button { background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); border-radius:8px; padding:.2rem .55rem; font-size:.72rem; font-weight:700; cursor:pointer; font-family:Heebo,sans-serif; }
+    .tm-hint button:hover { border-color:var(--accent); color:#fff; }
+    .tm-card { margin-top:.7rem; padding:.55rem .8rem; border-radius:10px; background:#1b1f2b; }
+    .tm-row { display:flex; align-items:center; justify-content:space-between; gap:.6rem; padding:.3rem 0; font-size:.86rem; color:var(--text-muted); font-weight:700; }
+    .tm-row.sep { margin-top:.2rem; padding-top:.5rem; border-top:1px solid var(--border); }
+    .tm-row b { color:#fff; font-size:.95rem; font-weight:900; text-align:left; }
+    .tm-row b small { font-size:.72rem; font-weight:700; opacity:.85; }
+    .tm-row b.pos { color:var(--green); } .tm-row b.neg { color:var(--red); }
+    .tm-total .tm-row b { font-size:1.2rem; }
+    .tm-sect { margin:.9rem 0 .1rem; font-size:.9rem; font-weight:900; color:#fff; }
+    .tm-err { min-height:1.1rem; margin-top:.5rem; font-size:.8rem; font-weight:700; color:#ff8a87; }
+    .tm-foot { display:flex; gap:.5rem; margin-top:.4rem; }
+    .tm-foot button { flex:1; padding:.75rem; border:none; border-radius:10px; font-family:Heebo,sans-serif; font-size:.95rem; font-weight:800; cursor:pointer; }
+    .tm-ok { background:var(--accent); color:#fff; transition:background .2s; }
+    .tm-ok:disabled { opacity:.45; cursor:not-allowed; }
+    .tm-ok.done { background:#1f9d55; color:#fff; opacity:1; cursor:default; }
+    .tm-cancel { background:var(--surface2); color:var(--text); flex:0 0 32%; }
     .trade-row .tr-pnl.pos { color:var(--green); font-weight:900; }
     .trade-row .tr-pnl.neg { color:var(--red); font-weight:900; }
     .tr-close-btn { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:.35rem .6rem; font-size:.74rem; font-weight:700; cursor:pointer; font-family:Heebo,sans-serif; }
@@ -3747,7 +3785,7 @@
 <script src="stockpanel.js?v=20261030a"></script>
 <script src="drawing.js?v=20261019b"></script>
 <script src="features.js?v=20261018j"></script>
-<script src="signals.js?v=20261111a"></script>
+<script src="signals.js?v=20261112a"></script>
 <script src="plan-overlay.js?v=20261030c"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->
