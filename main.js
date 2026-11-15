@@ -4204,7 +4204,7 @@ async function runBackgroundScanner() {
             liqVol = nB ? vSum / (nB * 5) : 0;
             var lwBar = bars[bars.length - 2];
             liqWeek = lwBar && lwBar.volume != null ? lwBar.volume * lwBar.close / (isTASE ? 100 : 1) / 5 : null;
-            liqOk = liqAvg >= (isTASE ? 1000000 : 2000000);
+            liqOk = liqAvg >= (isTASE ? 1000000 : 10000000);
           }
         if (!taseStockShort && liqOk) {
           // "armed" = price has reached the pre-entry alert buffer near the level.

@@ -1117,7 +1117,7 @@ function isIndexSym(sym) { return INDEX_SYMS.indexOf(sym) !== -1; }
 // at least 1M ₪ on TASE and $2M on US. Indices are exempt (and shown without turnover).
 // TASE shorts on individual stocks are never signalled.
 const MIN_TURNOVER_TASE = parseFloat(process.env.MIN_TURNOVER_TASE || '1000000');
-const MIN_TURNOVER_US   = parseFloat(process.env.MIN_TURNOVER_US   || '2000000');
+const MIN_TURNOVER_US   = parseFloat(process.env.MIN_TURNOVER_US   || '10000000');   // $10M/day: thinner stocks (e.g. BATRA ~$2.8M) never get a signal
 function minTurnoverFor(sym) { return sym.endsWith('.TA') ? MIN_TURNOVER_TASE : MIN_TURNOVER_US; }
 function isTaseStock(sym) { return sym.endsWith('.TA') && !isIndexSym(sym); }
 // Yahoo quotes TASE stocks in agorot (currency ILA) — divide by 100 to get ₪ turnover.
@@ -1246,6 +1246,8 @@ function pruneSignals() {
   });
   _sigStore = _sigStore.filter(s => {
     if (_sigDismissed.has(s.key) || /=[FX]$|-USD$/i.test(s.sym || '')) return false;
+    // Liquidity applies to EVERY signal, including already-published tracked entries: an illiquid stock is removed.
+    if (!isIndexSym(s.sym || '') && !(s.avgTurnover != null && s.avgTurnover >= minTurnoverFor(s.sym || ''))) return false;
     if (s.tracked) {
       // A tracked entry must NOT vanish when conditions turn bad (price under SMA30, stop broken…):
       // that is exactly when the user needs the exit message. It leaves 3 days after its exit, or after TRACK_MAX_AGE.

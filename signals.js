@@ -577,6 +577,10 @@
       // A TRACKED (already published) entry is exempt: it must stay visible to deliver its exit message.
       if (!a.tracked && a.sma30 != null && a.price != null && ((isSell && !isBuy && a.price >= a.sma30) || (isBuy && !isSell && a.price < a.sma30))) return;
       if (/=[FX]$|-USD$/i.test(a.sym || '')) return;   // only stocks + the two indices
+      // Liquidity floor (also applied by the server): US stocks need >= $10M average daily turnover, TASE >= 1M.
+      // Drops stale cached signals of thin stocks at once, before the server has re-scanned.
+      if (!(a.sym && (a.sym.charAt(0) === '^' || a.sym === 'TA35.TA')) && a.avgTurnover != null &&
+          a.avgTurnover < (/\.TA$/i.test(a.sym || '') ? 1000000 : 10000000)) return;
       var dir = isBuy ? 'long' : 'short';
       var levels = computeLevels(a, dir);
       out.push({
