@@ -220,6 +220,27 @@
     return levels;
   }
 
+  // A broken level (old resistance that became support, or old support that became resistance) is a ZONE that price
+  // touched many times, not only at the swing points. Re-centre it on every weekly high (flipped resistance) / low
+  // (flipped support) inside +-1% of the swing-cluster price, over the last 52 weeks before the break. This is the
+  // level a trader draws by eye (EBAY: highs 119.31 / 118.05 / 118.13 / 117.63 -> 118.28 instead of the swing mean 118.72).
+  function refineFlipLevel(l, bars, side) {
+    if (!l) return l;
+    var tol = 0.01, lo = l.price * (1 - tol), hi = l.price * (1 + tol), n = bars.length;
+    var from = Math.max(0, n - 1 - CFG.touchLookback), sum = 0, cnt = 0, eps = 0, lastIdx = -10, minP = null, maxP = null;
+    for (var i = from; i < n - 1; i++) {
+      var p = side === 'high' ? bars[i].high : bars[i].low;
+      if (p < lo || p > hi) continue;
+      sum += p; cnt++;
+      if (minP == null || p < minP) minP = p;
+      if (maxP == null || p > maxP) maxP = p;
+      if (i - lastIdx > 2) eps++;
+      lastIdx = i;
+    }
+    if (cnt < 2) return l;
+    return { price: sum / cnt, touches: Math.max(l.touches, eps), raw: l.touches, lastIdx: l.lastIdx, hi: Math.max(l.hi != null ? l.hi : maxP, maxP), lo: Math.min(l.lo != null ? l.lo : minP, minP) };
+  }
+
   function nearestLevelBelow(levels, price) {
     var best = null;
     for (var i = 0; i < levels.length; i++) {
@@ -654,7 +675,8 @@
       // (A) Breakout + 5-candle hold + retest of a flipped resistance. Only for a FRESH breakout: once a
       // broken level has held for many weeks it is simply an established SUPPORT, and coming back to it
       // is a "return to support" (handled below), not a breakout retest.
-      var resLvl = nearestLevelBelow(levels, price); // the level just under price = possible flipped resistance
+      var resLvl = refineFlipLevel(nearestLevelBelow(levels, price), bars, 'high'); // the level just under price = possible flipped resistance
+      if (resLvl && resLvl.price > price) resLvl = nearestLevelBelow(levels, price);
       var bo = resLvl ? breakoutRetest(bars, resLvl.price, 'above') : null;
       if (resLvl && bo.heldCount <= CFG.freshBreakoutMax) {
         if (bo.held && bo.retesting) {
@@ -808,7 +830,8 @@
       }
 
       // (A) Breakdown + 5-candle hold + retest of a flipped support from below.
-      var supLvl = nearestLevelAbove(levels, price);
+      var supLvl = refineFlipLevel(nearestLevelAbove(levels, price), bars, 'low');
+      if (supLvl && supLvl.price < price) supLvl = nearestLevelAbove(levels, price);
       if (supLvl) {
         var bd = breakoutRetest(bars, supLvl.price, 'below');
         if (bd.held && bd.retesting) {
