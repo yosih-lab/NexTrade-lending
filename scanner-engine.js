@@ -198,7 +198,7 @@
   // ---- Horizontal levels weighted by touch count -----------------------------
   // Clusters swing highs+lows into price levels; counts touches within tolerance.
   function buildLevels(bars, swings) {
-    var pts = swings.map(function (s) { return { price: s.price, idx: s.idx }; });
+    var pts = swings.map(function (s) { return { price: s.price, idx: s.idx, type: s.type }; });
     pts.sort(function (a, b) { return a.price - b.price; });
     var levels = [];
     for (var i = 0; i < pts.length; i++) {
@@ -208,6 +208,7 @@
           // merge: running average + touch count (+ the outer edges of the zone)
           levels[k].price = (levels[k].price * levels[k].touches + pts[i].price) / (levels[k].touches + 1);
           levels[k].touches++;
+          if (pts[i].type === 'low') levels[k].loN++; else levels[k].hiN++;
           if (pts[i].price > levels[k].hi) levels[k].hi = pts[i].price;
           if (pts[i].price < levels[k].lo) levels[k].lo = pts[i].price;
           if (pts[i].idx > levels[k].lastIdx) levels[k].lastIdx = pts[i].idx;
@@ -215,7 +216,7 @@
           break;
         }
       }
-      if (!placed) levels.push({ price: pts[i].price, touches: 1, lastIdx: pts[i].idx, hi: pts[i].price, lo: pts[i].price });
+      if (!placed) levels.push({ price: pts[i].price, touches: 1, lastIdx: pts[i].idx, hi: pts[i].price, lo: pts[i].price, loN: pts[i].type === 'low' ? 1 : 0, hiN: pts[i].type === 'low' ? 0 : 1 });
     }
     levels.sort(function (a, b) { return a.price - b.price; });
     return levels;
@@ -504,12 +505,16 @@
   }
 
   // ---- Trade level builder ---------------------------------------------------
-  // Target RULE: the target is always the NEXT STRONG support/resistance level (>= touchSignificant touches) in the
-  // direction of the trade that still gives at least 1:2 (within CFG.maxTargetR). Weak one-touch levels never set a
-  // target. If no strong level qualifies, the target falls back to the plain 1:2 point. The R:R is recomputed from the
-  // real target.
+  // Target RULE: the target is always the next STRONG support/resistance level in the direction of the trade that
+  // still gives at least 1:2 (within CFG.maxTargetR). "Strong" = >= touchSignificant touches AND at least 2 of them of
+  // the matching kind (a SUPPORT target needs 2+ swing lows where price really bounced; a RESISTANCE target needs 2+
+  // swing highs) — an old resistance that price merely fell through is not a support. If no strong level qualifies,
+  // the target falls back to the plain 1:2 point. The R:R is recomputed from the real target.
   function buildTrade(dir, entry, stopRef, atrVal, levels, goal, structStop) {
-    var stop, target, risk, min, strong = (levels || []).filter(function (l) { return l.touches >= CFG.touchSignificant; }), tgtLvl = null;
+    var stop, target, risk, min, tgtLvl = null;
+    var strong = (levels || []).filter(function (l) {
+      return l.touches >= CFG.touchSignificant && (dir === 'long' ? (l.hiN == null || l.hiN >= 2) : (l.loN == null || l.loN >= 2));
+    });
     if (dir === 'long') {
       stop = stopRef - atrVal;
       if (entry - stop < entry * CFG.minStopPct) stop = entry * (1 - CFG.minStopPct);
