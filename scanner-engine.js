@@ -40,6 +40,7 @@
     holdCandles: 5,         // 5 weekly candles must hold past a broken level
     retestStopAtr: 0.75,    // retest setups: the flipped level is strong, so the stop sits only 0.75 ATR beyond it
     minStopPct: 0.06,       // the stop is never closer than 6% of the entry price (weekly chart needs room for a normal wick)
+    shortStopBufPct: 0.025, // short stop = 2.5% above the highest high of the last two weekly candles (when tighter than the ATR stop)
     entryBufferPct: 0.0008, // pullback entry sits a hair (~0.08%, ≈10 cents on a $130 stock) ABOVE the support zone
     peakTargetHaircut: 0.01,// pullback target = prior 52-week peak less 1% (the peak itself rarely fills)
     pullbackMinDepth: 0.05, // a stock counts as "in a pullback" once it is >= 5% under its 52-week peak
@@ -506,7 +507,7 @@
   // Target = the 1:2 minimum, but when a known level (e.g. a historical low/high) sits beyond that
   // point (within CFG.maxTargetR) the target is placed ON that level: it is where price realistically
   // stalls, and a reward past it would be fantasy. The R:R is then recomputed from the real target.
-  function buildTrade(dir, entry, stopRef, atrVal, levels, goal) {
+  function buildTrade(dir, entry, stopRef, atrVal, levels, goal, structStop) {
     var stop, target, risk, min;
     if (dir === 'long') {
       stop = stopRef - atrVal;
@@ -523,6 +524,9 @@
       if (goal != null && goal >= min * (1 - CFG.targetSnapTol) && goal <= entry + CFG.maxTargetR * risk) target = goal;
     } else {
       stop = stopRef + atrVal;
+      // Shorts: a structure stop (2.5% above the recent weekly highs, never closer than the 6% minimum) replaces the
+      // ATR stop whenever it is tighter. The target is still >= 1:2 of the resulting risk.
+      if (structStop != null) stop = Math.min(stop, Math.max(structStop, entry * (1 + CFG.minStopPct)));
       if (stop - entry < entry * CFG.minStopPct) stop = entry * (1 + CFG.minStopPct);
       risk = stop - entry;
       min = entry - CFG.rrTarget * risk;
@@ -611,6 +615,8 @@
     var aboveSMA = price >= sma30;
     var peak52 = 0;
     for (var pk = Math.max(0, n - 52); pk < n; pk++) { if (bars[pk].high > peak52) peak52 = bars[pk].high; }
+    // short stop by structure: 2.5% above the highest high of the last two weekly candles
+    var shortStructStop = Math.max(bars[n - 1].high, n > 1 ? bars[n - 2].high : 0) * (1 + CFG.shortStopBufPct);
 
     // Use a confirmed-swing window (drop the still-forming last bar for structure)
     var swingBars = bars.slice(0, n - 1);
@@ -931,7 +937,7 @@
         stopDist = atrVal * CFG.retestStopAtr;
         goal = peak52 * (1 - CFG.peakTargetHaircut);
       }
-      var t = buildTrade(dir, entryPx, entryPx, stopDist, levels, goal);
+      var t = buildTrade(dir, entryPx, entryPx, stopDist, levels, goal, dir === 'short' ? shortStructStop : null);
       var p = {
         kind: kind, dir: dir, level: level, touches: touches,
         closes: closes, needed: CFG.holdCandles, stage: stage,
@@ -968,7 +974,7 @@
       }
       var ranAway = Math.abs(px - entry) / entry > CFG.ranAwayPct;
       var goal = (dir === 'long' && r.setup === 'pullback') ? peak52 * (1 - CFG.peakTargetHaircut) : null;
-      var t = buildTrade(dir, entry, stopRef, a, levels, goal);
+      var t = buildTrade(dir, entry, stopRef, a, levels, goal, dir === 'short' ? shortStructStop : null);
       r.entry = t.entry; r.stop = t.stop; r.target = t.target; r.rr = t.rr;
       var al = alertFor(entry, px);
       r.alertLevel = al.level; r.alertSide = al.side;
