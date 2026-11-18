@@ -59,7 +59,7 @@
     minDownDays: 120,       // a DOWNtrend needs >=120 days (4 months) of decline from the 52-week peak; shorter = range
     alertBuffer: 0.01,      // fire alert ~1% before the entry level
     rrTarget: 2,            // minimum 1:2 risk:reward
-    maxTargetR: 4,          // snap the target to a known level only if it lies within this many R of entry
+    maxTargetR: 6,          // a strong level is used as the target only if it lies within this many R of entry
     freshBreakoutMax: 10,   // a broken level that has held longer than this many weekly closes is an established support, not a fresh breakout
     staleUpDrop: 0.2,       // an "uptrend" with no new high for minDownDays and >= 20% below the 52-week peak is not an uptrend
     macroRangeWeeks: [156, 208], // windows (3/4 years) tested by the multi-year sideways filter
@@ -504,24 +504,24 @@
   }
 
   // ---- Trade level builder ---------------------------------------------------
-  // Target = the 1:2 minimum, but when a known level (e.g. a historical low/high) sits beyond that
-  // point (within CFG.maxTargetR) the target is placed ON that level: it is where price realistically
-  // stalls, and a reward past it would be fantasy. The R:R is then recomputed from the real target.
+  // Target RULE: the target is always the NEXT STRONG support/resistance level (>= touchSignificant touches) in the
+  // direction of the trade that still gives at least 1:2 (within CFG.maxTargetR). Weak one-touch levels never set a
+  // target. If no strong level qualifies, the target falls back to the plain 1:2 point. The R:R is recomputed from the
+  // real target.
   function buildTrade(dir, entry, stopRef, atrVal, levels, goal, structStop) {
-    var stop, target, risk, min;
+    var stop, target, risk, min, strong = (levels || []).filter(function (l) { return l.touches >= CFG.touchSignificant; }), tgtLvl = null;
     if (dir === 'long') {
       stop = stopRef - atrVal;
       if (entry - stop < entry * CFG.minStopPct) stop = entry * (1 - CFG.minStopPct);
       risk = entry - stop;
       min = entry + CFG.rrTarget * risk;
       target = min;
-      var up = null;
-      (levels || []).forEach(function (l) {
-        if (l.price >= min * (1 - CFG.targetSnapTol) && l.price <= entry + CFG.maxTargetR * risk && (up == null || l.price < up)) up = l.price;
+      strong.forEach(function (l) {
+        if (l.price >= min * (1 - CFG.targetSnapTol) && l.price <= entry + CFG.maxTargetR * risk && (tgtLvl == null || l.price < tgtLvl.price)) tgtLvl = l;
       });
-      if (up != null) target = Math.max(up, min);
+      if (tgtLvl != null) target = Math.max(tgtLvl.price, min);
       // An explicit goal (e.g. the prior peak for a pullback) wins when it is at least ~1:2 away.
-      if (goal != null && goal >= min * (1 - CFG.targetSnapTol) && goal <= entry + CFG.maxTargetR * risk) target = goal;
+      if (goal != null && goal >= min * (1 - CFG.targetSnapTol) && goal <= entry + CFG.maxTargetR * risk) { target = goal; tgtLvl = null; }
     } else {
       stop = stopRef + atrVal;
       // Shorts: a structure stop (2.5% above the recent weekly highs, never closer than the 6% minimum) replaces the
@@ -531,14 +531,13 @@
       risk = stop - entry;
       min = entry - CFG.rrTarget * risk;
       target = min;
-      var dn = null;
-      (levels || []).forEach(function (l) {
-        if (l.price <= min * (1 + CFG.targetSnapTol) && l.price >= entry - CFG.maxTargetR * risk && (dn == null || l.price > dn)) dn = l.price;
+      strong.forEach(function (l) {
+        if (l.price <= min * (1 + CFG.targetSnapTol) && l.price >= entry - CFG.maxTargetR * risk && (tgtLvl == null || l.price > tgtLvl.price)) tgtLvl = l;
       });
-      if (dn != null) target = Math.min(dn, min);
+      if (tgtLvl != null) target = Math.min(tgtLvl.price, min);
     }
     var rr = risk > 0 ? Math.round(Math.abs(target - entry) / risk * 10) / 10 : CFG.rrTarget;
-    return { entry: entry, stop: stop, target: target, rr: rr, risk: risk };
+    return { entry: entry, stop: stop, target: target, rr: rr, risk: risk, targetTouches: tgtLvl ? tgtLvl.touches : null };
   }
 
   // Alert fires a little before the entry, on the side price is approaching from.
@@ -942,7 +941,7 @@
         kind: kind, dir: dir, level: level, touches: touches,
         closes: closes, needed: CFG.holdCandles, stage: stage,
         zone: stage !== 'approach' || Math.abs(price - level) <= CFG.planZoneAtr * atrVal,
-        entry: t.entry, stop: t.stop, target: t.target, rr: t.rr
+        entry: t.entry, stop: t.stop, target: t.target, rr: t.rr, targetTouches: t.targetTouches
       };
       if (extra) { for (var k in extra) { if (extra.hasOwnProperty(k)) p[k] = extra[k]; } }
       if (kind === 'pullback' && dir === 'long') {
@@ -976,6 +975,7 @@
       var goal = (dir === 'long' && r.setup === 'pullback') ? peak52 * (1 - CFG.peakTargetHaircut) : null;
       var t = buildTrade(dir, entry, stopRef, a, levels, goal, dir === 'short' ? shortStructStop : null);
       r.entry = t.entry; r.stop = t.stop; r.target = t.target; r.rr = t.rr;
+      if (t.targetTouches != null) r.reasons.push('יעד: רמת ' + (dir === 'long' ? 'התנגדות' : 'תמיכה') + ' חזקה ב-' + fmt(t.target) + ' (' + t.targetTouches + ' נגיעות)');
       var al = alertFor(entry, px);
       r.alertLevel = al.level; r.alertSide = al.side;
       if (ranAway) {
