@@ -603,6 +603,7 @@
         scanStatus: a.status || '',
         plan: a.plan || null,
         planOnly: !!a.planOnly,
+        aggr: a.aggr || null,
         tracked: !!a.tracked,
         exit: a.exit || null,
         lastPrice: a.lastPrice != null ? a.lastPrice : null
@@ -758,7 +759,16 @@
     }
     return '<div class="plan-banner ' + cls + '">' + msg + '</div>';
   }
-  function planBlock(s) { return s.plan ? planBanner(s) + planFib(s) + planSteps(s) : ''; }
+  // Aggressive option: a much tighter stop just beyond the last weekly candle. Always shown with a warning — it is an
+  // option for experienced traders, not the recommended entry.
+  function aggrBlock(s) {
+    var a = s.aggr;
+    if (!a || s.planOnly || a.stop == null) return '';
+    var c = s.curr, riskPct = Math.abs(s.entry - a.stop) / s.entry * 100;
+    return '<div class="aggr-note"><b>⚡ אופציה אגרסיבית</b> · סטופ ' + fmt(a.stop, c) + ' (' + riskPct.toFixed(1) + '%) · יעד ' + fmt(a.target, c) + ' · יחס 1:' + a.rr +
+      '<small>' + esc(a.note || '') + '</small></div>';
+  }
+  function planBlock(s) { return aggrBlock(s) + (s.plan ? planBanner(s) + planFib(s) + planSteps(s) : ''); }
   // Fibonacci confluence = an extra confirmation that the support is real.
   function planFib(s) {
     var f = s.plan && s.plan.fib;

@@ -1225,7 +1225,7 @@ function buildSignalObject(sym, a, liq) {
     lastPrice: a.price, lastPriceTs: now.getTime(), exit: null,
     sma30: a.sma30, atr: a.atr, level: a.level, levelTouches: a.levelTouches,
     entry: pe, stop: ps, target: pt, rr: prr,
-    plan: a.plan || null, planOnly: planOnly,
+    plan: a.plan || null, planOnly: planOnly, aggr: planOnly ? null : (a.aggr || null),
     alertLevel: a.alertLevel, alertSide: a.alertSide, reasons: a.reasons,
     avgTurnover: liq ? liq.avgTurnover : null, avgVolume: liq ? liq.avgVolume : null,
     lastWeekTurnover: liq ? (liq.lastWeekTurnover == null ? null : liq.lastWeekTurnover) : null,

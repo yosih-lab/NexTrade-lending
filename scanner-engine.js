@@ -41,6 +41,8 @@
     retestStopAtr: 0.75,    // retest setups: the flipped level is strong, so the stop sits only 0.75 ATR beyond it
     minStopPct: 0.06,       // the stop is never closer than 6% of the entry price (weekly chart needs room for a normal wick)
     shortStopBufPct: 0.025, // short stop = 2.5% above the highest high of the last two weekly candles (when tighter than the ATR stop)
+    aggrStopBufPct: 0.02,   // AGGRESSIVE option: stop 2% beyond the last weekly candle (low for longs / high for shorts)
+    aggrMaxRiskRatio: 0.8,  // ...offered only when its risk is <= 80% of the main stop's risk
     entryBufferPct: 0.0008, // pullback entry sits a hair (~0.08%, ≈10 cents on a $130 stock) ABOVE the support zone
     peakTargetHaircut: 0.01,// pullback target = prior 52-week peak less 1% (the peak itself rarely fills)
     pullbackMinDepth: 0.05, // a stock counts as "in a pullback" once it is >= 5% under its 52-week peak
@@ -518,6 +520,12 @@
     if (dir === 'long') {
       stop = stopRef - atrVal;
       if (entry - stop < entry * CFG.minStopPct) stop = entry * (1 - CFG.minStopPct);
+      // Breakout longs: the stop goes BELOW the previous resistance (the level under the broken one), never closer than
+      // the 6% minimum. A structure stop that would be more than twice as wide as the ATR stop is ignored.
+      if (structStop != null) {
+        var candS = Math.min(structStop, entry * (1 - CFG.minStopPct));
+        if (entry - candS <= 2 * (entry - stop)) stop = candS;
+      }
       risk = entry - stop;
       min = entry + CFG.rrTarget * risk;
       target = min;
@@ -621,6 +629,12 @@
     for (var pk = Math.max(0, n - 52); pk < n; pk++) { if (bars[pk].high > peak52) peak52 = bars[pk].high; }
     // short stop by structure: 2.5% above the highest high of the last two weekly candles
     var shortStructStop = Math.max(bars[n - 1].high, n > 1 ? bars[n - 2].high : 0) * (1 + CFG.shortStopBufPct);
+    // the previous resistance/support level under a breakout entry (>=2 touches, not the entry zone itself)
+    function prevLevelBelow(e) {
+      var best = null;
+      levels.forEach(function (l) { if (l.touches >= 2 && l.price < e * 0.97 && (!best || l.price > best.price)) best = l; });
+      return best ? best.price : null;
+    }
 
     // Use a confirmed-swing window (drop the still-forming last bar for structure)
     var swingBars = bars.slice(0, n - 1);
@@ -697,7 +711,7 @@
           var preT = buildTrade('long', resLvl.price, resLvl.price, atrVal * CFG.retestStopAtr, levels, null);
           var cap = resLvl.price + CFG.rrTarget * preT.risk * (1 - CFG.targetSnapTol), blk = null;
           levels.forEach(function (l) {
-            if (l.touches >= 2 && l.price > resLvl.price * 1.005 && l.price < cap && l.price > price * 0.99 && (!blk || l.price > blk.price)) blk = l;
+            if (l.touches >= 2 && l.touches > resLvl.touches && l.price > resLvl.price * 1.005 && l.price < cap && l.price > price * 0.99 && (!blk || l.price > blk.price)) blk = l;
           });
           if (!blk) break;
           if (aheadFrom == null) aheadFrom = resLvl.price;
@@ -969,7 +983,7 @@
         stopDist = atrVal * CFG.retestStopAtr;
         goal = peak52 * (1 - CFG.peakTargetHaircut);
       }
-      var t = buildTrade(dir, entryPx, entryPx, stopDist, levels, goal, dir === 'short' ? shortStructStop : null);
+      var t = buildTrade(dir, entryPx, entryPx, stopDist, levels, goal, dir === 'short' ? shortStructStop : (kind === 'breakout' && dir === 'long' ? prevLevelBelow(entryPx) : null));
       var p = {
         kind: kind, dir: dir, level: level, touches: touches,
         closes: closes, needed: CFG.holdCandles, stage: stage,
@@ -1006,9 +1020,20 @@
       }
       var ranAway = Math.abs(px - entry) / entry > CFG.ranAwayPct;
       var goal = (dir === 'long' && r.setup === 'pullback') ? peak52 * (1 - CFG.peakTargetHaircut) : null;
-      var t = buildTrade(dir, entry, stopRef, a, levels, goal, dir === 'short' ? shortStructStop : null);
+      var t = buildTrade(dir, entry, stopRef, a, levels, goal, dir === 'short' ? shortStructStop : (r.setup === 'breakout_retest' ? prevLevelBelow(entry) : null));
       r.entry = t.entry; r.stop = t.stop; r.target = t.target; r.rr = t.rr;
       if (t.targetTouches != null) r.reasons.push('יעד: רמת ' + (dir === 'long' ? 'התנגדות' : 'תמיכה') + ' חזקה ב-' + fmt(t.target) + ' (' + t.targetTouches + ' נגיעות)');
+      // AGGRESSIVE OPTION: stop 2% beyond the last weekly candle when that is clearly tighter than the main stop.
+      // The reward then exceeds 1:2, but the stop is very short — shown only as an option, with a warning note.
+      var lastB = bars[n - 1], stopA = dir === 'long' ? lastB.low * (1 - CFG.aggrStopBufPct) : lastB.high * (1 + CFG.aggrStopBufPct);
+      var riskA = dir === 'long' ? entry - stopA : stopA - entry;
+      if (riskA > 0 && riskA <= t.risk * CFG.aggrMaxRiskRatio) {
+        var tgtA = dir === 'long' ? Math.max(t.target, entry + CFG.rrTarget * riskA) : Math.min(t.target, entry - CFG.rrTarget * riskA);
+        r.aggr = {
+          stop: stopA, target: tgtA, rr: Math.round(Math.abs(tgtA - entry) / riskA * 10) / 10,
+          note: 'סטופ ' + fmt(stopA) + ' (' + (CFG.aggrStopBufPct * 100) + '% ' + (dir === 'long' ? 'מתחת' : 'מעל') + ' לנר השבועי האחרון) — כניסה בסטופ קצר כזה אגרסיבית יותר ומיועדת רק כאופציה'
+        };
+      }
       var al = alertFor(entry, px);
       r.alertLevel = al.level; r.alertSide = al.side;
       if (ranAway) {
