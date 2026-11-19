@@ -687,7 +687,35 @@
       // is a "return to support" (handled below), not a breakout retest.
       var resLvl = refineFlipLevel(nearestLevelBelow(levels, price), bars, 'high'); // the level just under price = possible flipped resistance
       if (resLvl && resLvl.price > price) resLvl = nearestLevelBelow(levels, price);
+      // RESISTANCE-AHEAD RULE: if another resistance sits above this entry BEFORE the 1:2 point (price is likely to
+      // stall there), the trade has no room. Wait instead for the break of the HIGHEST such resistance
+      // (break + 5 closes + retest), and re-check from there.
+      var aheadFrom = null;
+      var boOrig = resLvl ? breakoutRetest(bars, resLvl.price, 'above') : null;
+      if (resLvl && boOrig.held && boOrig.heldCount <= CFG.freshBreakoutMax) {
+        for (var gd = 0; gd < 1; gd++) {
+          var preT = buildTrade('long', resLvl.price, resLvl.price, atrVal * CFG.retestStopAtr, levels, null);
+          var cap = resLvl.price + CFG.rrTarget * preT.risk * (1 - CFG.targetSnapTol), blk = null;
+          levels.forEach(function (l) {
+            if (l.touches >= 2 && l.price > resLvl.price * 1.005 && l.price < cap && l.price > price * 0.99 && (!blk || l.price > blk.price)) blk = l;
+          });
+          if (!blk) break;
+          if (aheadFrom == null) aheadFrom = resLvl.price;
+          var ref = refineFlipLevel(blk, bars, 'high');
+          // a breakout is confirmed above the TOP of the resistance zone
+          var zTopB = (blk.hi != null && (blk.hi - blk.lo) / blk.hi < 0.03) ? blk.hi : ref.price;
+          resLvl = { price: Math.max(ref.price, zTopB), touches: blk.touches, raw: blk.touches, lastIdx: blk.lastIdx, hi: blk.hi, lo: blk.lo, loN: blk.loN, hiN: blk.hiN };
+        }
+      }
       var bo = resLvl ? breakoutRetest(bars, resLvl.price, 'above') : null;
+      if (aheadFrom != null && !(bo && bo.held)) {
+        res.direction = 'long'; res.setup = 'breakout_retest'; res.status = 'watch';
+        res.level = resLvl.price; res.levelTouches = resLvl.touches;
+        res.disq.push('resistance_ahead');
+        res.reasons.push('יש התנגדות ' + fmt(resLvl.price) + ' לפני יעד 1:2 מהכניסה ב-' + fmt(aheadFrom) + ' — אין מקום לעסקה. להמתין לפריצת ' + fmt(resLvl.price) + ' + ' + CFG.holdCandles + ' נרות מעליה + ריטסט');
+        res.plan = makePlan('breakout', 'long', resLvl.price, resLvl.touches, 0, 'approach');
+        return finalizeWatch(res, resLvl.price, price);
+      }
       if (resLvl && bo.heldCount <= CFG.freshBreakoutMax) {
         if (bo.held && bo.retesting) {
           res.direction = 'long'; res.setup = 'breakout_retest';
