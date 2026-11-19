@@ -1371,7 +1371,14 @@ async function scanSignalsChunk() {
             const lw = turnoverStats(sym, bars.slice(0, -1), cur, 5, 1);
             liq.lastWeekTurnover = lw ? lw.avgTurnover : null;
           }
-          const a = NTScanner.analyze(bars, { symbol: sym, name: sym.replace('.TA', ''), curr: sym.endsWith('.TA') ? '₪' : '$' });
+          // A published, still-open entry for this symbol is re-checked against the resistance-ahead rule (stored levels),
+          // so a stale "active entry" turns into the plan that is really in progress.
+          const openPrior = Object.keys(_sigByKey).map(k => _sigByKey[k]).find(o => o && o.sym === sym && isTrackedOpen(o) && !o.planOnly && o.direction === 'long' && o.entry != null && o.stop != null);
+          const a = NTScanner.analyze(bars, { symbol: sym, name: sym.replace('.TA', ''), curr: sym.endsWith('.TA') ? '₪' : '$',
+            prior: openPrior ? { dir: 'long', entry: openPrior.entry, stop: openPrior.stop } : null });
+          if (openPrior && a && a.disq && a.disq.indexOf('resistance_ahead') !== -1) {
+            Object.keys(_sigByKey).forEach(k => { const o = _sigByKey[k]; if (o && o.sym === sym && isTrackedOpen(o) && !o.planOnly) delete _sigByKey[k]; });
+          }
           // Re-validate: a stored signal whose conditions no longer hold (e.g. price fell below
           // SMA30, trend flipped) must disappear instead of lingering for days.
           const dropStale = (keepDir) => {

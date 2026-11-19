@@ -42,6 +42,7 @@
     minStopPct: 0.06,       // the stop is never closer than 6% of the entry price (weekly chart needs room for a normal wick)
     shortStopBufPct: 0.025, // short stop = 2.5% above the highest high of the last two weekly candles (when tighter than the ATR stop)
     aggrStopBufPct: 0.02,   // AGGRESSIVE option: stop 2% beyond the last weekly candle (low for longs / high for shorts)
+    structStopMaxPct: 0.07, // a structure stop (below the previous resistance) is used only if it is within 7% of the entry (else the 6% minimum)
     aggrMaxRiskRatio: 0.8,  // ...offered only when its risk is <= 80% of the main stop's risk
     entryBufferPct: 0.0008, // pullback entry sits a hair (~0.08%, ≈10 cents on a $130 stock) ABOVE the support zone
     peakTargetHaircut: 0.01,// pullback target = prior 52-week peak less 1% (the peak itself rarely fills)
@@ -524,7 +525,7 @@
       // the 6% minimum. A structure stop that would be more than twice as wide as the ATR stop is ignored.
       if (structStop != null) {
         var candS = Math.min(structStop, entry * (1 - CFG.minStopPct));
-        if (entry - candS <= 2 * (entry - stop)) stop = candS;
+        if (entry - candS <= 2 * (entry - stop) && entry - candS <= entry * CFG.structStopMaxPct) stop = candS;
       }
       risk = entry - stop;
       min = entry + CFG.rrTarget * risk;
@@ -696,6 +697,12 @@
       // may sit a hair ABOVE the last close (a wick-pierce), so "nearest below" alone would skip it.
       var supNear = nearLevelAny(levels, price, bars, atrVal);
 
+      // A trade already published (stored levels) is re-checked against the resistance-ahead rule, so a stale
+      // "active entry" signal turns into the plan that is actually in progress.
+      if (meta.prior && meta.prior.dir === 'long' && meta.prior.entry != null && meta.prior.stop != null) {
+        if (aheadPlan(res, meta.prior.entry, meta.prior.stop)) return res;
+      }
+
       // (A) Breakout + 5-candle hold + retest of a flipped resistance. Only for a FRESH breakout: once a
       // broken level has held for many weeks it is simply an established SUPPORT, and coming back to it
       // is a "return to support" (handled below), not a breakout retest.
@@ -711,7 +718,7 @@
           var preT = buildTrade('long', resLvl.price, resLvl.price, atrVal * CFG.retestStopAtr, levels, null);
           var cap = resLvl.price + CFG.rrTarget * preT.risk * (1 - CFG.targetSnapTol), blk = null;
           levels.forEach(function (l) {
-            if (l.touches >= 2 && l.touches > resLvl.touches && l.price > resLvl.price * 1.005 && l.price < cap && l.price > price * 0.99 && (!blk || l.price > blk.price)) blk = l;
+            if (l.touches >= 2 && l.price > resLvl.price * 1.005 && l.price < cap && (l.hi != null ? l.hi : l.price) > price && (!blk || l.price > blk.price)) blk = l;
           });
           if (!blk) break;
           if (aheadFrom == null) aheadFrom = resLvl.price;
@@ -782,12 +789,14 @@
         }
         if (!(rev && volOk) && nearSup && sup.touches >= CFG.touchSignificant) {
           res.plan = makePlan('pullback', 'long', sup.price, sup.touches, 0, 'await_reversal', { volContracting: !!vol.contracting, volRatio: +vol.ratio.toFixed(2), zoneLo: sup.lo, zoneHi: sup.hi });
+          if (aheadPlan(res, res.plan.entry, res.plan.stop)) return res;
           res.reasons.push('כניסה רק כשהמחיר עולה מהתמיכה עם נר היפוך ומחזור מסחר מעל הממוצע');
         }
         if (rev && volOk) {
           if (vMA > 0) res.reasons.push('מחזור מסחר מעל הממוצע (' + Math.round(volNow / vMA * 100) + '% מ-Vol MA)');
           if (nearSup) res.plan = makePlan('pullback', 'long', sup.price, sup.touches, 0, 'entry', { volContracting: !!vol.contracting, volRatio: +vol.ratio.toFixed(2), zoneLo: sup.lo, zoneHi: sup.hi });
           var r2 = finalizeEntry(res, 'long', price, stopRef, atrVal * CFG.retestStopAtr, price);
+          if (r2.entry != null && aheadPlan(r2, r2.entry, r2.stop)) return r2;
           // Strong ceiling (>=3 touches) above price and inside the 1:2 target path?
           var ceil = null;
           levels.forEach(function (l) {
@@ -820,6 +829,7 @@
           res.direction = 'long'; res.setup = 'pullback'; res.status = 'watch';
           res.level = supTop0; res.levelTouches = supT0;
           res.plan = makePlan('pullback', 'long', supTop0, supT0, 0, 'approach', { volContracting: !!vol.contracting, volRatio: +vol.ratio.toFixed(2), zoneLo: sup.lo, zoneHi: sup.hi });
+          if (aheadPlan(res, res.plan.entry, res.plan.stop)) return res;
           res.reasons.push('חזרה לתמיכה במגמת עלייה: תמיכה ' + fmt(supTop0) + ' (' + supT0 + ' נגיעות)' + (vol.contracting ? ' | התכנסות עם מחזורי מסחר מתכווצים' : ''));
           res.reasons.push('כניסה רק בחזרה אל התמיכה (' + fmt(res.plan.entry) + ') עם נר היפוך ומחזור מעל הממוצע');
           return finalizeWatch(res, res.plan.entry, price);
@@ -848,6 +858,7 @@
         var supT = sup.touches;
         if (supT >= CFG.touchSignificant && (price - sup.price) <= CFG.planZoneAtr * atrVal) {
           res.plan = makePlan('pullback', 'long', sup.price, supT, 0, 'approach', { volContracting: !!vol.contracting, volRatio: +vol.ratio.toFixed(2), zoneLo: sup.lo, zoneHi: sup.hi });
+          if (aheadPlan(res, res.plan.entry, res.plan.stop)) return res;
           res.reasons.push('התמיכה ' + fmt(sup.price) + ' (' + supT + ' נגיעות) — כניסה רק בחזרה אליה עם נר היפוך ומחזור מעל הממוצע');
         }
         return finalizeWatch(res, sup.price, price);
@@ -972,6 +983,47 @@
     return res;
 
     // ---- inner helpers (hoisted) --------------------------------------------
+    // RESISTANCE-AHEAD: the nearest-to-highest resistance (>= 2 touches) that sits above entry E but BEFORE the 1:2 point
+    // (risk = |E - stopPx|) and still above price. Price is likely to stall there, so the trade has no room.
+    function findBlocker(E, stopPx) {
+      var risk = Math.abs(E - stopPx);
+      if (!(risk > 0)) return null;
+      var cap = E + CFG.rrTarget * risk * (1 - CFG.targetSnapTol), blk = null;
+      levels.forEach(function (l) {
+        if (l.touches >= 2 && l.price > E * 1.005 && l.price < cap && (l.hi != null ? l.hi : l.price) > price && (!blk || l.price > blk.price)) blk = l;
+      });
+      return blk;
+    }
+    // Turns a long result into "wait for the break of that resistance": breakout plan (approach) anchored on the TOP of
+    // the resistance zone, no entry / stop / target of the voided trade. Returns true when it applied.
+    function aheadPlan(r, E, stopPx) {
+      var blk = findBlocker(E, stopPx);
+      if (!blk) return false;
+      var ref = refineFlipLevel(blk, bars, 'high');
+      var zTop = (blk.hi != null && (blk.hi - blk.lo) / blk.hi < 0.03) ? blk.hi : ref.price;
+      var L = Math.max(ref.price, zTop);
+      // The resistance a trader draws is the DENSEST cluster of weekly highs around it (single wicks above it are noise):
+      // use the top of that cluster when it has at least 2 highs.
+      var hs = [];
+      for (var hi0 = Math.max(0, n - 52); hi0 < n - 1; hi0++) {
+        if (bars[hi0].high >= blk.price * 0.97 && bars[hi0].high <= blk.price * 1.03) hs.push(bars[hi0].high);
+      }
+      var bestC = null;
+      hs.forEach(function (h) {
+        var inW = hs.filter(function (x) { return x >= h * 0.992 && x <= h * 1.008; });
+        // densest cluster wins; on a tie the LOWER one (the first wall price meets)
+        if (inW.length >= 2 && (!bestC || inW.length > bestC.n || (inW.length === bestC.n && Math.max.apply(null, inW) < bestC.top))) bestC = { n: inW.length, top: Math.max.apply(null, inW) };
+      });
+      if (bestC) L = bestC.top;
+      r.direction = 'long'; r.setup = 'breakout_retest'; r.status = 'watch';
+      r.entry = r.stop = r.target = null; r.aggr = null; r.ceiling = null;
+      r.level = L; r.levelTouches = blk.touches;
+      if (r.disq.indexOf('resistance_ahead') === -1) r.disq.push('resistance_ahead');
+      r.reasons.push('יש התנגדות ' + fmt(L) + ' לפני יעד 1:2 מהכניסה ב-' + fmt(E) + ' — אין מקום לעסקה. להמתין לפריצת ' + fmt(L) + ' + ' + CFG.holdCandles + ' נרות מעליה + ריטסט');
+      r.plan = makePlan('breakout', 'long', L, blk.touches, 0, 'approach');
+      finalizeWatch(r, L, price);
+      return true;
+    }
     // "Plan" = the level-based trade the user must WAIT for: break -> 5 closes beyond -> retest -> entry.
     // Carries the progress so the app can show a stepper, chart overlay and stage alerts.
     function makePlan(kind, dir, level, touches, closes, stage, extra) {
