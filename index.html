@@ -3135,6 +3135,11 @@
     .tr-close-btn { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:.35rem .6rem; font-size:.74rem; font-weight:700; cursor:pointer; font-family:Heebo,sans-serif; }
     .tr-close-btn:hover { border-color:var(--red); color:var(--red); }
     .tr-actions { display:flex; flex-direction:column; gap:.4rem; align-items:stretch; }
+    .tr-edit-btn { background:rgba(245,166,35,.1); border:1px solid rgba(245,166,35,.5); color:#ffcf7a; border-radius:8px; padding:.35rem .6rem; font-size:.74rem; font-weight:700; cursor:pointer; font-family:Heebo,sans-serif; white-space:nowrap; }
+    .tr-edit-btn:hover { background:rgba(245,166,35,.25); color:#fff; }
+    .em-seg { display:flex; gap:.4rem; margin:.6rem 0 .2rem; }
+    .em-seg button { flex:1; padding:.55rem .4rem; border-radius:10px; border:1px solid var(--border); background:var(--surface2); color:var(--text-muted); font-size:.86rem; font-weight:800; cursor:pointer; font-family:Heebo,sans-serif; }
+    .em-seg button.on { background:rgba(61,127,255,.2); border-color:rgba(61,127,255,.7); color:#fff; }
     .tr-chart-btn { background:rgba(61,127,255,.12); border:1px solid rgba(61,127,255,.5); color:#8fb4ff; border-radius:8px; padding:.35rem .6rem; font-size:.74rem; font-weight:700; cursor:pointer; font-family:Heebo,sans-serif; white-space:nowrap; }
     .tr-chart-btn:hover, .tr-chart-btn.on { background:rgba(61,127,255,.28); color:#fff; }
     .tr-chart { grid-column:1 / -1; padding:.6rem .5rem .3rem; border-top:1px solid var(--border); }
@@ -3277,9 +3282,9 @@
       .trade-row > div:first-child { grid-column:1 / -1; display:flex; align-items:center; gap:.5rem; }
       .trade-row .tr-dir { margin-top:0; }
       .trade-row > div:last-child { grid-column:1 / -1; }
-      .tr-close-btn, .tr-chart-btn { width:100%; padding:.55rem; font-size:.82rem; }
-      .tr-actions { grid-column:1 / -1; flex-direction:row; }
-      .tr-actions > button { flex:1; }
+      .tr-close-btn, .tr-chart-btn, .tr-edit-btn { width:100%; padding:.55rem; font-size:.82rem; }
+      .tr-actions { grid-column:1 / -1; flex-direction:row; flex-wrap:wrap; }
+      .tr-actions > button { flex:1 1 30%; }
     }
     /* Very small phones (iPhone SE, older Android) */
     @media (max-width:360px) {
@@ -3844,7 +3849,7 @@
 <script src="stockpanel.js?v=20261030a"></script>
 <script src="drawing.js?v=20261019b"></script>
 <script src="features.js?v=20261018j"></script>
-<script src="signals.js?v=20261119a"></script>
+<script src="signals.js?v=20261121a"></script>
 <script src="plan-overlay.js?v=20261030c"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->

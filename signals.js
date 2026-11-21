@@ -304,7 +304,9 @@
   // the service worker answers failed requests with a fake 200 "{}", so success requires the server's {ok:true}
   function usErr(res) {
     if (res.status === 401 || res.status === 403) return 'ההתחברות פגה — התנתק והתחבר מחדש';
-    if (res.status === 0 || !res.data || !res.data.ok) return res.status > 200 ? 'שגיאת שרת ' + res.status : 'אין חיבור לשרת';
+    if (res.status === 503) return 'השרת מושבת או לא זמין כרגע — הנתונים שמורים במכשיר ויסונכרנו כשהשרת יחזור';
+    if (res.status === 0) return 'אין חיבור לשרת (ייתכן שהשרת מושבת) — הנתונים שמורים במכשיר';
+    if (!res.data || !res.data.ok) return res.status > 200 ? 'שגיאת שרת ' + res.status : 'אין חיבור לשרת';
     return '';
   }
   function usPush() {
@@ -1281,6 +1283,7 @@
       '<div><div class="tr-cell-label">רווח/הפסד</div><span class="tr-pnl ' + cls + '">' + pnlTxt + '</span></div>' +
       '<div class="tr-actions">' + (isOpen
           ? '<button class="tr-close-btn" onclick="NTSignals.closeTrade(\'' + t.id + '\')">סגור עסקה</button>' +
+            '<button class="tr-edit-btn" onclick="NTSignals.openEditModal(\'' + t.id + '\')">✏️ ערוך כמות</button>' +
             '<button class="tr-chart-btn' + (_trChartOpen[t.id] ? ' on' : '') + '" onclick="NTSignals.toggleTradeChart(\'' + t.id + '\')">📊 גרף עסקה</button>'
           : '<span class="tr-cell-label">' + (t.closeDate || '') + '</span>') +
       '</div>' +
@@ -2738,6 +2741,134 @@
   }
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && _tm && !_tm.done) tmClose(); });
 
+  // ---------- "Edit position" window: increase or decrease the shares of an open trade ----------
+  // Increase = bought/added more at a price → new shares + weighted-average entry. Decrease = sold part at a price →
+  // the sold part becomes a closed trade (realized P&L, counted in the stats), the rest stays open.
+  var _em = null;
+  function openEditModal(id) {
+    var t = null, all = loadTrades();
+    for (var i = 0; i < all.length; i++) { if (all[i].id === id && all[i].status === 'open') { t = all[i]; break; } }
+    if (!t) return;
+    var live = livePrice(t.sym), start = live != null ? live : t.entry;
+    _em = { id: id, mode: 'add', live: live, start: start, done: false };
+    var ov = document.getElementById('ntTradeOv');
+    if (!ov) { ov = document.createElement('div'); ov.id = 'ntTradeOv'; document.body.appendChild(ov); ov.onclick = function (e) { if (e.target === ov) { if (_tm) tmClose(); else emClose(); } }; }
+    var unit = tDiv(t) === 100 ? 'אג׳' : (t.curr || '');
+    ov.innerHTML = '<div class="tm-box" dir="rtl" role="dialog">' +
+      '<div class="tm-head"><span>עריכת כמות מניות</span><button class="tm-x" onclick="NTSignals.emClose()" aria-label="סגור">✕</button></div>' +
+      '<div class="tm-sym"><b>' + esc(dispSym(t.sym)) + '</b><span class="tr-dir ' + t.dir + '">' + (t.dir === 'long' ? '▲ לונג' : '▼ שורט') + '</span><small>' + esc(t.name || '') + '</small></div>' +
+      '<div class="tm-card"><div class="tm-row"><span>כמות נוכחית</span><b>' + (t.shares || 1) + ' מניות</b></div>' +
+        '<div class="tm-row"><span>מחיר כניסה ממוצע</span><b>' + tmPx(t.entry, t) + '</b></div></div>' +
+      '<div class="em-seg"><button type="button" id="emBtnAdd" class="on" onclick="NTSignals.emMode(\'add\')">➕ הגדלת כמות</button>' +
+        '<button type="button" id="emBtnSub" onclick="NTSignals.emMode(\'sub\')">➖ הקטנת כמות</button></div>' +
+      '<label class="tm-lbl" for="emShares" id="emLblShares">כמה מניות הוספת?</label>' +
+      '<div class="tm-inp"><input id="emShares" type="number" step="1" min="1" inputmode="numeric" value="1" oninput="NTSignals.emCalc()"><span class="tm-unit">מניות</span></div>' +
+      '<label class="tm-lbl" for="emPrice" id="emLblPrice">באיזה מחיר קנית? (מחיר למניה' + (unit ? ', ' + unit : '') + ')</label>' +
+      '<div class="tm-inp"><input id="emPrice" type="number" step="any" min="0" inputmode="decimal" value="' + start.toFixed(2) + '" oninput="NTSignals.emCalc()"><span class="tm-unit">' + esc(unit) + '</span></div>' +
+      (live != null ? '<div class="tm-hint"><button type="button" onclick="NTSignals.emFillLive()">מחיר נוכחי ' + tmPx(live, t) + '</button></div>' : '') +
+      '<div class="tm-card tm-total" id="emOut"></div>' +
+      '<div class="tm-err" id="emErr"></div>' +
+      '<div class="tm-foot"><button id="emOk" class="tm-ok" onclick="NTSignals.emConfirm()">עדכן עסקה</button>' +
+      '<button class="tm-cancel" onclick="NTSignals.emClose()">ביטול</button></div>' +
+    '</div>';
+    ov.style.display = 'flex';
+    emCalc();
+    setTimeout(function () { var el = document.getElementById('emShares'); if (el) { el.focus(); el.select(); } }, 60);
+  }
+  function emTrade() {
+    if (!_em) return null;
+    var all = loadTrades();
+    for (var i = 0; i < all.length; i++) { if (all[i].id === _em.id && all[i].status === 'open') return all[i]; }
+    return null;
+  }
+  function emMode(m) {
+    if (!_em || _em.done) return;
+    _em.mode = m;
+    var add = m === 'add';
+    var a = document.getElementById('emBtnAdd'), b = document.getElementById('emBtnSub');
+    if (a) a.classList.toggle('on', add); if (b) b.classList.toggle('on', !add);
+    var l1 = document.getElementById('emLblShares'), l2 = document.getElementById('emLblPrice');
+    if (l1) l1.textContent = add ? 'כמה מניות הוספת?' : 'כמה מניות מכרת?';
+    var t = emTrade(), unit = t ? (tDiv(t) === 100 ? 'אג׳' : (t.curr || '')) : '';
+    if (l2) l2.textContent = (add ? 'באיזה מחיר קנית?' : 'באיזה מחיר מכרת?') + ' (מחיר למניה' + (unit ? ', ' + unit : '') + ')';
+    var ok = document.getElementById('emOk'); if (ok) ok.textContent = add ? 'עדכן עסקה' : 'עדכן מכירה חלקית';
+    emCalc();
+  }
+  function emFillLive() {
+    if (!_em || _em.live == null) return;
+    var el = document.getElementById('emPrice'); if (el) { el.value = _em.live.toFixed(2); emCalc(); }
+  }
+  function emRead() {
+    var price = parseFloat((document.getElementById('emPrice') || {}).value);
+    var q = parseFloat((document.getElementById('emShares') || {}).value);
+    var t = emTrade(), cur = t ? (t.shares || 1) : 0, err = '';
+    if (!isFinite(price) || price <= 0) err = 'הזן מחיר גדול מאפס';
+    else if (!isFinite(q) || q < 1 || Math.floor(q) !== q) err = 'הזן כמות מניות — מספר שלם, לפחות 1';
+    else if (_em && _em.mode === 'sub' && q >= cur) err = 'כדי למכור את כל המניות השתמש ב"סגור עסקה" (אפשר להקטין עד ' + (cur - 1) + ' מניות)';
+    return { price: price, q: q, cur: cur, err: err };
+  }
+  function emCalc() {
+    if (!_em || _em.done) return;
+    var t = emTrade(); if (!t) { emClose(); return; }
+    var v = emRead(), div = tDiv(t), sign = t.dir === 'long' ? 1 : -1;
+    function set(id, html) { var e = document.getElementById(id); if (e) e.innerHTML = html; }
+    set('emErr', v.err);
+    var ob = document.getElementById('emOk'); if (ob) ob.disabled = !!v.err;
+    if (v.err) { set('emOut', ''); return; }
+    var out;
+    if (_em.mode === 'add') {
+      var ns = v.cur + v.q, ne = (v.cur * t.entry + v.q * v.price) / ns;
+      out = '<div class="tm-row"><span>כמות חדשה</span><b>' + ns + ' מניות</b></div>' +
+        '<div class="tm-row"><span>מחיר כניסה ממוצע חדש</span><b>' + tmPx(ne, t) + '</b></div>' +
+        '<div class="tm-row sep"><span>שווי העסקה החדש</span><b>' + tmMoney(ns * ne / div, t.curr) + '</b></div>' +
+        '<div class="tm-row"><span>רווח כולל ביעד</span><b class="pos">' + tmMoney((t.tp - ne) * sign * ns / div, t.curr, true) + '</b></div>' +
+        '<div class="tm-row"><span>הפסד כולל בסטופ</span><b class="neg">' + tmMoney((t.stop - ne) * sign * ns / div, t.curr, true) + '</b></div>';
+    } else {
+      var pnl = (v.price - t.entry) * sign * v.q / div, pc = (v.price - t.entry) / t.entry * 100 * sign;
+      out = '<div class="tm-row"><span>נשארו בעסקה</span><b>' + (v.cur - v.q) + ' מניות</b></div>' +
+        '<div class="tm-row"><span>שווי נותר (במחיר הכניסה)</span><b>' + tmMoney((v.cur - v.q) * t.entry / div, t.curr) + '</b></div>' +
+        '<div class="tm-row sep"><span>רווח/הפסד ממומש על החלק שנמכר</span><b class="' + (pnl >= 0 ? 'pos' : 'neg') + '">' + tmMoney(pnl, t.curr, true) + ' <small dir="ltr">(' + (pc >= 0 ? '+' : '−') + Math.abs(pc).toFixed(2) + '%)</small></b></div>';
+    }
+    set('emOut', out);
+  }
+  function emConfirm() {
+    if (!_em || _em.done) return;
+    var all = loadTrades(), t = null;
+    for (var i = 0; i < all.length; i++) { if (all[i].id === _em.id && all[i].status === 'open') { t = all[i]; break; } }
+    if (!t) { emClose(); return; }
+    var v = emRead();
+    if (v.err) { emCalc(); return; }
+    var div = tDiv(t), sign = t.dir === 'long' ? 1 : -1, now = Date.now();
+    if (_em.mode === 'add') {
+      var ns = v.cur + v.q;
+      t.entry = (v.cur * t.entry + v.q * v.price) / ns;
+      t.shares = ns;
+    } else {
+      var pnl = (v.price - t.entry) * sign * v.q / div;
+      all.unshift({
+        id: 'tr_' + now + '_' + Math.floor(Math.random() * 1000),
+        sym: t.sym, name: t.name, dir: t.dir, curr: t.curr, entry: t.entry, stop: t.stop, tp: t.tp, rr: t.rr,
+        shares: v.q, status: 'closed', partial: true, openTs: t.openTs, openDate: t.openDate,
+        closePrice: v.price, closeTs: now, closeDate: new Date().toLocaleDateString('he-IL'),
+        pnl: pnl, pnlV2: true, pnlPct: (v.price - t.entry) / t.entry * 100 * sign
+      });
+      t.shares = v.cur - v.q;
+    }
+    t.editedTs = now;
+    saveTrades(all);
+    _em.done = true;
+    var ob = document.getElementById('emOk');
+    if (ob) { ob.disabled = true; ob.classList.add('done'); ob.textContent = '✔ העסקה עודכנה'; }
+    try { render(); } catch (e) {}
+    setTimeout(emClose, 800);
+  }
+  function emClose() {
+    _em = null;
+    var ov = document.getElementById('ntTradeOv');
+    if (ov && !_tm) { ov.style.display = 'none'; ov.innerHTML = ''; }
+  }
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && _em && !_em.done) emClose(); });
+
   function closeTrade(id) {
     var trades = loadTrades();
     var t = null;
@@ -2964,6 +3095,7 @@
     onAppReady: onAppReady,
     show: show, hide: hide, setMode: setMode,
     switchTab: switchTab, openTradeModal: openTradeModal, tmCalc: tmCalc, tmFill: tmFill, tmConfirm: tmConfirm, tmClose: tmClose, closeTrade: closeTrade, toggleTradeChart: toggleTradeChart, syncNow: syncNow,
+    openEditModal: openEditModal, emMode: emMode, emCalc: emCalc, emFillLive: emFillLive, emConfirm: emConfirm, emClose: emClose,
     riskCalc: riskCalc, toggleDisc: toggleDisc,
     aiSuggest: aiSuggest, aiKey: aiKey, aiPick: aiPick, aiNext: aiNext, aiSugHideLater: aiSugHideLater,
     analyze: analyze, render: render,
