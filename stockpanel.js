@@ -345,7 +345,7 @@
     var c = cache[sym];
     if (c && !force && Date.now() - c.ts < TTL) { render(c.data, sym); return; }
     if (c) render(c.data, sym); else renderMsg(sym, '<div class="sp-load"><span class="sp-spin"></span> טוען נתוני מניה…</div>');
-    fetch(apiBase() + '/api/stock/details?symbol=' + encodeURIComponent(sym), { cache: 'no-store' })
+    fetch(apiBase() + '/api/stock/details?symbol=' + encodeURIComponent(sym))
       .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
       .then(function (d) {
         cache[sym] = { ts: Date.now(), data: d };

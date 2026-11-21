@@ -6,6 +6,10 @@ const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const { createClient } = require('@supabase/supabase-js');
+// Response compression (gzip/brotli): cuts JSON traffic (chart bars, signals) by ~80-90%. Optional require so the
+// server still boots if the package is not installed yet.
+let compression = null;
+try { compression = require('compression'); } catch (e) { console.warn('[NexTrade] compression not installed — responses are sent uncompressed'); }
 const app     = express();
 
 // ── CONFIG ──────────────────────────────────────────────────────
@@ -236,6 +240,7 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
 });
 
 // ── BODY PARSER ──────────────────────────────────────────────────
+if (compression) app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 
 // ── CORS ─────────────────────────────────────────────────────────
@@ -245,6 +250,7 @@ app.use(function(req, res, next) {
   if (ALLOWED.includes(origin) || dev) {
     res.setHeader('Access-Control-Allow-Origin', origin || '*');
   }
+  res.vary('Origin');   // responses differ per origin → caches (browser / CDN) must key on it
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
@@ -736,7 +742,7 @@ app.get('/api/signals', requireAuth, async (req, res) => {
     // Kick a refresh if the store is stale (wakes a sleeping free-tier instance).
     if (NTScanner && Date.now() - _lastSigScan > SIG_CYCLE_MS) { scanSignalsChunk().catch(() => {}); }
     const payload = signalsForPlan(info.tier);
-    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Cache-Control', 'private, no-cache');   // revalidate with the ETag → unchanged feed = tiny 304 instead of the full list
     res.json({
       plan: info.plan,
       tier: info.tier,
@@ -1956,16 +1962,49 @@ function fetchYahoo(symbol, interval, range) {
   });
 }
 
+// Shared cache: ONE Yahoo fetch per symbol+interval+range for ALL users (10 users on the same stock = 1 upstream call),
+// concurrent identical requests share the same in-flight fetch, and a stale copy is served if Yahoo fails.
+const _chartCache = new Map();      // key -> { ts, ttl, body }
+const _chartInflight = new Map();   // key -> Promise<body>
+const CHART_CACHE_MAX = 400;
+function chartTtlMs(interval) {
+  if (/^(1m|2m|5m|15m|30m|60m|90m|1h)$/.test(interval)) return 60 * 1000;   // intraday: fresh within a minute
+  if (interval === '1d' || interval === '5d') return 2 * 60 * 1000;
+  return 30 * 60 * 1000;                                                   // weekly / monthly bars barely move
+}
 app.get('/yahoo/chart', async (req, res) => {
   const symbol   = (req.query.symbol || '').trim();
   const interval = (req.query.interval || '1d').trim();
   const range    = (req.query.range || '1y').trim();
   if (!symbol) return res.status(400).json({ error: 'symbol required' });
+  if (symbol.length > 24 || !/^[A-Za-z0-9.=^\-_]+$/.test(symbol)) return res.status(400).json({ error: 'bad symbol' });
+  const key = symbol + '|' + interval + '|' + range, ttl = chartTtlMs(interval), now = Date.now();
+  const sendBody = (body, ts) => {
+    // the browser may reuse it for a fraction of the TTL (no request at all), then revalidate
+    const browserAge = Math.min(300, Math.floor(ttl / 4000));
+    res.setHeader('Cache-Control', 'public, max-age=' + browserAge);
+    res.setHeader('X-Cache-Age', String(Math.floor((Date.now() - ts) / 1000)));
+    res.type('application/json').send(body);
+  };
+  const hit = _chartCache.get(key);
+  if (hit && now - hit.ts < ttl) return sendBody(hit.body, hit.ts);
   try {
-    const data = await fetchYahoo(symbol, interval, range);
-    res.setHeader('Cache-Control', 'no-store');
-    res.json(data);
+    let p = _chartInflight.get(key);
+    if (!p) {
+      p = fetchYahoo(symbol, interval, range).then(data => {
+        if (!data || !data.chart || !data.chart.result || !data.chart.result[0]) throw new Error('no data');
+        const body = JSON.stringify(data);
+        _chartCache.set(key, { ts: Date.now(), ttl: ttl, body: body });
+        if (_chartCache.size > CHART_CACHE_MAX) _chartCache.delete(_chartCache.keys().next().value);
+        return body;
+      }).finally(() => { _chartInflight.delete(key); });
+      _chartInflight.set(key, p);
+    }
+    const body = await p;
+    sendBody(body, Date.now());
   } catch (e) {
+    if (hit) { res.setHeader('Cache-Control', 'no-store'); return res.type('application/json').send(hit.body); }   // stale beats nothing
+    res.setHeader('Cache-Control', 'no-store');
     res.status(502).json({ error: 'upstream error', detail: e.message });
   }
 });
@@ -2232,8 +2271,7 @@ app.get('/api/stock/details', async (req, res) => {
 
   const sym = String(req.query.symbol || '').trim().toUpperCase();
   if (!/^[A-Z0-9.\-^=]{1,15}$/.test(sym)) return res.status(400).json({ error: 'bad symbol' });
-  res.setHeader('Cache-Control', 'no-store');
-  const c = _detCache.get(sym);
+  res.setHeader('Cache-Control', 'public, max-age=120');   // server cache is 5 min; the browser may reuse it for 2
   if (c && now - c.ts < DET_TTL) return res.json(c.data);
   try {
     const data = await buildStockDetails(sym);
@@ -2242,6 +2280,7 @@ app.get('/api/stock/details', async (req, res) => {
     res.json(data);
   } catch (e) {
     console.error('[Details] error', sym, e.message);
+    res.setHeader('Cache-Control', 'no-store');   // never let the browser cache an error
     res.status(502).json({ error: 'upstream error' });
   }
 });

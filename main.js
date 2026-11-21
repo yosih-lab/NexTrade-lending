@@ -1805,8 +1805,9 @@ async function fetchYahooChartDirect(symbol, tf) {
     // Prefer our own server-side Yahoo proxy (reliable, works for indices/forex/futures
     // like ^GSPC, XAUUSD=X, XAGUSD=X, ES=F). Fall back to the public text proxy.
     try {
+      // default cache mode: the server sends Cache-Control max-age, so repeated requests within it cost nothing
       var sr = await fetch(API_BASE + '/yahoo/chart?symbol=' + encodeURIComponent(symbol) +
-                           '&interval=' + yfInterval + '&range=' + yfRange, { cache: 'no-store' });
+                           '&interval=' + yfInterval + '&range=' + yfRange);
       if (sr.ok) d = await sr.json();
     } catch (e1) { d = null; }
     if (!d || !d.chart || !d.chart.result) {
@@ -4019,14 +4020,22 @@ async function init() {
     
     await loadNews(currentSymbol);
     buildTicker();
-    setInterval(refreshPrices, 60000);
-    // Refresh chart data every 60s (price updates) WITHOUT resetting zoom
-    setInterval(function() {
+    // Polling only while the tab is visible (a background tab must not keep hitting the server); one catch-up
+    // refresh runs the moment the tab becomes visible again.
+    var _lastPollTs = Date.now();
+    function pollTick() {
+      if (document.hidden) return;
+      _lastPollTs = Date.now();
+      refreshPrices();
       if (_chartInteracting) return; // never touch the data while the user is dragging
       delete candleCache[currentSymbol + '_' + currentTF];
       delete candleCache['yf_' + currentSymbol + '_' + currentTF];
       loadChart(currentSymbol, currentTF, true); // true = preserve zoom
-    }, 60000);
+    }
+    setInterval(pollTick, 60000);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible' && Date.now() - _lastPollTs > 60000) pollTick();
+    });
     
     console.log('[NexTrade] ✅ init() completed successfully!');
     startBackgroundScanner();
@@ -4411,8 +4420,12 @@ function showBuySignalPopup(r) {
 
 // Start scanner on init + every 5 minutes
 function startBackgroundScanner() {
-  setTimeout(function() { if (!ntIsWeekendIL()) runBackgroundScanner(); }, 15000);
-  _scannerInterval = setInterval(function() { if (!ntIsWeekendIL()) runBackgroundScanner(); }, 5 * 60 * 1000);
+  // Signed-in users get their signals from the SERVER scanner (/api/signals). Scanning the whole universe again in
+  // every browser tab (hundreds of chart downloads every 5 minutes) was the biggest bandwidth cost — it now runs
+  // only for the offline/demo session that has no server feed.
+  if (_ntToken()) return;
+  setTimeout(function() { if (!document.hidden && !ntIsWeekendIL()) runBackgroundScanner(); }, 15000);
+  _scannerInterval = setInterval(function() { if (!document.hidden && !ntIsWeekendIL()) runBackgroundScanner(); }, 15 * 60 * 1000);
 }
 
 // Manual test

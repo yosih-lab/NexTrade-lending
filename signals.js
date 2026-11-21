@@ -508,7 +508,7 @@
     _lastSync = Date.now();
     fetch(apiBase() + '/api/signals', {
       headers: { 'Authorization': 'Bearer ' + token },
-      cache: 'no-store'
+      cache: 'no-cache'   // conditional request (ETag): an unchanged feed costs a 304, not the whole list
     }).then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (!d || !Array.isArray(d.signals)) return;
@@ -3047,9 +3047,10 @@
     stopAutoRefresh();
     syncServerSignals(true); // pull the authoritative feed immediately
     refreshTimer = setInterval(function () {
+      if (document.hidden) return;   // background tab: no polling (visibilitychange re-syncs on return)
       var feed = document.getElementById('signalFeed');
       if (feed && feed.style.display !== 'none') { syncServerSignals(); render(); refreshTradePrices(); usPull(); }
-    }, 20000);
+    }, 30000);
   }
   function stopAutoRefresh() { if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; } }
 
@@ -3058,14 +3059,15 @@
     startRemChecks();
     syncServerSignals(true); // fetch the server feed as soon as we're logged in
     usPull(true);            // portfolio, favorites and alerts follow the account across devices
-    // Watch EVERY minute (feed open or not): signals from the server + open trades vs live price → exit alerts.
+    // Watch every 90 s while the tab is VISIBLE: signals from the server + open trades vs live price → exit alerts.
     if (!window.__ntSigBg) {
       window.__ntSigBg = setInterval(function () {
+        if (document.hidden) return;
         try { usPull(); } catch (e) {}
-        try { syncServerSignals(true); } catch (e) {}
+        try { syncServerSignals(); } catch (e) {}
         try { refreshTradePrices(true); } catch (e) {}
         try { checkExits(); } catch (e) {}
-      }, 60 * 1000);
+      }, 90 * 1000);
     }
     // Admins default to the regular (analysis) site — they are not signal-locked.
     if (isAdmin()) { setMode('analysis'); return; }
