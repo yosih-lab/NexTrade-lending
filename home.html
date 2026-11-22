@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<script>if(location.hostname==='www.getnexttrade.com'){location.href='https://getnexttrade.com'+location.pathname+location.search+location.hash;}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NexTrade | נתונים. איתותים. ביטחון.</title>
+<meta name="description" content="NexTrade: פלטפורמת מסחר וניתוח מניות לבורסה הישראלית ולוול סטריט. גרפים מקצועיים, איתותים בזמן אמת וניתוח AI. 7 ימי ניסיון חינם.">
+<meta name="theme-color" content="#0a0d14">
+<meta property="og:title" content="NexTrade | נתונים. איתותים. ביטחון.">
+<meta property="og:description" content="גרפים, איתותים וניתוח AI לבורסה הישראלית ולוול סטריט.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Heebo:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0d14; --bg-2:#0f1420; --panel:#141a28;
+  --line:rgba(212,175,106,.16); --line-soft:rgba(255,255,255,.07);
+  --gold:#d4af6a; --gold-2:#f3dca4; --gold-3:#b98a3e;
+  --text:#eceff5; --muted:#9ba4b8;
+  --green:#3ecf8e; --red:#ef5b6b;
+  /* כדי להוסיף תמונה יוקרתית לרקע ה-Hero: --hero-photo:url('hero.jpg'); */
+  --hero-photo:url('bull-bear-bg.jpeg');
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Heebo',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit}
+.wrap{width:min(1160px,100% - 40px);margin-inline:auto}
+h1,h2,h3,.serif{font-family:'Frank Ruhl Libre',serif}
+.gold-text{background:linear-gradient(135deg,var(--gold-2),var(--gold) 50%,var(--gold-3));-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* ---------- Buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 26px;border-radius:999px;font-weight:700;font-size:15px;border:1px solid transparent;cursor:pointer;transition:.25s;white-space:nowrap}
+.btn-gold{background:linear-gradient(135deg,var(--gold-2),var(--gold) 55%,var(--gold-3));color:#1a1405;box-shadow:0 8px 30px rgba(212,175,106,.25)}
+.btn-gold:hover{transform:translateY(-2px);box-shadow:0 14px 40px rgba(212,175,106,.42)}
+.btn-ghost{border-color:var(--line);color:var(--text);background:rgba(255,255,255,.03)}
+.btn-ghost:hover{border-color:var(--gold);color:var(--gold-2)}
+.btn-lg{padding:16px 34px;font-size:17px}
+
+/* ---------- Nav ---------- */
+.nav{position:fixed;inset:0 0 auto 0;z-index:50;padding:18px 0;transition:.3s}
+.nav.scrolled{background:rgba(10,13,20,.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line);padding:10px 0}
+.nav .wrap{display:flex;align-items:center;gap:34px}
+.logo{font-family:'Frank Ruhl Libre',serif;font-weight:900;font-size:28px;letter-spacing:.5px}
+.logo b{color:var(--gold);font-weight:900}
+.nav ul{display:flex;gap:28px;list-style:none;color:var(--muted);font-size:15px}
+.nav ul a{transition:.2s}
+.nav ul a:hover{color:var(--gold-2)}
+.nav-actions{margin-inline-start:auto;display:flex;gap:10px}
+.nav .btn{padding:10px 20px;font-size:14px}
+
+/* ---------- Hero ---------- */
+.hero{position:relative;min-height:100vh;display:flex;align-items:center;padding:130px 0 90px;isolation:isolate;overflow:hidden}
+.hero-photo{position:absolute;inset:0;z-index:-3;background:var(--hero-photo) center/cover no-repeat;opacity:.38}
+.hero::before{content:"";position:absolute;inset:0;z-index:-2;background:
+  radial-gradient(900px 520px at 78% 18%,rgba(212,175,106,.17),transparent 62%),
+  radial-gradient(700px 520px at 8% 92%,rgba(70,120,210,.13),transparent 60%),
+  linear-gradient(180deg,rgba(10,13,20,.5),var(--bg) 97%)}
+.hero::after{content:"";position:absolute;inset:0;z-index:-1;opacity:.32;pointer-events:none;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:64px 64px;-webkit-mask-image:radial-gradient(ellipse at 60% 40%,#000,transparent 70%);mask-image:radial-gradient(ellipse at 60% 40%,#000,transparent 70%)}
+.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;padding:7px 16px;border:1px solid var(--line);border-radius:999px;font-size:13.5px;color:var(--gold-2);background:rgba(212,175,106,.06);letter-spacing:.3px}
+.eyebrow i{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px var(--gold)}
+.hero h1{font-size:clamp(46px,7vw,92px);line-height:1.04;font-weight:900;margin:22px 0 22px;letter-spacing:-.5px}
+.hero h1 span{display:block}
+.hero p.lead{font-size:clamp(17px,1.6vw,20px);color:var(--muted);max-width:540px;font-weight:300}
+.cta-row{display:flex;flex-wrap:wrap;gap:14px;margin-top:34px}
+.chips{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:34px;color:var(--muted);font-size:14.5px}
+.chips span{display:inline-flex;align-items:center;gap:8px}
+.chips svg{width:16px;height:16px;stroke:var(--gold);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+.chart-card{position:relative;border:1px solid var(--line);border-radius:26px;padding:22px 20px 14px;background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.015));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 40px 90px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.07)}
+.chart-top{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);margin-bottom:6px;direction:ltr}
+.chart-top b{color:var(--text);font-weight:500;letter-spacing:.5px}
+.chart-top em{font-style:normal;color:var(--gold-2)}
+#chart{width:100%;height:auto;display:block;direction:ltr}
+.signal{position:absolute;inset-inline-start:-26px;bottom:-34px;width:230px;padding:16px 18px;border-radius:18px;background:rgba(18,24,38,.94);border:1px solid var(--line);box-shadow:0 24px 60px rgba(0,0,0,.55)}
+.signal h4{font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.pulse{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(62,207,142,.6);animation:pulse 2s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 9px rgba(62,207,142,0)}100%{box-shadow:0 0 0 0 rgba(62,207,142,0)}}
+.signal dl{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:13px}
+.signal dt{color:var(--muted)}
+.signal dd{text-align:end;font-variant-numeric:tabular-nums;direction:ltr}
+.signal .long{color:var(--green);font-weight:700}
+.signal .tp{color:var(--green)}.signal .sl{color:var(--red)}
+.signal small{display:block;margin-top:10px;font-size:11px;color:var(--muted);border-top:1px solid var(--line-soft);padding-top:8px}
+
+/* ---------- Sections ---------- */
+section{position:relative}
+.sec{padding:110px 0}
+.sec-head{text-align:center;max-width:720px;margin:0 auto 60px}
+.sec-head h2{font-size:clamp(32px,4.4vw,52px);line-height:1.15;font-weight:900;margin:16px 0 14px}
+.sec-head p{color:var(--muted);font-size:18px;font-weight:300}
+
+/* ---------- Quotes ---------- */
+.quotes{padding:90px 0;background:linear-gradient(180deg,var(--bg),var(--bg-2) 50%,var(--bg));border-block:1px solid var(--line-soft)}
+.bubble-wrap{display:flex;align-items:flex-start;gap:26px;max-width:920px;margin-inline:auto}
+.avatar{flex:none;width:78px;height:78px;border-radius:50%;display:grid;place-items:center;font-family:'Frank Ruhl Libre',serif;font-weight:900;font-size:26px;color:#1a1405;background:linear-gradient(135deg,var(--gold-2),var(--gold) 55%,var(--gold-3));box-shadow:0 0 0 6px rgba(212,175,106,.1),0 12px 30px rgba(0,0,0,.4);transition:.35s}
+.bubble{position:relative;flex:1;min-height:210px;padding:34px 38px 30px;border-radius:24px;background:var(--panel);border:1px solid var(--line);box-shadow:0 30px 70px rgba(0,0,0,.4);transition:opacity .35s,transform .35s}
+.bubble::before{content:"";position:absolute;right:-10px;top:30px;width:20px;height:20px;background:var(--panel);border-top:1px solid var(--line);border-right:1px solid var(--line);transform:rotate(45deg)}
+.bubble::after{content:"”";position:absolute;left:26px;top:-6px;font-family:'Frank Ruhl Libre',serif;font-size:120px;line-height:1;color:rgba(212,175,106,.14);pointer-events:none}
+.bubble.swap{opacity:0;transform:translateY(10px)}
+.tag{display:inline-block;font-size:12px;letter-spacing:.4px;padding:3px 12px;border-radius:999px;background:rgba(212,175,106,.1);color:var(--gold-2);border:1px solid var(--line);margin-bottom:16px}
+.bubble blockquote{font-family:'Frank Ruhl Libre',serif;font-size:clamp(22px,2.7vw,31px);line-height:1.5;font-weight:500;color:var(--text)}
+.by{margin-top:20px;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;font-size:15px}
+.by strong{color:var(--gold-2);font-weight:700}
+.by span{color:var(--muted);font-size:13.5px}
+.dots{display:flex;justify-content:center;gap:9px;margin-top:30px}
+.dots button{width:9px;height:9px;border-radius:50%;border:0;background:rgba(255,255,255,.18);cursor:pointer;transition:.3s;padding:0}
+.dots button.on{width:30px;border-radius:6px;background:var(--gold)}
+.q-note{text-align:center;color:var(--muted);font-size:13px;margin-top:22px}
+
+/* ---------- Features ---------- */
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.card{position:relative;padding:32px 28px;border-radius:22px;background:linear-gradient(160deg,rgba(255,255,255,.045),rgba(255,255,255,.012));border:1px solid var(--line-soft);transition:.3s;overflow:hidden}
+.card::before{content:"";position:absolute;inset:0;background:radial-gradient(420px 160px at 100% 0,rgba(212,175,106,.1),transparent 70%);opacity:0;transition:.3s}
+.card:hover{transform:translateY(-5px);border-color:var(--line)}
+.card:hover::before{opacity:1}
+.ico{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;background:rgba(212,175,106,.09);border:1px solid var(--line);margin-bottom:20px}
+.ico svg{width:25px;height:25px;stroke:var(--gold);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.card h3{font-size:23px;margin-bottom:8px;font-weight:700}
+.card p{color:var(--muted);font-size:15.5px;font-weight:300}
+
+/* ---------- Steps ---------- */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;counter-reset:s}
+.step{padding:30px 28px;border-radius:22px;border:1px solid var(--line-soft);background:var(--bg-2)}
+.step .n{font-family:'Frank Ruhl Libre',serif;font-size:54px;font-weight:900;line-height:1;color:transparent;-webkit-text-stroke:1px var(--gold);opacity:.8}
+.step h3{font-size:22px;margin:14px 0 6px}
+.step p{color:var(--muted);font-weight:300;font-size:15.5px}
+
+/* ---------- Plans ---------- */
+.plans-bg{background:linear-gradient(180deg,var(--bg),var(--bg-2));border-block:1px solid var(--line-soft)}
+.toggle{display:inline-flex;padding:5px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.03);margin-top:26px}
+.toggle button{border:0;background:transparent;color:var(--muted);padding:10px 26px;border-radius:999px;font-size:15px;font-weight:700;cursor:pointer;transition:.25s}
+.toggle button.on{background:linear-gradient(135deg,var(--gold-2),var(--gold) 55%,var(--gold-3));color:#1a1405}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;align-items:stretch}
+.plan{position:relative;display:flex;flex-direction:column;padding:34px 30px;border-radius:24px;background:var(--panel);border:1px solid var(--line-soft)}
+.plan.best{border-color:var(--gold);background:linear-gradient(170deg,#1b2133,var(--panel));box-shadow:0 30px 80px rgba(212,175,106,.12);transform:translateY(-10px)}
+.ribbon{position:absolute;top:-14px;inset-inline-start:50%;transform:translateX(50%);padding:5px 18px;border-radius:999px;font-size:13px;font-weight:700;color:#1a1405;background:linear-gradient(135deg,var(--gold-2),var(--gold));white-space:nowrap}
+[dir=rtl] .ribbon{inset-inline-start:auto;right:50%;transform:translateX(50%)}
+.plan h3{font-size:26px}
+.plan .sub{color:var(--muted);font-size:14.5px;min-height:24px}
+.price{display:flex;align-items:baseline;gap:8px;margin:20px 0 4px}
+.price b{font-family:'Frank Ruhl Libre',serif;font-size:54px;line-height:1;font-weight:900}
+.price span{color:var(--muted);font-size:15px}
+.save{font-size:13.5px;color:var(--green);min-height:22px}
+.plan ul{list-style:none;margin:22px 0 28px;display:grid;gap:12px;font-size:15.5px;flex:1}
+.plan li{display:flex;gap:11px;align-items:flex-start;color:#d5d9e4}
+.plan li svg{flex:none;width:18px;height:18px;margin-top:4px;stroke:var(--gold);fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.plan .btn{width:100%}
+.plans-note{text-align:center;color:var(--muted);font-size:14.5px;margin-top:30px}
+
+/* ---------- FAQ ---------- */
+.faq{max-width:820px;margin-inline:auto;display:grid;gap:12px}
+.faq details{border:1px solid var(--line-soft);border-radius:16px;background:rgba(255,255,255,.025);transition:.25s}
+.faq details[open]{border-color:var(--line);background:rgba(212,175,106,.04)}
+.faq summary{list-style:none;cursor:pointer;padding:20px 24px;font-size:18px;font-weight:500;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";flex:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;color:var(--gold);font-size:20px;transition:.3s}
+.faq details[open] summary::after{transform:rotate(45deg);background:rgba(212,175,106,.12)}
+.faq .ans{padding:0 24px 22px;color:var(--muted);font-weight:300;font-size:16.5px;max-width:700px}
+
+/* ---------- Final CTA ---------- */
+.final{padding:120px 0;text-align:center;overflow:hidden;isolation:isolate}
+.final::before{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(700px 360px at 50% 40%,rgba(212,175,106,.18),transparent 70%)}
+.final h2{font-size:clamp(38px,6vw,72px);line-height:1.1;font-weight:900;margin-bottom:18px}
+.final p{color:var(--muted);font-size:19px;font-weight:300;max-width:560px;margin:0 auto 34px}
+
+/* ---------- Footer ---------- */
+footer{border-top:1px solid var(--line-soft);padding:46px 0 54px;color:var(--muted);font-size:13.5px}
+.foot-top{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:24px}
+.foot-links{display:flex;gap:22px}
+.foot-links a:hover{color:var(--gold-2)}
+.legal{max-width:980px;line-height:1.8;opacity:.85}
+.copy{margin-top:20px;opacity:.7}
+
+/* ---------- Reveal ---------- */
+.rv{opacity:0;transform:translateY(26px);transition:opacity .8s ease,transform .8s ease}
+.rv.in{opacity:1;transform:none}
+
+/* ---------- Responsive ---------- */
+@media (max-width:980px){
+  .hero-grid{grid-template-columns:1fr;gap:70px}
+  .nav ul{display:none}
+  .grid3,.steps,.plans{grid-template-columns:1fr 1fr}
+  .plan.best{transform:none}
+  .signal{inset-inline-start:10px;bottom:-40px}
+}
+@media (max-width:640px){
+  .sec{padding:80px 0}
+  .grid3,.steps,.plans{grid-template-columns:1fr}
+  .hero{padding-top:110px}
+  .nav-actions .btn-ghost{display:none}
+  .bubble-wrap{flex-direction:column;align-items:center;gap:22px}
+  .bubble{padding:28px 22px 24px;width:100%}
+  .bubble::before{right:auto;left:50%;top:-10px;margin-left:-10px;transform:rotate(-45deg)}
+  .bubble::after{display:none}
+  .signal{position:relative;inset:auto;width:100%;margin-top:14px}
+  .hero-grid{gap:40px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+  .rv{opacity:1;transform:none}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<!-- ================= NAV ================= -->
+<header class="nav" id="nav">
+  <div class="wrap">
+    <a href="#top" class="logo">Nex<b>Trade</b></a>
+    <ul>
+      <li><a href="#features">יכולות</a></li>
+      <li><a href="#how">איך זה עובד</a></li>
+      <li><a href="#plans">מסלולים</a></li>
+      <li><a href="#faq">שאלות ותשובות</a></li>
+    </ul>
+    <div class="nav-actions">
+      <a class="btn btn-gold" href="/app" data-app>כניסה / הרשמה</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <div class="hero-photo" aria-hidden="true"></div>
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow"><i></i>פלטפורמת איתותים ומסחר · ישראל וארה״ב</span>
+      <h1 class="serif">
+        <span>נתונים.</span>
+        <span>איתותים.</span>
+        <span class="gold-text">ביטחון.</span>
+      </h1>
+      <p class="lead">פלטפורמת מסחר וניתוח מניות לבורסה הישראלית ולוול סטריט: גרפים מקצועיים, איתותים בזמן אמת וניתוח AI, במקום אחד. כך תקבלו החלטות על בסיס נתונים, ולא על בסיס תחושות.</p>
+      <div class="cta-row">
+        <a class="btn btn-gold btn-lg" href="/app" data-app>כניסה / הרשמה · 7 ימי ניסיון חינם</a>
+      </div>
+      <div class="chips">
+        <span><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>בורסת תל אביב ווול סטריט</span>
+        <span><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>ביטול בכל עת</span>
+        <span><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>תשלום מאובטח</span>
+      </div>
+    </div>
+
+    <div class="rv">
+      <div class="chart-card">
+        <div class="chart-top"><b>SAMPLE · 1D</b><em>המחשה</em></div>
+        <svg id="chart" viewBox="0 0 520 340" aria-label="גרף נרות להמחשה" role="img">
+          <defs>
+            <linearGradient id="gold" x1="0" x2="1">
+              <stop offset="0" stop-color="#f3dca4"/><stop offset="1" stop-color="#b98a3e"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="signal">
+          <h4><i class="pulse"></i>איתות לדוגמה</h4>
+          <dl>
+            <dt>כיוון</dt><dd class="long">Long</dd>
+            <dt>כניסה</dt><dd>100.00</dd>
+            <dt>יעד (TP)</dt><dd class="tp">108.00</dd>
+            <dt>עצירה (SL)</dt><dd class="sl">96.00</dd>
+          </dl>
+          <small>להמחשה בלבד. אינו איתות אמיתי.</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= QUOTES ================= -->
+<section class="quotes" id="quotes">
+  <div class="wrap">
+    <div class="sec-head" style="margin-bottom:44px">
+      <span class="eyebrow"><i></i>השראה משוק ההון</span>
+      <h2 class="serif">מה אמרו (ועשו) הגדולים</h2>
+    </div>
+    <div class="bubble-wrap" id="qWrap" aria-live="off">
+      <div class="avatar" id="qAvatar">WB</div>
+      <div class="bubble" id="bubble">
+        <span class="tag" id="qTag"></span>
+        <blockquote id="qText"></blockquote>
+        <div class="by"><strong id="qAuthor"></strong><span id="qSource"></span></div>
+      </div>
+    </div>
+    <div class="dots" id="dots" role="tablist" aria-label="בחירת ציטוט"></div>
+    <p class="q-note">ציטוטים ועובדות מתועדים, בתרגום חופשי. מובאים להשראה בלבד.</p>
+  </div>
+</section>
+
+<!-- ================= FEATURES ================= -->
+<section class="sec" id="features">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="eyebrow"><i></i>מה NexTrade עושה בשבילכם</span>
+      <h2 class="serif">כל מה שסוחר צריך, <span class="gold-text">במסך אחד</span></h2>
+      <p>במקום לקפוץ בין אתרים, גרפים וקבצי אקסל, NexTrade מרכזת את הנתונים, הכלים והאיתותים במקום אחד.</p>
+    </div>
+    <div class="grid3">
+      <article class="card rv">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg></div>
+        <h3>גרפים ואינדיקטורים מקצועיים</h3>
+        <p>גרפים בכל טווחי הזמן, משעה ועד רבעון, עם כלים טכניים לניתוח מניות ומדדים.</p>
+      </article>
+      <article class="card rv">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div>
+        <h3>איתותי מסחר בזמן אמת</h3>
+        <p>איתותים מתעדכנים עם פרטים מסודרים לכל איתות, ופתיחת הגרף של המניה בלחיצה אחת.</p>
+      </article>
+      <article class="card rv">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 17l.7 1.8 1.8.7-1.8.7L19 22l-.7-1.8-1.8-.7 1.8-.7z"/></svg></div>
+        <h3>ניתוח AI למניות</h3>
+        <p>בחרו מניה וקבלו ניתוח מהיר שמסכם את התמונה, וחוסך שעות של בדיקות ידניות.</p>
+      </article>
+      <article class="card rv">
+        <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg></div>
+        <h3>תיק השקעות</h3>
+        <p>עקבו אחרי פוזיציות Long ו-Short, רווח והפסד ושווי התיק הכולל, הכל במקום אחד.</p>
+      </article>
+      <article class="card rv">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></div>
+        <h3>ניהול סיכונים</h3>
+        <p>הגדירו יעד רווח ו-Stop Loss לכל פוזיציה, וראו את הסיכון של התיק כולו.</p>
+      </article>
+      <article class="card rv">
+        <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></div>
+        <h3>התראות ויומן אירועים</h3>
+        <p>התראות מחיר, יומן אירועים והתראה לפני פרסום דוחות רבעוניים (במסלול Premium).</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= HOW ================= -->
+<section class="sec" id="how" style="padding-top:20px">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="eyebrow"><i></i>איך זה עובד</span>
+      <h2 class="serif">שלושה צעדים, <span class="gold-text">ואתם בפנים</span></h2>
+    </div>
+    <div class="steps">
+      <div class="step rv"><div class="n">01</div><h3>בחרו שוק ומניה</h3><p>ישראל או ארה״ב, מניות או מדדים. הוסיפו לרשימת המעקב שלכם.</p></div>
+      <div class="step rv"><div class="n">02</div><h3>קבלו תמונה ברורה</h3><p>גרף, אינדיקטורים, איתות וניתוח AI, הכל באותו מסך.</p></div>
+      <div class="step rv"><div class="n">03</div><h3>נהלו סיכון</h3><p>קבעו יעד ו-Stop Loss, עקבו אחרי התיק וקבלו התראות בזמן.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PLANS ================= -->
+<section class="sec plans-bg" id="plans">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="eyebrow"><i></i>מסלולים</span>
+      <h2 class="serif">בחרו את המסלול <span class="gold-text">שמתאים לכם</span></h2>
+      <p>מתחילים בחינם, ומשדרגים כשצריך יותר ניתוחים, איתותים ומעקב.</p>
+      <div class="toggle" id="toggle" role="tablist">
+        <button class="on" data-mode="m" role="tab">חודשי</button>
+        <button data-mode="y" role="tab">שנתי</button>
+      </div>
+    </div>
+
+    <div class="plans">
+      <!-- Free -->
+      <div class="plan rv">
+        <h3>בסיסי</h3>
+        <div class="sub">להכיר את המערכת</div>
+        <div class="price"><b>₪0</b><span>חינם</span></div>
+        <div class="save"></div>
+        <ul>
+          <li><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>3 ניתוחי AI ביום</li>
+          <li><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>3 מניות במעקב</li>
+          <li><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>3 איתותים בעיכוב</li>
+        </ul>
+        <a class="btn btn-ghost" href="/app" data-app>התחילו בחינם</a>
+      </div>
+
+      <!-- Gold -->
+      <div class="plan rv">
+        <h3>Gold</h3>
+        <div class="sub">לסוחר שעוקב אחרי כמה מניות</div>
+        <div class="price"><b data-m="₪39" data-y="₪390">₪39</b><span data-m="/ חודש" data-y="/ שנה">/ חודש</span></div>
+        <div class="save" data-m="" data-y="חיסכון של ₪78 לעומת חודשי"></div>
+        <ul>
+          <li><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>15 ניתוחי AI ביום</li>
+          <li><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>איתותים בזמן אמת (עד 15)</li>
+          <li><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>עד 15 מניות במעקב</li>
+          <li><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>יומן התראות וסיכום ביצועים</li>
+        </ul>
+        <a class="btn btn-ghost" href="/app" data-app>התחילו עם Gold</a>
+      </div>
+
+      <!-- Premium -->
+      <div class="plan best rv">
+        <span class="ribbon">הכי משתלם</span>
+        <h3>Premium</h3>
+        <div class="sub">הכל, ללא הגבלה</div>
+        <div class="price"><b class="gold-text" data-m="₪69" data-y="₪490">₪69</b><span data-m="/ חודש" data-y="/ שנה">/ חודש</span></div>
+        <div class="save" data-m="" data-y="חיסכון של ₪338 לעומת חודשי"></div>
+        <ul>
+          <li><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>ניתוחי AI ללא הגבלה</li>
+          <li><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>כל האיתותים בזמן אמת</li>
+          <li><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>מעקב ומועדפים ללא הגבלה</li>
+          <li><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>התראה לפני פרסום דוחות (earnings)</li>
+          <li><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>כל מה שכלול ב-Gold</li>
+        </ul>
+        <a class="btn btn-gold" href="/app" data-app>התחילו עם Premium</a>
+      </div>
+    </div>
+    <p class="plans-note">7 ימי ניסיון חינם · ביטול בכל עת · תשלום מאובטח</p>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section class="sec" id="faq">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="eyebrow"><i></i>שאלות ותשובות</span>
+      <h2 class="serif">לפני שמחליטים, <span class="gold-text">כדאי לדעת</span></h2>
+    </div>
+    <div class="faq rv">
+      <details open>
+        <summary>מהו NexTrade ומה אקבל בפועל?</summary>
+        <div class="ans">NexTrade היא פלטפורמת מסחר וניתוח מניות לבורסה הישראלית ולוול סטריט. במקום אחד תקבלו גרפים עם אינדיקטורים, איתותי מסחר, ניתוח AI למניות, תיק השקעות, כלים לניהול סיכונים והתראות.</div>
+      </details>
+      <details>
+        <summary>אני מתחיל. האם זה מתאים לי?</summary>
+        <div class="ans">כן. אפשר להתחיל במסלול החינמי או להיכנס כמשתמש דמו ולהכיר את המערכת לפני שמתחייבים. ניתוחי ה-AI והאיתותים נועדו לעזור לכם להבין מה קורה במניה, לא להחליף את שיקול הדעת שלכם.</div>
+      </details>
+      <details>
+        <summary>מה כולל המסלול החינמי?</summary>
+        <div class="ans">3 ניתוחי AI ביום, מעקב אחרי 3 מניות ו-3 איתותים בעיכוב. זה מספיק כדי להתרשם מהמערכת ולבדוק אם היא מתאימה לכם.</div>
+      </details>
+      <details>
+        <summary>במה Gold שונה מ-Premium?</summary>
+        <div class="ans">Gold (₪39 לחודש) מתאים למי שעוקב אחרי מספר מצומצם של מניות: 15 ניתוחי AI ביום, עד 15 איתותים בזמן אמת ועד 15 מניות במעקב. Premium (₪69 לחודש) מוסיף ניתוחי AI ללא הגבלה, את כל האיתותים בזמן אמת, מעקב ומועדפים ללא הגבלה והתראה לפני פרסום דוחות רבעוניים.</div>
+      </details>
+      <details>
+        <summary>האם אפשר לבטל? ומה לגבי מנוי שנתי?</summary>
+        <div class="ans">אפשר לבטל בכל עת. מנוי שנתי חוסך ₪78 ב-Gold ו-₪338 ב-Premium לעומת תשלום חודשי.</div>
+      </details>
+      <details>
+        <summary>אילו שווקים נתמכים?</summary>
+        <div class="ans">מניות בבורסה הישראלית, מניות בארה״ב ומדדים.</div>
+      </details>
+      <details>
+        <summary>האם האיתותים מבטיחים רווח?</summary>
+        <div class="ans">לא, ואף אחד אינו יכול להבטיח זאת. איתות הוא כלי עזר לקבלת החלטה ולא המלצה לבצע עסקה. מסחר בשוק ההון כרוך בסיכון, ולכן יש במערכת כלים לניהול סיכונים (יעד רווח ו-Stop Loss) שמאפשרים לכם להגדיר מראש כמה אתם מוכנים להסתכן.</div>
+      </details>
+      <details>
+        <summary>האם אפשר להשתמש בנייד?</summary>
+        <div class="ans">כן. אפשר להתקין את NexTrade כאפליקציה באייפון, באנדרואיד ובמחשב, והיא נפתחת במסך מלא עם אייקון משלה.</div>
+      </details>
+      <details>
+        <summary>האם NexTrade נותנת ייעוץ השקעות?</summary>
+        <div class="ans">לא. NexTrade היא כלי טכנולוגי לניתוח ומעקב. התכנים באתר אינם ייעוץ השקעות או שיווק השקעות ואינם המלצה. לפני קבלת החלטות השקעה מומלץ להתייעץ עם יועץ מוסמך.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FINAL CTA ================= -->
+<section class="final">
+  <div class="wrap rv">
+    <h2 class="serif">הצעד הבא שלך<br><span class="gold-text">בשוק ההון</span></h2>
+    <p>הצטרפו ל-NexTrade, התחילו 7 ימי ניסיון חינם ובדקו בעצמכם איך נראה מסחר מבוסס נתונים.</p>
+    <a class="btn btn-gold btn-lg" href="/app" data-app>כניסה / הרשמה</a>
+  </div>
+</section>
+
+</main>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="wrap">
+    <div class="foot-top">
+      <a href="#top" class="logo">Nex<b>Trade</b></a>
+      <nav class="foot-links">
+        <a href="#faq">שאלות ותשובות</a>
+        <a href="#plans">מסלולים</a>
+      </nav>
+    </div>
+    <p class="legal">NexTrade היא פלטפורמה טכנולוגית לניתוח ומעקב אחר מניות. האיתותים, ניתוחי ה-AI והתכנים באתר נועדו למטרות מידע וחינוך בלבד, אינם מהווים ייעוץ השקעות, שיווק השקעות או המלצה לבצע עסקה כלשהי, ואינם מבטיחים רווח. מסחר בשוק ההון כרוך בסיכון, לרבות הפסד של כל ההון המושקע. תוצאות העבר אינן מעידות על תוצאות עתידיות. הציטוטים באתר הם בתרגום חופשי, מובאים להשראה ולהמחשה בלבד, ואינם מעידים על קשר, חסות או תמיכה של האישים המצוטטים ב-NexTrade. הגרף והאיתות בראש העמוד הם הדגמה בלבד.</p>
+    <p class="copy">NexTrade © 2026 · כל הזכויות שמורות</p>
+  </div>
+</footer>
+
+<script>
+/* ===== הגדרות: כתובת האפליקציה (כפתורי כניסה/הרשמה/דמו) ===== */
+const APP_URL = 'index.html?from=home';
+document.querySelectorAll('[data-app]').forEach(a => {
+  a.setAttribute('href', APP_URL);
+  // marks this browser tab as "passed the home page" (index.html sends everyone else here first)
+  a.addEventListener('click', () => { try { sessionStorage.setItem('ntHome', '1'); } catch (e) {} });
+});
+
+/* ===== Nav ===== */
+const nav = document.getElementById('nav');
+const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 24);
+onScroll(); window.addEventListener('scroll', onScroll, {passive:true});
+
+/* ===== Reveal on scroll ===== */
+const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => {
+  es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+}, {threshold:.12}) : null;
+document.querySelectorAll('.rv').forEach((el, i) => {
+  if (io) { el.style.transitionDelay = (i % 3) * 90 + 'ms'; io.observe(el); } else el.classList.add('in');
+});
+
+/* ===== Hero chart (להמחשה, נוצר אקראית עם seed קבוע) ===== */
+(function () {
+  const svg = document.getElementById('chart'); if (!svg) return;
+  const W = 520, H = 340, n = 22, pad = 26;
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  let p = 100; const data = [];
+  for (let i = 0; i < n; i++) {
+    const o = p, c = o + (rnd() - 0.38) * 7 + (i > 9 ? 0.9 : 0.5);
+    data.push({o, c, hi: Math.max(o, c) + rnd() * 4, lo: Math.min(o, c) - rnd() * 4}); p = c;
+  }
+  const min = Math.min(...data.map(d => d.lo)), max = Math.max(...data.map(d => d.hi));
+  const y = v => H - pad - ((v - min) / (max - min)) * (H - pad * 2);
+  const step = (W - pad * 2) / n; let out = '';
+  for (let i = 0; i < 5; i++) { const gy = pad + i * (H - pad * 2) / 4; out += `<line x1="${pad}" x2="${W - pad}" y1="${gy}" y2="${gy}" stroke="rgba(255,255,255,.06)"/>`; }
+  data.forEach((d, i) => {
+    const x = pad + i * step + step / 2, col = d.c >= d.o ? '#3ecf8e' : '#ef5b6b';
+    out += `<line x1="${x}" x2="${x}" y1="${y(d.hi)}" y2="${y(d.lo)}" stroke="${col}" stroke-width="1.4"/>`;
+    out += `<rect x="${x - step * .3}" y="${y(Math.max(d.o, d.c))}" width="${step * .6}" height="${Math.max(2, Math.abs(y(d.o) - y(d.c)))}" rx="1.5" fill="${col}" opacity=".9"/>`;
+  });
+  const ma = data.map((d, i) => { const s = data.slice(Math.max(0, i - 4), i + 1); return s.reduce((a, b) => a + b.c, 0) / s.length; });
+  out += `<path d="${ma.map((v, i) => `${i ? 'L' : 'M'}${pad + i * step + step / 2},${y(v)}`).join(' ')}" fill="none" stroke="url(#gold)" stroke-width="2.4" stroke-linecap="round"/>`;
+  svg.insertAdjacentHTML('beforeend', out);
+})();
+
+/* ===== בועת ציטוטים מתחלפת =====
+   כל פריט: מקור מתועד. התרגום לעברית חופשי.
+   tag: "ציטוט מתועד" / "עובדה מתועדת" / "עיקרון מיוחס"                          */
+const QUOTES = [
+  {ini:'WB', author:'וורן באפט', tag:'עובדה מתועדת',
+   text:'באפט רכש את מנייתו הראשונה בגיל 11: שלוש מניות של Cities Service Preferred, תמורת 114.75 דולר.',
+   source:'אליס שרודר, The Snowball'},
+  {ini:'WB', author:'וורן באפט', tag:'ציטוט מתועד',
+   text:'"ידעתי יותר כשהייתי בן 11 מכפי שאני יודע היום."',
+   source:'ראיון עם צ׳רלי רוז'},
+  {ini:'WB', author:'וורן באפט', tag:'עובדה מתועדת',
+   text:'את מנייתו הראשונה מכר באפט ב-40 דולר למניה. המניה עלתה בהמשך עד 202 דולר.',
+   source:'TIME'},
+  {ini:'DT', author:'דונלד טראמפ', tag:'ציטוט מתועד',
+   text:'"אני אוהב לחשוב בגדול. תמיד אהבתי. בעיניי זה פשוט: אם כבר חושבים, אפשר גם לחשוב בגדול."',
+   source:'Trump: The Art of the Deal, 1987'},
+  {ini:'DT', author:'דונלד טראמפ', tag:'ציטוט מתועד',
+   text:'"הגנו על הצד המפסיד, והצד המרוויח ידאג לעצמו."',
+   source:'Trump: The Art of the Deal, 1987'},
+  {ini:'WG', author:'וו.ד. גאן', tag:'ציטוט מתועד',
+   text:'"הדבר החשוב מכל הוא גורם הזמן."',
+   source:'W.D. Gann, Truth of the Stock Tape, 1923'},
+  {ini:'WG', author:'וו.ד. גאן', tag:'עובדה היסטורית',
+   text:'גאן, מהסוחרים האגדיים של וול סטריט, האמין שמחירי מניות נעים לפי חוקיות מתמטית ומחזורי זמן.',
+   source:'ספרות על שיטת גאן'},
+  {ini:'WG', author:'וו.ד. גאן', tag:'עיקרון מיוחס',
+   text:'בין כללי המסחר המיוחסים לגאן: השתמשו תמיד ב-Stop Loss, אל תסחרו יתר על המידה, ואל תסכנו יותר מ-10% מההון בעסקה אחת.',
+   source:'כללי המסחר של גאן'}
+];
+(function () {
+  const bubble = document.getElementById('bubble'), dots = document.getElementById('dots');
+  const el = id => document.getElementById(id);
+  let cur = 0, timer = null;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  QUOTES.forEach((_, i) => {
+    const b = document.createElement('button'); b.setAttribute('aria-label', 'ציטוט ' + (i + 1));
+    b.addEventListener('click', () => { show(i); restart(); }); dots.appendChild(b);
+  });
+  function paint(i) {
+    const q = QUOTES[i];
+    el('qText').textContent = q.text; el('qAuthor').textContent = q.author;
+    el('qSource').textContent = q.source; el('qTag').textContent = q.tag; el('qAvatar').textContent = q.ini;
+    [...dots.children].forEach((d, k) => d.classList.toggle('on', k === i));
+  }
+  function show(i) {
+    cur = (i + QUOTES.length) % QUOTES.length;
+    if (reduce) return paint(cur);
+    bubble.classList.add('swap');
+    setTimeout(() => { paint(cur); bubble.classList.remove('swap'); }, 330);
+  }
+  function restart() { clearInterval(timer); if (!reduce) timer = setInterval(() => show(cur + 1), 7500); }
+  paint(0); restart();
+  const wrap = el('qWrap');
+  wrap.addEventListener('mouseenter', () => clearInterval(timer));
+  wrap.addEventListener('mouseleave', restart);
+})();
+
+/* ===== מעבר חודשי / שנתי ===== */
+(function () {
+  const btns = document.querySelectorAll('#toggle button');
+  btns.forEach(b => b.addEventListener('click', () => {
+    btns.forEach(x => x.classList.toggle('on', x === b));
+    const m = b.dataset.mode;
+    document.querySelectorAll('[data-m]').forEach(e => { e.textContent = e.dataset[m]; });
+  }));
+})();
+</script>
+</body>
+</html>

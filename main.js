@@ -355,6 +355,8 @@ function loginSuccess(user) {
 }
 
 function handleLogout() {
+  // after logging out the visitor starts again from the home page
+  try { sessionStorage.removeItem('ntHome'); } catch (e) {}
   localStorage.removeItem(SESSION_KEY);
   localStorage.removeItem('nt_token');
   localStorage.removeItem('nt_user');
@@ -386,6 +388,10 @@ function handleLogout() {
   var dd = document.getElementById('userDropdown');
   if (dd) dd.classList.remove('open');
   switchTab('login');
+  // back to the home page (the gate in index.html would also do it on the next load)
+  if (!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) && window.navigator.standalone !== true) {
+    try { location.replace('home.html'); } catch (e) {}
+  }
 }
 
 // ============================================

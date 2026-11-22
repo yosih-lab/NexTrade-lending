@@ -2,6 +2,28 @@
 <html lang="he" dir="rtl" translate="no">
 <head>
 <script>if(location.hostname==='www.getnexttrade.com'){location.href='https://getnexttrade.com'+location.pathname+location.search+location.hash;}</script>
+<script>
+/* HOME GATE: every new browser tab / re-open and every logout starts at home.html. The home page's button sets
+   sessionStorage.ntHome (and ?from=home as a fallback when storage is blocked, which also prevents a redirect loop).
+   The installed app (standalone PWA) opens straight into the app. */
+(function () {
+  try {
+    var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+    var fromHome = /[?&]from=home\b/.test(location.search);
+    if (fromHome) {
+      try { sessionStorage.setItem('ntHome', '1'); } catch (e) {}
+      try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
+      return;
+    }
+    var passed = false;
+    try { passed = sessionStorage.getItem('ntHome') === '1'; } catch (e) { passed = true; }   // storage blocked: never trap the user
+    if (!passed && !standalone) {
+      document.documentElement.style.visibility = 'hidden';
+      location.replace('home.html');
+    }
+  } catch (e) {}
+})();
+</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="google" content="notranslate" />
@@ -3845,7 +3867,7 @@
 <script src="scanner-symbols.js?v=20261024a"></script>
 <script src="scanner-engine.js?v=20261119d"></script>
 <script src="plan.js?v=20261019g"></script>
-<script src="main.js?v=20261122a"></script>
+<script src="main.js?v=20261123a"></script>
 <script src="stockpanel.js?v=20261122a"></script>
 <script src="drawing.js?v=20261019b"></script>
 <script src="features.js?v=20261018j"></script>
