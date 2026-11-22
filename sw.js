@@ -1,5 +1,5 @@
 // NexTrade Service Worker — PWA offline support
-var CACHE = 'nextrade-v148';
+var CACHE = 'nextrade-v149';
 var STATIC = [
   '/',
   '/index.html',
@@ -60,7 +60,8 @@ self.addEventListener('fetch', function(e) {
       url.indexOf('jina.ai') !== -1) {
     e.respondWith(
       fetch(e.request).catch(function() {
-        return new Response('{}', { headers: { 'Content-Type': 'application/json' } });
+        // Unreachable / suspended server (or CORS-less error page): answer with an honest 503, never a fake "OK".
+        return new Response('{"error":"offline"}', { status: 503, headers: { 'Content-Type': 'application/json' } });
       })
     );
     return;

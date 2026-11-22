@@ -151,6 +151,14 @@ function handleLogin(e) {
     body: JSON.stringify({ username: email, password: password })
   }).then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
   .then(function(result) {
+    // A real login always carries a token. A bare "OK" without one is the service worker's stand-in for an
+    // unreachable / suspended server — never treat it as a successful login.
+    if (result.ok && !(result.data && result.data.token)) {
+      resetBtn();
+      errEl.textContent = 'השרת אינו זמין כרגע (ייתכן שהוא מושבת). נסה שוב מאוחר יותר.';
+      errEl.classList.add('show');
+      return;
+    }
     if (result.ok) {
       localStorage.setItem('nt_token', result.data.token);
       localStorage.setItem('nt_user', JSON.stringify({ username: result.data.username, role: result.data.role }));
@@ -170,7 +178,8 @@ function handleLogin(e) {
       }, LOGIN_ENTRY_DELAY_MS);
     } else {
       resetBtn();
-      errEl.textContent = result.data.error || 'אימייל או סיסמה שגויים';
+      errEl.textContent = (result.data && result.data.error && result.data.error !== 'offline') ? result.data.error
+        : (result.ok === false && (!result.data || result.data.error === 'offline') ? 'השרת אינו זמין כרגע (ייתכן שהוא מושבת). נסה שוב מאוחר יותר.' : 'אימייל או סיסמה שגויים');
       errEl.classList.add('show');
     }
   }).catch(function() {
@@ -233,8 +242,8 @@ function handleSignup(e) {
     body: JSON.stringify({ username: name, email: email, password: password })
   }).then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
   .then(function(result) {
-    if (!result.ok) {
-      errEl.textContent = result.data.error || 'שגיאה בהרשמה';
+    if (!result.ok || !(result.data && (result.data.token || result.data.ok || result.data.id || result.data.username))) {
+      errEl.textContent = (result.data && result.data.error) || 'השרת אינו זמין כרגע (ייתכן שהוא מושבת). נסה שוב מאוחר יותר.';
       errEl.classList.add('show');
       return;
     }
