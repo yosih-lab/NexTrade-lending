@@ -131,6 +131,50 @@ section{position:relative}
 .step h3{font-size:22px;margin:14px 0 6px}
 .step p{color:var(--muted);font-weight:300;font-size:15.5px}
 
+/* ---------- Checks (בדיקות האיתותים) ---------- */
+.checks-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:36px;align-items:stretch}
+.checks-card{padding:1px;border-radius:28px;background:linear-gradient(150deg,rgba(212,175,106,.55),rgba(212,175,106,.06) 38%,rgba(110,120,255,.28));box-shadow:0 40px 90px rgba(0,0,0,.5)}
+.checks-panel{height:100%;border-radius:27px;background:linear-gradient(180deg,#171e30,var(--panel));padding:22px 28px 12px}
+.cp-head{display:flex;justify-content:space-between;align-items:center;gap:8px 14px;flex-wrap:wrap;font-size:13px;color:var(--muted);padding-bottom:14px;border-bottom:1px solid var(--line-soft)}
+.cp-chip{display:inline-flex;align-items:center;gap:8px;color:var(--gold-2);font-weight:700}
+.ck{border-bottom:1px solid var(--line-soft)}
+.ck:last-child{border-bottom:0}
+.ck-btn{width:100%;display:flex;align-items:center;gap:16px;padding:18px 2px;background:none;border:0;color:var(--text);cursor:pointer;font-size:19px;font-weight:700;text-align:start;transition:color .25s}
+.ck-btn:hover,.ck.open .ck-btn{color:var(--gold-2)}
+.ck-btn .name{flex:1}
+.ck-btn::after{content:"";flex:none;width:9px;height:9px;margin-inline:4px;border:solid var(--muted);border-width:0 2px 2px 0;transform:rotate(45deg);transition:.3s}
+.ck.open .ck-btn::after{transform:rotate(-135deg);border-color:var(--gold)}
+.ck-dots{display:flex;gap:7px;direction:ltr}
+.ck-dots i{width:19px;height:19px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.07);border:1px solid var(--line-soft);transition:background .45s,box-shadow .45s,border-color .45s}
+.ck-dots i.on{background:radial-gradient(circle at 35% 30%,var(--gold-2),var(--gold) 60%,var(--gold-3));border-color:transparent;box-shadow:0 0 14px rgba(212,175,106,.42)}
+.ck-dots i.on::after{content:"";width:4px;height:8px;border:solid #1a1405;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.ck-ans{display:grid;grid-template-rows:0fr;transition:grid-template-rows .4s ease}
+.ck.open .ck-ans{grid-template-rows:1fr}
+.ck-ans>div{overflow:hidden}
+.ck-ans p{padding:0 2px 20px;color:var(--muted);font-weight:300;font-size:16px;line-height:1.8}
+.ck-ans p b{color:var(--gold-2);font-weight:500}
+.radar{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:30px 16px 22px;border-radius:28px;border:1px solid var(--line-soft);background:radial-gradient(420px 300px at 50% 42%,rgba(212,175,106,.13),transparent 70%),var(--bg-2)}
+#radar{width:100%;max-width:440px;height:auto;display:block;overflow:visible}
+.rd-poly{fill:rgba(212,175,106,.24);stroke:var(--gold);stroke-width:2.2;stroke-linejoin:round;transform:scale(.02);transform-origin:180px 180px;transition:transform 1.2s cubic-bezier(.2,.8,.2,1);filter:drop-shadow(0 0 14px rgba(212,175,106,.35))}
+.radar.in .rd-poly{transform:none}
+.rd-dot{fill:var(--gold-2);stroke:var(--bg);stroke-width:2;transition:.3s;transform-box:fill-box;transform-origin:center}
+.rd-dot.act{transform:scale(1.9);fill:#fff}
+.rd-lab{fill:var(--muted);font:500 15px 'Heebo',sans-serif;transition:.3s}
+.rd-lab.act{fill:var(--gold-2);font-weight:700}
+.radar-cap{margin-top:14px;color:var(--muted);font-size:14px}
+.checks-note{text-align:center;color:var(--muted);font-size:13.5px;margin-top:26px;opacity:.85}
+
+@media (max-width:1100px){.nav ul{gap:18px;font-size:14px}}
+@media (max-width:980px){
+  .checks-grid{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  .ck-btn{font-size:17px;gap:10px}
+  .ck-dots{gap:5px}
+  .ck-dots i{width:16px;height:16px}
+  .checks-panel{padding:18px 18px 8px}
+}
+
 /* ---------- Plans ---------- */
 .plans-bg{background:linear-gradient(180deg,var(--bg),var(--bg-2));border-block:1px solid var(--line-soft)}
 .toggle{display:inline-flex;padding:5px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.03);margin-top:26px}
@@ -216,6 +260,7 @@ footer{border-top:1px solid var(--line-soft);padding:46px 0 54px;color:var(--mut
     <a href="#top" class="logo">Nex<b>Trade</b></a>
     <ul>
       <li><a href="#features">יכולות</a></li>
+      <li><a href="#checks">בדיקות</a></li>
       <li><a href="#how">איך זה עובד</a></li>
       <li><a href="#plans">מסלולים</a></li>
       <li><a href="#faq">שאלות ותשובות</a></li>
@@ -280,7 +325,6 @@ footer{border-top:1px solid var(--line-soft);padding:46px 0 54px;color:var(--mut
   <div class="wrap">
     <div class="sec-head" style="margin-bottom:44px">
       <span class="eyebrow"><i></i>השראה משוק ההון</span>
-      <h2 class="serif">מה אמרו (ועשו) הגדולים</h2>
     </div>
     <div class="bubble-wrap" id="qWrap" aria-live="off">
       <div class="avatar" id="qAvatar">WB</div>
@@ -335,6 +379,33 @@ footer{border-top:1px solid var(--line-soft);padding:46px 0 54px;color:var(--mut
         <p>התראות מחיר, יומן אירועים והתראה לפני פרסום דוחות רבעוניים (במסלול Premium).</p>
       </article>
     </div>
+  </div>
+</section>
+
+<!-- ================= CHECKS ================= -->
+<section class="sec" id="checks" style="padding-top:20px">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="eyebrow"><i></i>בדיקות האיתותים</span>
+      <h2 class="serif">רק מה שעבר <span class="gold-text">את כל הבדיקות</span></h2>
+      <p>המנוע בודק כל מניה לפי חמש בדיקות לפני שהוא מפרסם איתות. כך נראה איתות לדוגמה שעבר אותן.</p>
+    </div>
+    <div class="checks-grid">
+      <div class="checks-card rv" id="ckCard">
+        <div class="checks-panel">
+          <div class="cp-head">
+            <span class="cp-chip"><i class="pulse"></i>איתות לדוגמה</span>
+            <span>נבדק אוטומטית · לחצו על בדיקה להסבר</span>
+          </div>
+          <div id="ckList"></div>
+        </div>
+      </div>
+      <div class="radar rv" id="radarWrap">
+        <svg id="radar" viewBox="-40 0 440 360" role="img" aria-label="תרשים רדאר של חמש הבדיקות"></svg>
+        <p class="radar-cap">חמש בדיקות, תמונה אחת</p>
+      </div>
+    </div>
+    <p class="checks-note">הדוגמה והציונים בה להמחשה בלבד. עמידה בבדיקות אינה מבטיחה רווח ואינה המלצה לבצע עסקה.</p>
   </div>
 </section>
 
@@ -401,8 +472,8 @@ footer{border-top:1px solid var(--line-soft);padding:46px 0 54px;color:var(--mut
         <span class="ribbon">הכי משתלם</span>
         <h3>Premium</h3>
         <div class="sub">הכל, ללא הגבלה</div>
-        <div class="price"><b class="gold-text" data-m="₪69" data-y="₪490">₪69</b><span data-m="/ חודש" data-y="/ שנה">/ חודש</span></div>
-        <div class="save" data-m="" data-y="חיסכון של ₪338 לעומת חודשי"></div>
+        <div class="price"><b class="gold-text" data-m="₪89" data-y="₪890">₪89</b><span data-m="/ חודש" data-y="/ שנה">/ חודש</span></div>
+        <div class="save" data-m="" data-y="חיסכון של ₪178 לעומת חודשי"></div>
         <ul>
           <li><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>ניתוחי AI ללא הגבלה</li>
           <li><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>כל האיתותים בזמן אמת</li>
@@ -439,11 +510,11 @@ footer{border-top:1px solid var(--line-soft);padding:46px 0 54px;color:var(--mut
       </details>
       <details>
         <summary>במה Gold שונה מ-Premium?</summary>
-        <div class="ans">Gold (₪39 לחודש) מתאים למי שעוקב אחרי מספר מצומצם של מניות: 15 ניתוחי AI ביום, עד 15 איתותים בזמן אמת ועד 15 מניות במעקב. Premium (₪69 לחודש) מוסיף ניתוחי AI ללא הגבלה, את כל האיתותים בזמן אמת, מעקב ומועדפים ללא הגבלה והתראה לפני פרסום דוחות רבעוניים.</div>
+        <div class="ans">Gold (₪39 לחודש) מתאים למי שעוקב אחרי מספר מצומצם של מניות: 15 ניתוחי AI ביום, עד 15 איתותים בזמן אמת ועד 15 מניות במעקב. Premium (₪89 לחודש) מוסיף ניתוחי AI ללא הגבלה, את כל האיתותים בזמן אמת, מעקב ומועדפים ללא הגבלה והתראה לפני פרסום דוחות רבעוניים.</div>
       </details>
       <details>
         <summary>האם אפשר לבטל? ומה לגבי מנוי שנתי?</summary>
-        <div class="ans">אפשר לבטל בכל עת. מנוי שנתי חוסך ₪78 ב-Gold ו-₪338 ב-Premium לעומת תשלום חודשי.</div>
+        <div class="ans">אפשר לבטל בכל עת. מנוי שנתי חוסך ₪78 ב-Gold ו-₪178 ב-Premium לעומת תשלום חודשי.</div>
       </details>
       <details>
         <summary>אילו שווקים נתמכים?</summary>
@@ -452,6 +523,10 @@ footer{border-top:1px solid var(--line-soft);padding:46px 0 54px;color:var(--mut
       <details>
         <summary>האם האיתותים מבטיחים רווח?</summary>
         <div class="ans">לא, ואף אחד אינו יכול להבטיח זאת. איתות הוא כלי עזר לקבלת החלטה ולא המלצה לבצע עסקה. מסחר בשוק ההון כרוך בסיכון, ולכן יש במערכת כלים לניהול סיכונים (יעד רווח ו-Stop Loss) שמאפשרים לכם להגדיר מראש כמה אתם מוכנים להסתכן.</div>
+      </details>
+      <details>
+        <summary>מהן הבדיקות שהמנוע מבצע?</summary>
+        <div class="ans">לפני פרסום איתות המנוע בודק חמישה דברים בגרף השבועי: מגמה (שיאים ושפלים ו-SMA30), רמת תמיכה או התנגדות חזקה, שבירה או פריצה שאושרה בחמישה נרות וריטסט, מחזור מסחר, ויחס סיכוי/סיכון של לפחות 1:2. הבדיקות מקטינות את מספר האיתותים הפחות איכותיים, אך אינן מבטיחות רווח.</div>
       </details>
       <details>
         <summary>האם אפשר להשתמש בנייד?</summary>
@@ -592,6 +667,48 @@ const QUOTES = [
   const wrap = el('qWrap');
   wrap.addEventListener('mouseenter', () => clearInterval(timer));
   wrap.addEventListener('mouseleave', restart);
+})();
+
+/* ===== בדיקות האיתותים: אקורדיון + רדאר =====
+   חמש הבדיקות משקפות את מנוע הסריקה בפועל (גרף שבועי, SMA30, תמיכה/התנגדות, 5 נרות וריטסט, מחזור, יחס סיכוי/סיכון).
+   s = ציון להמחשה בלבד (1-5), לא נתון שמוצג באפליקציה. */
+const CHECKS = [
+  {k:'מגמה', s:5, t:'בודקת את כיוון המגמה בגרף השבועי לפי שיאים ושפלים, ואת מיקום המחיר ביחס לממוצע 30 שבועות (SMA30). <b>לונג רק במגמת עלייה מעל SMA30, שורט רק במגמת ירידה מתחתיו.</b> ירידה נחשבת מגמה רק אחרי כארבעה חודשים, ומניות שנעות בדשדוש רב-שנתי מסוננות.'},
+  {k:'תמיכה והתנגדות', s:5, t:'מחפשת רמת מחיר שהמניה כבר נבדקה בה כמה פעמים. <b>רמה חזקה היא רמה עם לפחות שלוש נגיעות.</b> הכניסה מתוכננת סביב רמה כזו ולא באמצע שום מקום בגרף.'},
+  {k:'שבירה ואישור', s:4, t:'לפני כניסה בפריצה או בשבירה, המחיר צריך <b>חמישה נרות שבועיים מעבר לרמה וחזרה לבדוק אותה (ריטסט)</b>. כך מסננים פריצות שווא. עד שהתנאים מתקיימים, הכרטיס מוצג כ"בהתהוות" ולא כאיתות כניסה.'},
+  {k:'מחזור מסחר', s:5, t:'בחזרה לתמיכה בודקת שהמחזור מתכווץ בירידה, ובנר ההיפוך שהמחזור <b>מעל הממוצע</b>. בנוסף, מניות עם מחזור יומי נמוך (לא סחירות) לא מקבלות איתות בכלל.'},
+  {k:'יחס סיכוי/סיכון', s:5, t:'הסטופ והיעד נקבעים על רמות אמיתיות בגרף, ו<b>היחס לפחות 1:2</b>. אם יש התנגדות חזקה בדרך ליעד, ממתינים לפריצתה. איתותים סמוך לפרסום דוחות (7 ימים) מסוננים.'}
+];
+(function () {
+  const list = document.getElementById('ckList'), radar = document.getElementById('radar'), card = document.getElementById('ckCard');
+  if (!list || !radar) return;
+  list.innerHTML = CHECKS.map((c, i) =>
+    `<div class="ck${i === 0 ? ' open' : ''}" data-i="${i}"><button class="ck-btn" aria-expanded="${i === 0}"><span class="name">${c.k}</span><span class="ck-dots" aria-label="ציון ${c.s} מתוך 5">${'<i></i>'.repeat(5)}</span></button><div class="ck-ans"><div><p>${c.t}</p></div></div></div>`).join('');
+
+  const N = CHECKS.length, cx = 180, cy = 180, R = 118;
+  const ang = i => (-90 + i * 360 / N) * Math.PI / 180;
+  const pt = (i, r) => [cx + r * Math.cos(ang(i)), cy + r * Math.sin(ang(i))];
+  let g = '';
+  for (let lv = 1; lv <= 5; lv++) g += `<polygon points="${CHECKS.map((_, i) => pt(i, R * lv / 5).join(',')).join(' ')}" fill="none" stroke="rgba(212,175,106,${lv === 5 ? .35 : .14})"/>`;
+  CHECKS.forEach((_, i) => { const [x, y] = pt(i, R); g += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="rgba(212,175,106,.14)"/>`; });
+  g += `<polygon class="rd-poly" points="${CHECKS.map((c, i) => pt(i, R * c.s / 5).join(',')).join(' ')}"/>`;
+  CHECKS.forEach((c, i) => { const [x, y] = pt(i, R * c.s / 5); g += `<circle class="rd-dot" data-i="${i}" cx="${x}" cy="${y}" r="5"/>`; });
+  CHECKS.forEach((c, i) => { const [x, y] = pt(i, R + 30); g += `<text class="rd-lab" data-i="${i}" x="${x}" y="${y + 5}" text-anchor="middle">${c.k}</text>`; });
+  radar.innerHTML = g;
+
+  const mark = idx => radar.querySelectorAll('[data-i]').forEach(e => e.classList.toggle('act', +e.dataset.i === idx));
+  mark(0);
+  list.querySelectorAll('.ck').forEach(row => row.querySelector('.ck-btn').addEventListener('click', () => {
+    const wasOpen = row.classList.contains('open');
+    list.querySelectorAll('.ck').forEach(r => { r.classList.remove('open'); r.querySelector('.ck-btn').setAttribute('aria-expanded', 'false'); });
+    if (!wasOpen) { row.classList.add('open'); row.querySelector('.ck-btn').setAttribute('aria-expanded', 'true'); mark(+row.dataset.i); } else mark(-1);
+  }));
+
+  const fill = () => list.querySelectorAll('.ck').forEach((row, i) =>
+    row.querySelectorAll('.ck-dots i').forEach((d, j) => { if (j < CHECKS[i].s) setTimeout(() => d.classList.add('on'), (i * 5 + j) * 70); }));
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce || !('IntersectionObserver' in window)) { list.querySelectorAll('.ck-dots i').forEach((d, k) => { const i = Math.floor(k / 5), j = k % 5; if (j < CHECKS[i].s) d.classList.add('on'); }); }
+  else { const o = new IntersectionObserver(es => { if (es[0].isIntersecting) { fill(); o.disconnect(); } }, {threshold:.35}); o.observe(card); }
 })();
 
 /* ===== מעבר חודשי / שנתי ===== */
