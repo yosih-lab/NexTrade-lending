@@ -3190,7 +3190,43 @@
       .td-right { flex-direction:column; } .td-left { flex-direction:column; flex-wrap:nowrap; }
       .td-card { flex:none; }
     }
-    .sf-rows-head { display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr 1fr auto; gap:.6rem; padding:0 .9rem .4rem; font-size:.68rem; color:var(--text-muted); font-weight:700; }
+    .sf-rows-head { display:grid; grid-template-columns:1.3fr 1fr 1fr 1.4fr 1.25fr 112px; gap:.6rem; padding:0 .9rem .4rem; font-size:.68rem; color:var(--text-muted); font-weight:700; }
+    /* desktop: the trades column is 30% narrower (1000px → 700px); head and rows share the same column template so the labels line up */
+    @media (min-width:761px) {
+      .td-main .sf-trades { max-width:700px; }
+      .td-main .tsf-wrap { max-width:700px; margin-inline:auto; }
+      .trade-row { grid-template-columns:1.3fr 1fr 1fr 1.4fr 1.25fr 112px; }
+      .td-main .sf-stat { min-width:110px; padding:.75rem .8rem; }
+      .td-main .sf-stat-val { font-size:1.15rem; }
+    }
+    @media (min-width:1280px) {
+      .td-wrap { grid-template-columns:250px minmax(0,700px) 250px; }
+    }
+    /* stock filter combo (my trades) */
+    .tsf-wrap { position:relative; margin:0 0 .8rem; }
+    .tsf-btn { display:flex; align-items:center; gap:.5rem; width:100%; padding:.6rem .85rem; border-radius:10px; background:var(--surface); border:1px solid var(--border); color:#fff; font-size:.88rem; font-weight:800; cursor:pointer; font-family:Heebo,sans-serif; text-align:start; }
+    .tsf-btn:hover, .tsf-btn.on { border-color:rgba(61,127,255,.7); }
+    .tsf-btn.on { background:rgba(61,127,255,.12); }
+    .tsf-lbl { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .tsf-caret { color:var(--text-muted); font-size:.8rem; }
+    .tsf-panel { position:absolute; z-index:40; inset-inline:0; top:calc(100% + 4px); padding:.5rem; border-radius:12px; background:#131722; border:1px solid var(--border); box-shadow:0 14px 40px rgba(0,0,0,.6); }
+    .tsf-acts { display:flex; gap:.4rem; margin-bottom:.4rem; }
+    .tsf-acts button { flex:1; padding:.4rem; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:.78rem; font-weight:700; cursor:pointer; font-family:Heebo,sans-serif; }
+    .tsf-acts button:hover { border-color:rgba(61,127,255,.7); color:#fff; }
+    .tsf-list { max-height:260px; overflow-y:auto; display:flex; flex-direction:column; gap:2px; }
+    .tsf-item { display:flex; align-items:center; gap:.55rem; padding:.45rem .55rem; border-radius:8px; cursor:pointer; font-size:.88rem; color:var(--text); }
+    .tsf-item:hover { background:var(--surface2); }
+    .tsf-item.on { background:rgba(61,127,255,.14); }
+    .tsf-item input { width:16px; height:16px; accent-color:#3d7fff; flex:0 0 auto; }
+    .tsf-sym { font-weight:900; color:#fff; flex:1; }
+    .tsf-item .tr-dir { font-size:.68rem; font-weight:800; padding:.1rem .45rem; border-radius:10px; }
+    .tsf-item .tr-dir.long { background:rgba(38,166,154,.16); color:var(--green); }
+    .tsf-item .tr-dir.short { background:rgba(239,83,80,.16); color:var(--red); }
+    /* cancel alert (signal card) */
+    .sig-btn.al-cancel { color:#ff8a87; border-color:rgba(239,83,80,.45); }
+    .sig-btn.al-cancel:hover { background:rgba(239,83,80,.16); color:#fff; }
+    .al-cancel-x { flex:0 0 auto; margin-inline-start:auto; width:28px; height:28px; border-radius:8px; border:1px solid rgba(255,255,255,.25); background:rgba(0,0,0,.18); color:#fff; font-size:.85rem; cursor:pointer; line-height:1; }
+    .al-cancel-x:hover { background:rgba(239,83,80,.55); border-color:transparent; }
     /* ---- Paywall: upgrade banner + locked panels ---- */
     .sf-upsell { max-width:1000px; margin:0 auto 1rem; display:flex; align-items:center; gap:.8rem;
       background:linear-gradient(135deg, rgba(245,166,35,.16), rgba(245,166,35,.04));
@@ -3871,7 +3907,7 @@
 <script src="stockpanel.js?v=20261122a"></script>
 <script src="drawing.js?v=20261019b"></script>
 <script src="features.js?v=20261018j"></script>
-<script src="signals.js?v=20261122a"></script>
+<script src="signals.js?v=20261124a"></script>
 <script src="plan-overlay.js?v=20261030c"></script>
 
 <!-- CHART SETTINGS MODAL (opened from the right-click "Settings..." menu item) -->

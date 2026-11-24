@@ -137,6 +137,7 @@
         <th>אימייל</th>
         <th>תפקיד</th>
         <th>נרשם</th>
+        <th>שעת הצטרפות</th>
         <th>פעולות</th>
       </tr>
     </thead>
@@ -280,7 +281,9 @@ function renderUsers(data) {
     var badge = u.role === 'admin'
       ? '<span class="badge badge-admin">מנהל</span>'
       : '<span class="badge badge-user">משתמש</span>';
-    var date  = u.createdAt ? new Date(u.createdAt).toLocaleDateString('he-IL') : '—';
+    var date  = u.createdAt ? new Date(u.createdAt).toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' }) : '—';
+    // join time (Israel time) — new sign-ups can be told apart within the same day
+    var when  = u.createdAt ? new Date(u.createdAt).toLocaleTimeString('he-IL', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit' }) : '—';
     var toggleRole = u.role === 'admin'
       ? '<button class="btn" onclick="changeRole(' + Number(u.id) + ',\'user\')">הורד למשתמש</button>'
       : '<button class="btn" onclick="changeRole(' + Number(u.id) + ',\'admin\')">העלה למנהל</button>';
@@ -289,6 +292,7 @@ function renderUsers(data) {
       + '<td style="color:#8899aa">' + u.email + '</td>'
       + '<td>' + badge + '</td>'
       + '<td style="color:#8899aa">' + date + '</td>'
+      + '<td style="color:#8899aa;font-variant-numeric:tabular-nums">' + when + '</td>'
       + '<td><div style="display:flex;gap:.5rem">' + toggleRole
       + '<button class="btn btn-danger" onclick="deleteUser(' + Number(u.id) + ',' + idx + ')">מחק</button>'
       + '</div></td>'

@@ -1301,16 +1301,68 @@
     return '<div class="sf-stat"><div class="sf-stat-label">' + label + '</div><div class="sf-stat-val ' + (cls || '') + '">' + val + '</div></div>';
   }
 
+  // ---------- "my trades": multi-select stock filter (combo box) ----------
+  // Empty selection = all stocks. The filter narrows the list of open trades (and each market's summary boxes);
+  // the portfolio overview (donuts and win/lose boxes) always covers every trade.
+  var _tf = { sel: {}, open: false };
+  function tfSymbols() {
+    var seen = {}, out = [];
+    loadTrades().forEach(function (t) {
+      if (t.status !== 'open' || seen[t.sym]) return;
+      seen[t.sym] = true; out.push(t);
+    });
+    out.sort(function (a, b) { return dispSym(a.sym) < dispSym(b.sym) ? -1 : 1; });
+    return out;
+  }
+  // selected symbols that still have an open trade; null = no filter (nothing selected, or everything selected)
+  function tfActiveSet() {
+    var syms = tfSymbols(), set = {}, n = 0;
+    syms.forEach(function (t) { if (_tf.sel[t.sym]) { set[t.sym] = true; n++; } });
+    return (n === 0 || n === syms.length) ? null : set;
+  }
+  function tfRerender() { if (activeTab === 'trades') render(); }
+  function tfToggleOpen() { _tf.open = !_tf.open; tfRerender(); }
+  function tfToggle(sym) { if (_tf.sel[sym]) delete _tf.sel[sym]; else _tf.sel[sym] = true; tfRerender(); }
+  function tfAll() { tfSymbols().forEach(function (t) { _tf.sel[t.sym] = true; }); tfRerender(); }
+  function tfClear() { _tf.sel = {}; tfRerender(); }
+  document.addEventListener('click', function (e) {
+    if (!_tf.open || !e.target || !e.target.closest) return;
+    if (!e.target.closest('.tsf-wrap')) { _tf.open = false; tfRerender(); }
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && _tf.open) { _tf.open = false; tfRerender(); } });
+
+  function tfBar() {
+    var syms = tfSymbols();
+    if (syms.length < 2) return '';
+    var set = tfActiveSet(), picked = set ? syms.filter(function (t) { return set[t.sym]; }) : [];
+    var label = !set ? 'כל המניות (' + syms.length + ')'
+      : (picked.length === 1 ? esc(dispSym(picked[0].sym)) : picked.length + ' מניות נבחרו');
+    var html = '<div class="tsf-wrap">' +
+      '<button type="button" class="tsf-btn' + (set ? ' on' : '') + '" aria-haspopup="listbox" aria-expanded="' + _tf.open + '" onclick="NTSignals.tfToggleOpen()">' +
+        '<span class="tsf-ic">🔎</span><span class="tsf-lbl">סנן מניות: ' + label + '</span><span class="tsf-caret">' + (_tf.open ? '▴' : '▾') + '</span></button>';
+    if (_tf.open) {
+      html += '<div class="tsf-panel" role="listbox" aria-multiselectable="true">' +
+        '<div class="tsf-acts"><button type="button" onclick="NTSignals.tfAll()">בחר הכל</button><button type="button" onclick="NTSignals.tfClear()">נקה סינון</button></div>' +
+        '<div class="tsf-list">' + syms.map(function (t) {
+          var on = !!_tf.sel[t.sym];
+          return '<label class="tsf-item' + (on ? ' on' : '') + '"><input type="checkbox"' + (on ? ' checked' : '') + ' data-s="' + esc(t.sym) + '" onchange="NTSignals.tfToggle(this.getAttribute(\'data-s\'))">' +
+            '<span class="tsf-sym">' + esc(dispSym(t.sym)) + '</span><span class="tr-dir ' + t.dir + '">' + (t.dir === 'long' ? '▲ לונג' : '▼ שורט') + '</span></label>';
+        }).join('') + '</div></div>';
+    }
+    return html + '</div>';
+  }
+
   function renderTrades() {
     var list = renderTradesList();
     if (!loadTrades().length) return usLine() + list;
     return usLine() + '<div class="td-wrap"><div class="td-left">' + tradeSideLeft() + '</div>' +
-      '<div class="td-main">' + list + '</div>' +
+      '<div class="td-main">' + tfBar() + list + '</div>' +
       '<div class="td-right">' + tradeSideRight() + '</div></div>';
   }
 
   function renderTradesList() {
-    var trades = loadTrades();
+    var trades = loadTrades(), fset = tfActiveSet();
+    if (fset) trades = trades.filter(function (t) { return fset[t.sym]; });
     var open = trades.filter(function (t) { return t.status === 'open'; });
     var html = '<div class="sf-trades">';
     if (!open.length) html += '<div class="sf-empty">אין עסקאות פתוחות. הוסף עסקה מלוח האיתותים.</div>';
@@ -2993,17 +3045,32 @@
     render();
   }
 
-  // The alert control on a signal card: 🔔 button → ✔ "התראה פעילה" → green ✔ trigger box.
+  // Cancel an armed (or already triggered) alert on this signal card. The symbol stays in the favorites.
+  function cancelAlert(sym, dir) {
+    dir = dir === 'short' ? 'short' : 'long';
+    var m = loadSigAlerts(), k = alertKey(sym, dir);
+    if (!m[k]) return;
+    delete m[k];
+    saveSigAlerts(m);
+    render();
+  }
+
+  // The alert control on a signal card: 🔔 button → ✔ "התראה פעילה" (+ ✕ cancel) → green ✔ trigger box (+ ✕ cancel).
   function alertBlock(s) {
     var a = loadSigAlerts()[alertKey(s.sym, s.dir)];
     var sym = esc(dispSym(s.sym));
+    var cancel = 'event.stopPropagation();NTSignals.cancelAlert(\'' + s.sym + '\',\'' + s.dir + '\')';
     if (a && a.trig) {
       return '<div class="al-trig" role="status">' +
         '<span class="al-trig-ic">✔</span>' +
         '<div class="al-trig-txt"><b>' + sym + '</b><span>עכשיו אפשר להיכנס ל' + (s.dir === 'short' ? 'שורט' : 'לונג') + ' — כניסה ' + fmt(a.trig.price, s.curr) + '</span></div>' +
+        '<button type="button" class="al-cancel al-cancel-x" title="בטל התראה" aria-label="בטל התראה" onclick="' + cancel + '">✕</button>' +
       '</div>';
     }
-    if (a) return '<button class="sig-btn ghost al-on" disabled><span class="al-ok">✔</span> התראה פעילה</button>';
+    if (a) {
+      return '<button class="sig-btn ghost al-on" disabled><span class="al-ok">✔</span> התראה פעילה</button>' +
+        '<button type="button" class="sig-btn ghost al-cancel" title="בטל את ההתראה" onclick="' + cancel + '">✕ בטל התראה</button>';
+    }
     return '<button class="sig-btn ghost" onclick="event.stopPropagation();NTSignals.setAlert(\'' + s.sym + '\',\'' + s.dir + '\')">🔔 קבע התראה</button>';
   }
 
@@ -3098,6 +3165,7 @@
     show: show, hide: hide, setMode: setMode,
     switchTab: switchTab, openTradeModal: openTradeModal, tmCalc: tmCalc, tmFill: tmFill, tmConfirm: tmConfirm, tmClose: tmClose, closeTrade: closeTrade, toggleTradeChart: toggleTradeChart, syncNow: syncNow,
     openEditModal: openEditModal, emMode: emMode, emCalc: emCalc, emFillLive: emFillLive, emConfirm: emConfirm, emClose: emClose,
+    cancelAlert: cancelAlert, tfToggleOpen: tfToggleOpen, tfToggle: tfToggle, tfAll: tfAll, tfClear: tfClear,
     riskCalc: riskCalc, toggleDisc: toggleDisc,
     aiSuggest: aiSuggest, aiKey: aiKey, aiPick: aiPick, aiNext: aiNext, aiSugHideLater: aiSugHideLater,
     analyze: analyze, render: render,
