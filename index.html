@@ -56,7 +56,7 @@
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&family=Frank+Ruhl+Libre:wght@700;900&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -3171,10 +3171,33 @@
     .td-wrap { display:flex; flex-direction:column; gap:1rem; }
     .td-main { order:2; min-width:0; } .td-right { order:1; } .td-left { order:3; }
     .td-right { display:flex; gap:.6rem; } .td-left { display:flex; gap:.8rem; flex-wrap:wrap; justify-content:center; }
-    .ts-box { flex:1; border-radius:12px; padding:.9rem 1rem; text-align:center; color:#fff; box-shadow:0 2px 10px rgba(0,0,0,.25); }
-    .ts-box.win { background:#1f9d72; } .ts-box.lose { background:#d6453d; } .ts-box.rate { background:#c99a14; }
-    .ts-l { font-size:.82rem; font-weight:800; opacity:.95; }
-    .ts-v { font-size:1.9rem; font-weight:900; line-height:1.2; margin-top:.2rem; }
+    /* ===== Luxury stat tiles (my trades: winners / losers / success rate) ===== */
+    .ts-box { position:relative; flex:1; overflow:hidden; isolation:isolate; padding:1.15rem 1rem 1.05rem; border-radius:18px; text-align:center; color:#fff;
+      border:1px solid rgba(255,255,255,.22);
+      box-shadow:0 14px 34px rgba(0,0,0,.42), 0 0 0 1px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.34), inset 0 -28px 46px rgba(0,0,0,.22);
+      transition:transform .25s ease, box-shadow .25s ease; }
+    /* champagne hairline across the top + soft diagonal sheen */
+    .ts-box::before { content:""; position:absolute; inset:0 0 auto 0; height:2px; z-index:1;
+      background:linear-gradient(90deg, transparent 4%, #f3dca4 28%, #fff3cf 50%, #f3dca4 72%, transparent 96%); opacity:.95; }
+    .ts-box::after { content:""; position:absolute; inset:-30% -20% auto auto; width:75%; height:160%; z-index:-1; transform:rotate(18deg); pointer-events:none;
+      background:linear-gradient(100deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.16) 48%, rgba(255,255,255,0) 100%); }
+    .ts-box:hover { transform:translateY(-3px); }
+    .ts-box.win  { background:radial-gradient(120% 140% at 85% 0%, #22c597 0%, rgba(34,197,151,0) 55%), linear-gradient(150deg, #0a5c45 0%, #12906f 52%, #07402f 100%); }
+    .ts-box.lose { background:radial-gradient(120% 140% at 85% 0%, #ef5a68 0%, rgba(239,90,104,0) 55%), linear-gradient(150deg, #6d1824 0%, #b5333f 52%, #4d0f19 100%); }
+    .ts-box.rate { background:radial-gradient(120% 140% at 85% 0%, #f0cb74 0%, rgba(240,203,116,0) 55%), linear-gradient(150deg, #6f4e14 0%, #b98a32 52%, #5a3f0d 100%); }
+    .ts-box.win:hover  { box-shadow:0 18px 40px rgba(0,0,0,.5), 0 0 26px rgba(34,197,151,.35), inset 0 1px 0 rgba(255,255,255,.4), inset 0 -28px 46px rgba(0,0,0,.22); }
+    .ts-box.lose:hover { box-shadow:0 18px 40px rgba(0,0,0,.5), 0 0 26px rgba(239,90,104,.35), inset 0 1px 0 rgba(255,255,255,.4), inset 0 -28px 46px rgba(0,0,0,.22); }
+    .ts-box.rate:hover { box-shadow:0 18px 40px rgba(0,0,0,.5), 0 0 26px rgba(240,203,116,.4), inset 0 1px 0 rgba(255,255,255,.4), inset 0 -28px 46px rgba(0,0,0,.22); }
+    .ts-box .ts-l { display:block; color:#fff; font-size:.8rem; font-weight:700; letter-spacing:.6px; opacity:.95; text-shadow:0 1px 2px rgba(0,0,0,.35); }
+    /* thin gold divider between label and number */
+    .ts-box .ts-l::after { content:""; display:block; width:34px; height:1px; margin:.5rem auto 0; background:linear-gradient(90deg, transparent, #f3dca4, transparent); }
+    .ts-box .ts-v { font-family:'Frank Ruhl Libre','Heebo',serif; font-size:2.6rem; font-weight:900; line-height:1.1; margin-top:.35rem; letter-spacing:.5px;
+      text-shadow:0 2px 10px rgba(0,0,0,.4); font-variant-numeric:lining-nums; }
+    @media (max-width:760px) {
+      .ts-box { padding:.8rem .5rem .75rem; border-radius:14px; }
+      .ts-box .ts-l { font-size:.68rem; letter-spacing:.2px; }
+      .ts-box .ts-v { font-size:1.75rem; }
+    }
     .td-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:.9rem 1rem; text-align:center; min-width:200px; flex:1; }
     .td-title { font-size:.82rem; font-weight:800; color:#fff; margin-bottom:.7rem; }
     .td-ring { width:140px; height:140px; border-radius:50%; margin:0 auto .7rem; display:flex; align-items:center; justify-content:center; }
